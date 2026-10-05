@@ -530,7 +530,7 @@ def enrich_quality(workers, force):
             import soundfile as sf
 
             from fourier.analysis.clap_features import read_seconds
-            cap = read_seconds(path)            # a very long file: its start (as CLAP hears it)
+            cap = read_seconds(path)            # a very long file: its start
             if cap is None:
                 data, _ = sf.read(path, always_2d=False, dtype="float32")
             else:

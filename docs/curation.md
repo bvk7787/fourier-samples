@@ -202,6 +202,10 @@ Sononym and Ableton Live are both optional:
   records the ones a build used. CI builds the synthetic library without Sononym, without Live
   and without both, and each fills every category.
 
+CLAP embeds the first 10 seconds of a file (`clap_features.CLAP_WINDOW_S`): its feature
+extractor would crop a longer clip at a random offset, so Fourier hands it the start, and a
+long loop or phrase embeds the same on every run.
+
 ### The sound model
 
 A small classifier trained on your own library (`src/fourier/metadata/sound.py`, provider

@@ -455,7 +455,55 @@ def test_clap_hears_the_start_of_a_file_longer_than_any_category_takes(tmp_path,
     import librosa
     monkeypatch.setattr(librosa, "load", load, raising=False)
     assert not CF.embed_audio_file(short).any() and not CF.embed_audio_file(long).any()
-    assert asked == [("Pad 01.wav", None), ("Field Recording 01.wav", CF.LONG_FILE_READ_S)]
+    # CLAP decodes its window of any file (the quality check's cap is read_seconds above)
+    assert asked == [("Pad 01.wav", CF.CLAP_WINDOW_S), ("Field Recording 01.wav", CF.CLAP_WINDOW_S)]
+
+
+def test_clap_hears_the_first_ten_seconds_the_same_every_time(tmp_path, monkeypatch):
+    """CLAP's feature extractor crops a longer clip at a random offset: Fourier hands it the
+    first CLAP_WINDOW_S itself, so a long file embeds the same on every run."""
+    import contextlib
+    import sys
+    import types
+
+    from fourier.analysis import clap_features as CF
+    sr = CF.CLAP_SAMPLE_RATE
+    t = np.arange(int(15 * sr)) / sr
+    y = (0.5 * np.sin(2 * np.pi * (220 + 20 * t) * t)).astype("float32")   # every 10 s differs
+    long = tmp_path / "Loop 01 15s.wav"
+    sf.write(str(long), y, sr, subtype="FLOAT")
+    short = _wav(tmp_path / "Hit 01.wav", seconds=2.0, sr=sr, subtype="FLOAT")
+    heard = []
+
+    class Out:
+        def cpu(self): return self
+        def float(self): return self
+        def numpy(self): return np.ones(CF.CLAP_EMBEDDING_DIM, dtype=np.float32)
+
+    class Processor:
+        def __call__(self, audio=None, sampling_rate=None, return_tensors=None):
+            heard.append(np.asarray(audio[0]).copy())
+            return self
+
+        def to(self, device):
+            return {}
+
+    class Model:
+        def get_audio_features(self, **kw):
+            return types.SimpleNamespace(pooler_output=[Out()])
+
+    import librosa
+    librosa.load(str(short), sr=sr, duration=CF.CLAP_WINDOW_S)  # its loaders, before the stand-in torch
+    torch = types.ModuleType("torch")
+    torch.no_grad = contextlib.nullcontext
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    monkeypatch.setattr(CF, "_load_model_and_processor", lambda: (Model(), Processor(), "cpu"))
+    for path in (long, long, short):
+        assert CF.embed_audio_file(path).any()
+    first, again, hit = heard
+    assert len(first) == CF.CLAP_WINDOW and np.array_equal(first, again)
+    assert np.allclose(first, y[:CF.CLAP_WINDOW], atol=1e-6)         # the start, not a random 10 s
+    assert len(hit) == 2 * sr                                        # a short file: all of it
 
 
 def test_the_quality_check_reads_the_start_of_a_very_long_file(tmp_path, monkeypatch):

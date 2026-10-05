@@ -37,12 +37,16 @@ CLAP_MODEL_ID = "laion/clap-htsat-unfused"
 CLAP_REVISION = "8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a"
 CLAP_SAMPLE_RATE = 48_000  # CLAP expects 48 kHz
 CLAP_EMBEDDING_DIM = 512
+# CLAP hears 10 s: its feature extractor crops anything longer at a random offset
+# (`rand_trunc`), so a long file embedded twice came out differently. Fourier gives it the
+# first 10 s instead (CLAP_WINDOW_S), and decodes only those: the same file, the same embedding.
+CLAP_WINDOW_S = 10.0
+CLAP_WINDOW = int(CLAP_WINDOW_S * CLAP_SAMPLE_RATE)
 INDEX_FILENAME = "clap_index.npz"
 # A file longer than LONG_FILE_S is longer than any category's length limit takes (they run
-# to seconds; a phrase or a loop to well under a minute), so its embedding only has to say
-# what it is: CLAP hears its first LONG_FILE_READ_S instead of decoding all of it (a long
-# recording held whole at 48 kHz runs to gigabytes). A file up to LONG_FILE_S is read whole,
-# as always, so every embedding of such a file stays what it was.
+# to seconds; a phrase or a loop to well under a minute): the quality check reads its first
+# LONG_FILE_READ_S instead of decoding all of it (a long recording held whole at 48 kHz runs
+# to gigabytes). CLAP reads only its first CLAP_WINDOW_S of any file.
 LONG_FILE_S = 600.0
 LONG_FILE_READ_S = 60.0
 
@@ -205,7 +209,8 @@ def embed_audio_file(path: str | Path) -> np.ndarray:
     """
     Encode an audio file into a 512-dim L2-normalised embedding.
 
-    Resamples to 48 kHz mono using librosa. Returns zeros on load failure.
+    Resamples to 48 kHz mono using librosa and hears the first CLAP_WINDOW_S (10 s) of the
+    file, so a longer one embeds the same every time. Returns zeros on load failure.
 
     Args:
         path: absolute path to WAV/AIFF/etc.
@@ -217,7 +222,8 @@ def embed_audio_file(path: str | Path) -> np.ndarray:
 
     try:
         import librosa
-        y, _ = librosa.load(str(path), sr=CLAP_SAMPLE_RATE, mono=True, duration=read_seconds(path))
+        y, _ = librosa.load(str(path), sr=CLAP_SAMPLE_RATE, mono=True, duration=CLAP_WINDOW_S)
+        y = y[:CLAP_WINDOW]           # resampling can leave a sample over: the extractor would crop it
     except Exception as exc:
         logger.warning("CLAP: could not load %s: %s", path, exc)
         return np.zeros(CLAP_EMBEDDING_DIM, dtype=np.float32)
@@ -247,7 +253,7 @@ def embed_audio_file(path: str | Path) -> np.ndarray:
 
 
 def read_seconds(path) -> float | None:
-    """How much of a file the analysis reads: LONG_FILE_READ_S of one longer than
+    """How much of a file the quality check reads: LONG_FILE_READ_S of one longer than
     LONG_FILE_S (by its header), else None (all of it; also when the header can't be read)."""
     try:
         import soundfile as sf
