@@ -14,9 +14,19 @@ change the CLI or the config).
   first found are in pyproject.toml and marked in the code).
 - The workflows pin each action to a commit, check out without keeping credentials, and an
   OpenSSF Scorecard workflow scores the repository's security practices weekly.
+- transformers 5.10.1 in uv.lock (Dependabot): its advisories are on no path Fourier uses, and
+  CLAP embeds identically with it (400 library samples and every category phrase, compared with
+  5.3.0).
 - Windows left the CI matrix: it doesn't work yet (fourier.toml paths, rsync, SQLite file
   locks; [#9](https://github.com/bvk7787/fourier-samples/issues/9)). The `Windows` workflow
   runs the suite there by hand.
+
+### Fixed
+
+- CLAP embedded a file over 10 seconds differently on every run: its feature extractor crops a
+  longer clip at a random offset. It now hears the first 10 seconds (and decodes only those),
+  so the same file always gets the same embedding. A library analyzed with 0.1.0 keeps its
+  earlier embeddings until `fourier tools analyze --only clap --force` redoes them.
 
 ## [0.1.0] - 2026-10-04
 
