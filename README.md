@@ -272,4 +272,4 @@ including the CLAP model's training data, in
 Elektron, Digitakt, Dirtywave, M8, Ableton, Live, Sononym, SampleStack, DigiChain and the other
 product and company names here, including instrument names used to label folders, are
 trademarks of their owners. Fourier Samples is an independent project, not affiliated with or
-endorsed by any of them, or by Fourier Audio Ltd.
+endorsed by any of them.

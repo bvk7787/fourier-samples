@@ -57,4 +57,4 @@ on Linux, NVIDIA's for the CUDA libraries PyTorch pulls in.
 Elektron, Digitakt, Dirtywave, M8, Ableton, Live, Sononym and the other product and company
 names in this repository, including instrument names used to label folders, are trademarks of
 their owners. Fourier Samples is an independent project, not affiliated with or endorsed by any
-of them, or by Fourier Audio Ltd.
+of them.
