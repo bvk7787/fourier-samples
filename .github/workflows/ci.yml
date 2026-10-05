@@ -60,7 +60,8 @@ jobs:
         if: ${{ matrix.coverage }}
         shell: bash
         run: |
-          pytest -q -n auto --cov --cov-report=term --cov-report=xml tests
+          # 87% when this began (2026-10-04): the floor stops a drop, raise it as it climbs
+          pytest -q -n auto --cov --cov-report=term --cov-report=xml --cov-fail-under=85 tests
           coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
       - name: Synthetic golden build
         shell: bash
