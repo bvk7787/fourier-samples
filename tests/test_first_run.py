@@ -283,7 +283,16 @@ def box(tmp_path_factory):
     return Sandbox(tmp_path_factory.mktemp("first-run"))
 
 
-def _flat(out):
+def _without_tmp_path(out, tmp_path):
+    """Remove a fixture's path, including terminal-wrapped spellings."""
+    import re
+    pattern = r"\s*".join(re.escape(c) for c in str(tmp_path))
+    return re.sub(pattern, "", out)
+
+
+def _flat(out, tmp_path=None):
+    if tmp_path is not None:
+        out = _without_tmp_path(out, tmp_path)
     return " ".join(out.split())                   # rich wraps long lines
 
 
@@ -299,7 +308,7 @@ def test_a_first_run_without_sononym_or_live(box):
     assert b.n_files == 48
     # before anything: help and doctor read nothing and say what's missing
     b.run("--help")
-    out = _flat(b.run("doctor", ok=False))
+    out = _flat(b.run("doctor", ok=False), b.tmp)
     assert "FAIL" in out and "fourier setup" in out
     # the CLAP stand-in counts as installed; the model download is skipped (--no-clap)
     out = _flat(b.run("setup", "--yes", "--library", str(b.lib), "--device", "digitakt_2",
@@ -309,34 +318,34 @@ def test_a_first_run_without_sononym_or_live(box):
     assert f"analyzes {b.n_files} new samples" in out and "Next: fourier build (it can stop" in out
 
     # nothing scanned: one line saying what to run, no traceback
-    out = _flat(b.run("tools", "analyze", ok=False))
+    out = _flat(b.run("tools", "analyze", ok=False), b.tmp)
     assert "nothing scanned yet: run `fourier tools scan`" in out
-    out = _flat(b.run("build", "--all", "--no-scan", ok=False))
+    out = _flat(b.run("build", "--all", "--no-scan", ok=False), b.tmp)
     assert "nothing scanned yet: run `fourier build` without --no-scan" in out
     # what the first build does itself is NEXT, not a failure: a fresh, correct install passes
-    out = _flat(b.run("doctor"))
+    out = _flat(b.run("doctor"), b.tmp)
     assert "NEXT samples in the database" in out and "NEXT CLAP index" in out and "FAIL" not in out
     assert "OK build time: about 2 min for the first" in out and "can't estimate" not in out
     # a small library's master scales down to it (scale = "library", the default)
     assert f"OK master size: Your library has {b.n_files} audio files: the master will hold up to about" in out
 
-    out = _flat(b.run("tools", "scan"))
+    out = _flat(b.run("tools", "scan"), b.tmp)
     assert f"{b.n_files} new" in out
     # the walk records what each file's header says, and its path under the library
     rows = b.db("SELECT rel_path, duration_s, sample_rate, channels, file_format, file_hash FROM samples")
     assert len(rows) == b.n_files
     assert all(r[0] and not r[0].startswith("/") and r[1] > 0 and r[2] == SR and r[3] == 1
                and r[4] == "wav" and r[5] for r in rows)
-    out = _flat(b.run("build", "--all", "--no-scan", ok=False))
+    out = _flat(b.run("build", "--all", "--no-scan", ok=False), b.tmp)
     assert "no CLAP embeddings yet: run `fourier build` without --no-scan" in out
-    out = _flat(b.run("build", "--all", "--dry-run"))
+    out = _flat(b.run("build", "--all", "--dry-run"), b.tmp)
     assert "can't estimate before the library is analyzed" in out
     assert b.db("SELECT COUNT(*) FROM sample_features")[0][0] == 0      # a dry run reads only
 
     # a build scans and analyzes first; one that fails before any category is done leaves no
     # <master>.next behind
     nxt = b.master.with_name(b.master.name + ".next")
-    out = _flat(b.run("build", "--all", ok=False, FAIL_CATEGORIES="ALL"))
+    out = _flat(b.run("build", "--all", ok=False, FAIL_CATEGORIES="ALL"), b.tmp)
     assert "1/4 Scan the library" in out and "0 new" in out and "2/4 Analyze what's new" in out
     assert f"{b.n_files} new samples to analyze" in out and "3/4 Build" in out
     assert not nxt.exists() and not b.master.exists(), out
@@ -345,19 +354,19 @@ def test_a_first_run_without_sononym_or_live(box):
     assert n == (b.n_files,) * 5, n
     assert (b.home / "clap_index.npz").exists()
     # one that fails part way keeps it for --resume, and says so; its analysis is incremental
-    out = _flat(b.run("build", "--all", ok=False, FAIL_CATEGORIES="PADS"))
+    out = _flat(b.run("build", "--all", ok=False, FAIL_CATEGORIES="PADS"), b.tmp)
     assert "All samples already have CLAP embeddings" in out and "new samples to analyze" not in out
     # the labels are current (their marker reads back as written): nothing to relabel
     assert "metadata:" not in out
     assert nxt.is_dir() and "`fourier build --resume` continues it, or delete it" in out
     raw = b.run("doctor")
-    out = _flat(raw)
+    out = _flat(raw, b.tmp)
     assert "FAIL" not in out and "path and audio" in out
     assert str(b.master) in raw and str(b.lib) in raw, raw   # check lines aren't hard-wrapped
-    out = _flat(b.run("build", "--all", "--dry-run"))
+    out = _flat(b.run("build", "--all", "--dry-run"), b.tmp)
     assert f"Your library has {b.n_files} usable samples: the master will hold up to about" in out
     assert "Budgets, scaled to this library" in out and "can't estimate" not in out
-    out = _flat(b.run("build", "--all", "--resume"))
+    out = _flat(b.run("build", "--all", "--resume"), b.tmp)
     assert "resuming:" in out and not nxt.exists() and "4/4 Verify" in out
     man = json.loads((b.master / "manifest.json").read_text())
     per = {c: len(cd.get("entries") or ()) for c, cd in man["categories"].items()}
@@ -367,7 +376,7 @@ def test_a_first_run_without_sononym_or_live(box):
     assert "left empty" in out and "TOMS" in out                 # what the library can't fill
 
     b.run("verify")
-    out = _flat(b.run("why", "--detail", "Kick 01"))
+    out = _flat(b.run("why", "--detail", "Kick 01"), b.tmp)
     assert "in the master: KICKS/" in out and "path + audio" in out and "sononym" not in out.lower()
 
     raw = b.run("render", "digitakt_2")
