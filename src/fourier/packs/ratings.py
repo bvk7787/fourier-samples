@@ -226,7 +226,7 @@ def _renamed_category(category, path, verdict):
 
 def save_store(store, path=None):
     path = path or default_store()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w") as f:
         json.dump(store, f, indent=1, sort_keys=True)
