@@ -366,14 +366,42 @@ look for misfiled samples.
 `fourier tools resolve` writes the classifier-and-tag resolution to the `sample_resolution`
 table for queries.
 
-`ABLETON_TAG_CATEGORY`: Kick -> KICKS; Snare Hit, Rim -> SNARES; Closed/Open Hihat, Shaker,
-Tambourine -> HATS; Clap -> CLAPS; High/Mid/Low Tom -> TOMS; Conga, Bongo, Wood, Cowbell,
-Woodblock, Timbale, Cabasa, Guiro -> PERC; Ride, Crash -> CYMBALS; Synth Bass -> SUB; Lead,
-Synth Keys, Bell, Misc Mallets, Bell Chromatic, Chime, Synth Mallets -> SYNTH; Pad, Atmosphere
--> PADS; Solo Voice, Synth Voice, Choir -> VOX; Sound FX, Sweep, Impact, Noise, Field & Foley
--> FX; Drum Loop -> DRUMLOOPS.
+`ABLETON_TAG_CATEGORY`, the Live tags that vote for a category:
+
+| Live tags | Category |
+|---|---|
+| Kick | KICKS |
+| Snare Hit, Rim | SNARES |
+| Closed Hihat, Open Hihat, Shaker, Tambourine | HATS |
+| Clap | CLAPS |
+| High Tom, Mid Tom, Low Tom | TOMS |
+| Conga, Bongo, Wood, Cowbell, Woodblock, Timbale, Cabasa, Guiro | PERC |
+| Ride, Crash | CYMBALS |
+| Synth Bass | SUB |
+| Lead, Synth Keys, Bell, Misc Mallets, Bell Chromatic, Chime, Synth Mallets | SYNTH |
+| Pad, Atmosphere | PADS |
+| Solo Voice, Synth Voice, Choir | VOX |
+| Sound FX, Sweep, Impact, Noise, Field & Foley | FX |
+| Drum Loop | DRUMLOOPS |
 
 ## 3. Build pipeline
+
+```mermaid
+flowchart TB
+    subgraph read["What a build reads"]
+        direction LR
+        son["Sononym"] ~~~ live["Live auto-tags"] ~~~ own["Path and audio<br/>classifiers"] ~~~ snd["Sound model"] ~~~ clap["CLAP"]
+    end
+    subgraph pick["Route and pick"]
+        direction LR
+        homes["1. Homes"] --> fetch["2. Fetch"] --> sel["3. Select"] --> clu["4. Cluster"]
+    end
+    subgraph make["Shape and export"]
+        direction LR
+        shape["5. Shape folders"] --> alloc["6. Allocate"] --> sets["7. Sets, names"] --> exp["8. Export DSP"]
+    end
+    read --> pick --> make --> ver["Verify"] --> swap["Swap into the master"]
+```
 
 Per category:
 

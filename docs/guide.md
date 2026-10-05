@@ -73,6 +73,13 @@ fourier publish --notes "first set"        # releases/v1: a copy of the master t
 fourier render digitakt_2 --release v1     # render it, and lock its paths on that device
 ```
 
+```mermaid
+flowchart LR
+    b1["fourier build"] --> v1["publish v1"] --> r1["render --release v1"] --> dev[("Your device")]
+    b2["later build<br/>new packs, ratings"] --> v2["publish v2"] --> r2["render --release v2<br/>keeps v1's paths, adds files"] --> dev
+    r1 -. "path lock" .-> r2
+```
+
 Load that render as in section 2. The lock records every path on the device, and every later
 release keeps them. A file you used stays where it is, with the same name and audio.
 
