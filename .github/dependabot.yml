@@ -1,0 +1,11 @@
+# GitHub Actions only: the Python dependencies are pinned in uv.lock and updated by hand
+# (the synthetic golden's audio holds only for the locked versions).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: A question, or help getting started
+    url: https://github.com/bvk7787/fourier-samples/discussions/categories/q-a
+    about: Ask in Discussions (Q&A). Include what you ran and what `fourier doctor` says.
+  - name: Share a device profile you made
+    url: https://github.com/bvk7787/fourier-samples/discussions/categories/show-and-tell
+    about: Profiles from `fourier devices new`, tried on your sampler, before they're cited from its manual.

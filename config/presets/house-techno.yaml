@@ -1,0 +1,26 @@
+description: house and techno; four-on-the-floor drum loops at 118-140 BPM (no breakbeat folding), stabs, chords and basses
+extends: breaks-acid    # its budgets are what the weights below scale
+# house-techno: drum loops banded 118-140 BPM, folded only within that range (a 174 BPM
+# break stays at 174, outside the bands, instead of being halved to 87), and held to
+# four-on-the-floor prompts by the drum loops' CLAP gate. More stabs, basses and vocals.
+tempo: 118-140
+size: auto            # fit the devices' storage; a pool's surplus moves to the others
+loudness: standard
+retune: detect
+stereo: fold-near-mono
+categories:
+  DRUMLOOPS: 1.0
+  PHRASES: 1.1
+  STABS: 1.4
+  SUB: 1.0
+  PADS: 1.0
+  VOX: 1.2
+  PIANO: 0.8
+  ACOUSTIC: 0.6
+  WAVES: 0.8
+advanced:
+  BREAK_PHRASES: [four on the floor house drum loop, house drum loop, techno drum loop,
+    minimal techno beat, deep house groove, tech house drum loop, kick and hi-hat loop,
+    driving techno kick loop, disco drum loop, acid house drum loop, garage drum loop,
+    electro drum loop, swung house groove, industrial techno loop, percussion loop,
+    tribal drum loop]

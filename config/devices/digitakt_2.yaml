@@ -1,0 +1,90 @@
+id: digitakt_2
+name: Elektron Digitakt 2
+# VERIFIED against the Digitakt II manual OS1.16 (manual: below),
+# with page citations at the bottom of this file (checked by tests/test_device_citations.py).
+# The sequencer has 16 tracks (p.17), each an audio or a MIDI track.
+description: >
+  16-track sequencer/sampler: every track is individually assignable as an audio track or
+  a MIDI track. 400 MB project RAM (about 72 min mono / 36 min stereo) and 1016 sample slots
+  per project, separate from the +Drive's 20 GB / 2048-preset library. Elektron Transfer
+  converts all audio files to 16-bit/48 kHz on transfer (which input formats it accepts
+  isn't listed in the manual), so pack folders just need to be well organized. Native
+  format: 16-bit/48 kHz, mono or stereo (p.73; the 24-bit figure in the tech specs is the
+  converters, p.91). Sample slots are assigned to tracks on the Digitakt after transfer;
+  Fourier manages the sample pool, organized by function so it's easy to find per track.
+manual:
+  title: Digitakt II User Manual
+  version: OS1.16 (2026-09-09)
+  url: https://www.elektron.se/wp-content/uploads/2026/09/Digitakt-2-User-Manual_ENG_OS1.16_260909.pdf
+  sha256: 9445909f94bc0f074be4621791f981bf2c268e91465b8d5ed43a46f1a398706d
+load: transfer              # Elektron Transfer: never overwrites a file of the same name (Transfer's manual, pp. 10-11)
+sample_refs: path           # the device follows renames (p.29), but a deleted sample drops out of presets,
+                            # so renders keep paths stable and retired files stay
+
+paths:
+  folder_depth: {value: 2, status: convention, cite: browser-hierarchy}
+    # CATEGORY/family, like the M8 render; the +Drive browser opens directories and steps
+    # back up the hierarchy (p.71). Folding the family into the file name would put a whole
+    # category in one list.
+  files_per_folder: {value: 128, status: convention}   # browsing comfort; no documented device cap
+  max_name_length: {status: unverified}                # check on the hardware
+
+audio:
+  sample_rate: {value: 48000, cite: native-format}
+  bit_depth: {value: 16, cite: native-format}
+  channels: {value: stereo, cite: native-format}
+    # keep each file's channels: mono and stereo both supported (p.73), and stereo keeps
+    # width/panning options on the device. Stereo files whose channels are identical are
+    # rendered mono (same sound, half the RAM).
+  formats: {value: [wav], status: convention}
+  max_slices: {value: 64, status: convention, cite: slice-grid}
+    # the largest count CREATE SLICE GRID's [FUNC] snap offers (2/4/8/16/32/64, p.99); the
+    # manual states no hard maximum
+  dither: {value: true, status: convention}
+
+storage_mb: {value: 20000, cite: drive-size}   # +Drive is 20 GB (p.29); per project: 400 MB / 1016 slots (p.17)
+
+# Checked by tests/test_device_citations.py: each quote must be on its page of the manual
+# named in manual: above. page: is the PDF page (1-based), not the printed page number.
+# Update page/quote, and manual:, when the manual version changes.
+citations:
+  tracks:
+    claim: 16 tracks, each audio or MIDI
+    page: 17
+    quote: "The Digitakt II sequencer has 16 tracks that can be either an audio track or a MIDI track"
+  project-memory:
+    claim: 400 MB of samples per project, 1016 slots
+    page: 17
+    quote: "You can load up to 400 MB (about 72 minutes in mono, 36 minutes in stereo) of samples in a project"
+  project-slots:
+    claim: 1016 sample slots per project
+    page: 17
+    quote: "using a maximum of 1016 sample slots"
+  drive-size:
+    claim: +Drive is 20 GB; 2048 presets
+    page: 29
+    quote: "The total size of the +Drive is 20 GB. The +Drive library can hold up to 2048 presets"
+  native-format:
+    claim: native format 16-bit / 48kHz, mono and stereo
+    page: 73
+    quote: "converts all audio files to 16 bit, 48 kHz audio files, the Digitakt II native audio format. Both mono and stereo files are supported"
+  converters:
+    claim: 24-bit applies to the converters, not sample storage
+    page: 91
+    quote: "48 kHz, 24-bit D/A and A/D converters"
+  slice-grid:
+    claim: slice grid snaps to 2-64 slices
+    page: 99
+    quote: "snaps the slice count to values 2, 4, 8, 16, 32, and 64"
+  tune-range:
+    claim: tune range +/- 5 octaves
+    page: 100
+    quote: "The range is +/- 5 octaves"
+  sampling-time:
+    claim: max sampling time 66 seconds
+    page: 68
+    quote: "The maximum sampling time is 66 seconds"
+  browser-hierarchy:
+    claim: the +Drive browser navigates a directory hierarchy
+    page: 71
+    quote: "back one step up in the directory hierarchy"

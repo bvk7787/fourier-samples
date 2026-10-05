@@ -1,0 +1,64 @@
+name: Release
+
+# A version tag (v0.1.0) builds the package and publishes it to PyPI with Trusted Publishing:
+# no token is stored anywhere. PyPI trusts this workflow once the project's trusted publisher
+# names it (github.com/bvk7787/fourier-samples, workflow release.yml, environment pypi).
+# The tag must match the version in pyproject.toml. Nothing runs while the repository is private.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: The tag matches the version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          want="v$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
+          [ "$GITHUB_REF_NAME" = "$want" ] || { echo "tag $GITHUB_REF_NAME, pyproject says $want"; exit 1; }
+      - name: Build the sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          twine check --strict dist/*
+      - name: The wheel installs and runs
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/v"
+          "$RUNNER_TEMP/v/bin/pip" install dist/*.whl
+          "$RUNNER_TEMP/v/bin/fourier" --version
+          "$RUNNER_TEMP/v/bin/fourier" demo --dir "$RUNNER_TEMP/demo"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    if: ${{ !github.event.repository.private && startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/fourier-samples/
+    permissions:
+      id-token: write            # Trusted Publishing: PyPI checks this workflow's identity
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

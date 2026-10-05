@@ -1,0 +1,46 @@
+name: Device request
+description: Ask for a profile for a sampler Fourier Samples doesn't render for yet
+labels: [device]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A profile cites the device's manual for every value (docs/device-profiles.md). The
+        details below are what a profile needs; if you can draft one yourself, a pull request
+        is welcome. Until then, `generic_44k` or `generic_48k` renders a usable library.
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: Maker and model
+    validations:
+      required: true
+  - type: input
+    id: manual
+    attributes:
+      label: Manual
+      description: A link to the maker's current manual (PDF), and its firmware or OS version.
+    validations:
+      required: true
+  - type: textarea
+    id: format
+    attributes:
+      label: Sample format and limits
+      description: |
+        What you know, with manual pages if you have them: sample rate and bit depth, mono or
+        stereo, file formats, length or slice limits, path or file-name length limits, folder
+        depth or files per folder, and storage size.
+    validations:
+      required: true
+  - type: input
+    id: load
+    attributes:
+      label: How samples get onto it
+      description: An SD card or USB drive mounted on the computer, a transfer app, copying into a project, or something else.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Folder layout the device expects, how its browser sorts, quirks you've hit.

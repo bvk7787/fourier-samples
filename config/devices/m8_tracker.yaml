@@ -1,0 +1,118 @@
+id: m8_tracker
+name: Dirtywave M8 Tracker
+description: >
+  Portable tracker with 8 tracks. Samples are organized in user-defined folders on the SD
+  card (Fourier renders go under /Samples/Fourier). The Sampler reads 1- or 2-channel PCM
+  .wav ONLY (not AIFF) at 8/16/24/32-bit.
+  Samples stream from the SD card rather than RAM, so mono and 16-bit reduce card load
+  and raise the pitch ceiling; they don't save memory. The whole sample path must be under
+  128 characters. No per-folder file limit is documented; shallow folders browse best.
+  SAMPLER PLAY modes (manual-verified): FWD, REV, FWDLOOP, REVLOOP, FWD PP, REV PP,
+  OSC, OSC REV, OSC PP, REPITCH/BPM (10 modes).
+manual:
+  title: M8 Operation Manual
+  version: v20260421
+  url: https://cdn.shopify.com/s/files/1/0455/0485/6229/files/m8_operation_manual_v20260421.pdf?v=1776791699
+  sha256: 006360bd2a2819e900d785b8ed4bafdc14030eb74acc4add265fdaca65dbeac7
+load: card-sync             # the M8 in disk mode: fourier sync
+sample_refs: path
+
+paths:
+  card_dir: {value: /Samples/Fourier, status: convention}   # counts toward max_path_length
+  folder_depth: {value: 2, status: convention}              # CATEGORY/family under card_dir
+  files_per_folder: {value: 128, status: convention}
+    # browsing comfort, not a device limit (fewer, fuller folders)
+  max_path_length: {value: 127, cite: path-length}          # "entire path length ... under 128 characters"
+
+audio:
+  sample_rate: {value: 44100, status: convention, cite: render-format}
+    # M8 renders at 44.1 kHz; the manual states no playback rate
+  bit_depth: {value: 16, cite: prefer-16-bit}   # convert 24/32-bit to 16/8-bit where possible
+  channels: {value: stereo, cite: wav-channels}
+    # keep each file's channels, as on the Digitakt 2: the Sampler plays 1- or
+    # 2-channel wav. The master is already mono where stereo isn't needed (KICKS, SUB,
+    # near-mono files; p.11), and identical-channel stereo is rendered mono. Stereo streams
+    # twice the data and lowers the pitch ceiling (p.61).
+  formats: {value: [wav], cite: wav-channels}
+  max_slices: {value: 128, cite: slice-markers}
+  max_duration_s: {value: null, cite: no-length-limit}      # samples stream from SD
+  dither: {value: true, status: convention}
+
+storage_mb: {value: 32000, status: convention}   # a typical SD card, not a device limit
+
+# Checked by tests/test_device_citations.py: each quote must be on its page of the manual
+# named in manual: above. page: is the PDF page (1-based), which is the manual's printed
+# page + 7. Update page/quote, and manual:, when the manual version changes.
+citations:
+  wav-channels:
+    claim: Sampler reads 1- or 2-channel PCM wav only
+    page: 61
+    quote: "Only 1 or 2 channel (stereo) PCM .wav files are supported"
+  bit-depths:
+    claim: accepted bit depths; PCM only
+    page: 74
+    quote: "Sample is 8,16, 24, or 32 bit and is mono or stereo"
+  path-length:
+    claim: whole sample path under 128 characters
+    page: 74
+    quote: "The entire path length of the sample is under 128 characters"
+  streams-from-sd:
+    claim: samples stream from the SD card, not memory
+    page: 11
+    quote: "they are streamed directly from the SD card. They are not read from memory"
+  prefer-mono:
+    claim: prefer mono (e.g. kicks) and 16-bit to reduce card load
+    page: 11
+    quote: "Convert stereo samples to mono where stereo is not necessary"
+  prefer-16-bit:
+    claim: prefer 16-bit or 8-bit over 24/32-bit
+    page: 11
+    quote: "Convert 32-bit or 24-bit samples to 16-bit or 8-bit where possible"
+  pitch-ceiling:
+    claim: pitch ceiling depends on bit depth and mono/stereo
+    page: 61
+    quote: "there is an upper-pitch limitation enforced based on bit-depth and mono/stereo samples"
+  slice-markers:
+    claim: up to 128 slice markers stored in the wav
+    page: 64
+    quote: "Add up to 128 markers that are stored within the wav file"
+  render-format:
+    claim: renders are 16-bit 44.1kHz stereo wav
+    page: 54
+    quote: "16-bit 44.1kHz stereo wav file"
+  tracks:
+    claim: 8 tracks
+    page: 47
+    quote: "sends all 8 tracks and effect individually"
+  browser-sort:
+    claim: the file browser sorts a directory by name only on request
+    page: 16
+    quote: "will sort a directory by name if it is unsorted"
+  no-length-limit:
+    claim: samples stream from SD with no memory or length limit
+    page: 98
+    quote: "No memory/length limitation"
+  slice-mode:
+    claim: SLICE cuts the sample into equal length sections
+    page: 61
+    quote: "the sample into equal length sections and maps each slice"
+  degrade:
+    claim: DEGRADE is sample rate reduction only
+    page: 62
+    quote: "DEGRADE - Sample rate reduction effect"
+  mixer-sends:
+    claim: mixer sends are DRY, MFX, DEL, REV
+    page: 62
+    quote: "MFX - ModFX send effect volume"
+  loop-points:
+    claim: loop points are stored in the wav
+    page: 63
+    quote: "Edits the start and end loop points which are stored"
+  slice-playback:
+    claim: wav slice markers play in 01 FILE slice mode
+    page: 64
+    quote: "The markers can be played back when"
+  card-formats:
+    claim: card formats
+    page: 98
+    quote: "FAT32 / exFAT compatible"

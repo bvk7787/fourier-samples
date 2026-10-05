@@ -1,0 +1,35 @@
+description: ambient, cinematic and sound design; pads, textures, drones and FX first (long pads welcome), few drum loops
+extends: breaks-acid    # its budgets are what the weights below scale
+# ambient-cinematic: PADS, FX and acoustic instruments get the biggest budgets, pads up to
+# 60 s and FX up to 45 s (DUR_CAP; mind a sampler's RAM), and the drum categories and
+# drum loops are small, with a harmonicity gate that takes percussion over a bed or a
+# reverb tail.
+tempo: 70-120
+size: auto            # fit the devices' storage; a pool's surplus moves to the others
+loudness: gentle
+retune: detect
+stereo: keep
+categories:
+  DRUMLOOPS: 0.2
+  PHRASES: 0.8
+  KICKS: 0.4
+  SNARES: 0.4
+  HATS: 0.4
+  CLAPS: 0.4
+  TOMS: 0.5
+  CYMBALS: 0.7
+  PERC: 0.8
+  SUB: 0.5
+  SYNTH: 0.8
+  STABS: 0.6
+  PADS: 2.0
+  FX: 1.6
+  BLIPS: 0.8
+  VOX: 1.2
+  PIANO: 1.3
+  ACOUSTIC: 1.5
+  WAVES: 0.8
+advanced:
+  DUR_CAP: {KICKS: 4.0, SNARES: 3.0, CLAPS: 3.0, HATS: 4.0, TOMS: 5.0, PERC: 4.0, CYMBALS: 12.0,
+    SUB: 8.0, SYNTH: 10.0, STABS: 4.0, PADS: 60.0, VOX: 30.0, BLIPS: 3.0, FX: 45.0}
+  DRUMLOOP_HAR_MAX: 0.75      # percussion over a bed or a reverb tail reads tonal

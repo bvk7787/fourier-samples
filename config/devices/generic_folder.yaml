@@ -1,0 +1,21 @@
+id: generic_folder
+name: Generic folder (a DAW or a computer)
+status: unverified
+description: >
+  For a folder on a computer, such as a DAW's sample folder: 44100 Hz / 24-bit WAV that keeps
+  each file's channels, in CATEGORY/family folders, with no folder, name, path or storage
+  limit. It describes no device and cites no manual; copy the render where you want it.
+  For a sampler, start from `fourier devices new` (docs/device-profiles.md).
+load: copy
+sample_refs: path
+
+paths:
+  folder_depth: {value: 2, status: unverified}
+  files_per_folder: {value: null, status: unverified}   # no limit
+
+audio:
+  sample_rate: {value: 44100, status: unverified}
+  bit_depth: {value: 24, status: unverified}
+  channels: {value: stereo, status: unverified}
+  formats: {value: [wav], status: unverified}
+  dither: {value: true, status: unverified}

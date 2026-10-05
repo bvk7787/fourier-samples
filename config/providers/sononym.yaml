@@ -1,0 +1,36 @@
+# Sononym's labels in the canonical vocabulary (src/fourier/metadata/vocab.py).
+# The taxonomy (curate_config CATEGORIES) names only canonical labels; this file is the one
+# place Sononym's own category names appear. Every class and category Sononym uses must be
+# listed: an unmapped one fails `fourier tools db-stats --metadata` (parity) and the build.
+classes:
+  OneShot: class.oneshot
+  Loop: class.loop
+categories:
+  Perc Kicks: kick
+  Perc Snares: snare
+  Perc Claps: clap
+  Perc Snips & Snaps: snap
+  Perc Hats & Shakers: hat
+  Perc Toms: tom
+  Perc Cymbal Crashes: cymbal.crash
+  Perc Cymbal Rides: cymbal.ride
+  Perc Bongos & Congas: perc.hand
+  Perc Wood Hits: perc.wood
+  Perc Metal Hits: perc.metal
+  Perc Vibraslap & Guiro: perc.scrape
+  Perc Vinyl Scratches: scratch
+  Perc Zaps & Blips: zap
+  Tone Bass & LowKeys: bass
+  Tone Leads & MidHiKeys: lead
+  Tone Blips & HighKeys: blip
+  Tone Pads & Textures: pad
+  Tone Stabs & Orch. Hits: stab
+  Tone Triangles & Bells: bell
+  Tone Voice & Acapella: vocal
+  XFX Breaks & Smashes: fx.smash
+  XFX Cracks & Rustle: fx.rustle
+  XFX Explosions & Shots: fx.impact
+  XFX Nature & Athmospheric: fx.nature
+  XFX Noise & Distortion: fx.noise
+  XFX Sweeps & Lasers: fx.sweep
+  XFX Whooshes & Whips: fx.whoosh

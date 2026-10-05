@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Actions minutes are free on a public repository and metered on a private one, where the
+# maintainer runs the same checks locally: every job skips while the repository is private.
+jobs:
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.python-version }})
+    if: ${{ !github.event.repository.private }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}   # Windows: best effort for now
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+        exclude:
+          - os: macos-latest
+            python-version: "3.11"
+          - os: windows-latest
+            python-version: "3.11"
+        include:
+          - os: ubuntu-latest
+            python-version: "3.13"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      # the versions in uv.lock: the synthetic golden's audio holds only for these
+      # (CLAP and torch left out: the tests use a stand-in)
+      - name: Install (locked versions; core + dev)
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip uv
+          uv export --frozen --no-hashes --extra dev --no-emit-project > "$RUNNER_TEMP/requirements.lock.txt"
+          pip install -r "$RUNNER_TEMP/requirements.lock.txt"
+          pip install -e . --no-deps
+      - name: Lint
+        run: ruff check src tests
+      - name: Tests
+        run: pytest -q -n auto tests      # one worker per CPU (pytest-xdist; conftest.py isolates each)
+      - name: Synthetic golden build
+        shell: bash
+        run: python tests/golden/synthetic_build.py "$RUNNER_TEMP/synthetic" --check
+      # the variants below test the pipeline, not the Python version: 3.13 runs the golden only
+      - name: Without Sononym, without Live, without both
+        if: matrix.python-version != '3.13'
+        shell: bash
+        run: |
+          python tests/golden/synthetic_build.py "$RUNNER_TEMP/no-sononym" --without sononym
+          python tests/golden/synthetic_build.py "$RUNNER_TEMP/no-live" --without ableton
+          python tests/golden/synthetic_build.py "$RUNNER_TEMP/neither" --without sononym,ableton
+      - name: Each preset builds and passes verify
+        if: matrix.python-version != '3.13'
+        shell: bash
+        run: |
+          python tests/golden/synthetic_build.py "$RUNNER_TEMP/breaks-acid" --preset breaks-acid
+          python tests/golden/synthetic_build.py "$RUNNER_TEMP/balanced" --preset balanced
+      - name: A small library's master scales to it
+        if: matrix.python-version != '3.13'
+        shell: bash
+        run: python tests/golden/synthetic_build.py "$RUNNER_TEMP/scaled" --scale --preset balanced
+      - name: An interrupted build resumes to the same result
+        if: matrix.python-version != '3.13'
+        shell: bash
+        run: python tests/golden/synthetic_build.py "$RUNNER_TEMP/resume" --check --interrupt KICKS,PADS,VOX
+
+  package:
+    # what `pip install` gives a user: the sdist and wheel build, their metadata passes twine,
+    # and the wheel installed with its declared dependencies (no checkout, no [clap]) runs
+    name: package (build, install, run)
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Build the sdist and wheel
+        run: |
+          python -m pip install --upgrade pip uv
+          uv build
+          ls -l dist
+      - name: Check the metadata
+        run: uvx twine check --strict dist/*
+      - name: Check what the wheel holds
+        run: |
+          python -m zipfile -l dist/*.whl > "$RUNNER_TEMP/wheel.txt"
+          for f in fourier/__main__.py fourier/demo.py fourier/_config/tunables.yaml \
+                   fourier/_config/devices/m8_tracker.yaml licenses/LICENSE licenses/NOTICE; do
+            grep -q "$f" "$RUNNER_TEMP/wheel.txt" || { echo "missing from the wheel: $f"; exit 1; }
+          done
+      - name: Install the wheel into a clean venv
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --upgrade pip
+          "$RUNNER_TEMP/venv/bin/pip" install dist/*.whl
+      - name: Run the installed command
+        working-directory: ${{ runner.temp }}     # away from the checkout's src/ and config/
+        shell: bash
+        run: |
+          export PATH="$RUNNER_TEMP/venv/bin:$PATH" FOURIER_HOME="$RUNNER_TEMP/home"
+          fourier --version
+          python -m fourier --help
+          fourier devices list
+          # no library and no database here, so doctor reports FAILs and exits non-zero:
+          # it only has to run to the end
+          fourier doctor > doctor.txt 2>&1 || true
+          cat doctor.txt
+          if grep -q Traceback doctor.txt; then exit 1; fi
+          fourier demo --dir "$RUNNER_TEMP/demo"

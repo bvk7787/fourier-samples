@@ -1,0 +1,3056 @@
+{
+ "fourier": {
+  "group": true,
+  "help": "Fourier Samples: curate a sample library into device-ready folders for hardware samplers.\n\nNew here? `fourier demo` tries it on a generated library, and `fourier setup` sets it up\nfor yours. Each command's --help says more.",
+  "hidden": false,
+  "params": [
+   {
+    "default": "False",
+    "help": "Show the version and exit.",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "version",
+    "nargs": 1,
+    "opts": [
+     "--version"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Path to the library database (default: $FOURIER_HOME/library.duckdb, or an older home's library.db)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "db",
+    "nargs": 1,
+    "opts": [
+     "--db"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "fourier.toml to use (default: $FOURIER_CONFIG, ./fourier.toml, ~/.config/fourier/fourier.toml; FOURIER_CONFIG=none for none)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "config_path",
+    "nargs": 1,
+    "opts": [
+     "--config"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Override one tunable for this run, over every config layer (repeatable)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": true,
+    "name": "sets",
+    "nargs": 1,
+    "opts": [
+     "--set"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Debug logging, and the audio libraries' warnings (librosa, numba)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "verbose",
+    "nargs": 1,
+    "opts": [
+     "--verbose",
+     "-v"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": null
+ },
+ "fourier build": {
+  "group": false,
+  "help": "Build the master, one step after another: scan the library for new and changed files\n(Sononym's analysis and Live's tags too, when they're there), analyze what's new, curate\nthe CATEGORY/family/file folders and verify them. A whole build (no CATEGORY, or --all)\nreplaces the master only when every category built and verify passed.\n\nCurating clusters each category's CLAP embeddings into families, names each family from\nwhat its sounds share, picks the samples that represent it best, and exports WAV. On a\nterminal the Build and Verify stages show a summary and keep the rest in a log\n(<home>/logs); --verbose prints it all.\n\n\b\n  fourier build                     # everything (as --all); the first run analyzes the library\n  fourier build -j 6                # the same, six categories at a time\n  fourier build --dry-run           # files, disk space and time per category; writes nothing\n  fourier build KICKS --out /tmp/k  # one category, into a scratch folder\n  fourier build --all --no-scan     # from the database as it is (no scan, no analysis)",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "category",
+    "nargs": 1,
+    "opts": [
+     "category"
+    ],
+    "required": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Output root (default: the master, $FOURIER_CURATED_DIR or [output] master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "out_dir",
+    "nargs": 1,
+    "opts": [
+     "--out"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "25",
+    "help": "Samples per family folder",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "per_family",
+    "nargs": 1,
+    "opts": [
+     "--per-family"
+    ],
+    "required": false,
+    "show_default": true,
+    "type": "integer"
+   },
+   {
+    "default": "1.0",
+    "help": "Min CLAP phrase z-score for a phrase to lead a folder name",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "clap_z",
+    "nargs": 1,
+    "opts": [
+     "--clap-z"
+    ],
+    "required": false,
+    "show_default": true,
+    "type": "float"
+   },
+   {
+    "default": "False",
+    "help": "Copy aif/mp3 verbatim instead of converting to 16-bit WAV",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "no_transcode",
+    "nargs": 1,
+    "opts": [
+     "--no-transcode"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Folder descriptions from a local LLM (Ollama); default: DESCRIBE, off",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "describe",
+    "nargs": 1,
+    "opts": [
+     "--describe",
+     "--no-describe"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Build every category (what `fourier build` does when no CATEGORY is given)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "do_all",
+    "nargs": 1,
+    "opts": [
+     "--all"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Rebuild the CLAP index from the DB first if it is stale",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "rebuild_index",
+    "nargs": 1,
+    "opts": [
+     "--rebuild-index"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Build ADDITIVELY as a superset of this published version (e.g. v2): copy it verbatim, add only new samples, never move/remove existing paths",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "base",
+    "nargs": 1,
+    "opts": [
+     "--base"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "1",
+    "help": "Parallel category workers for --all (process pool; per-category output is identical to serial)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "jobs",
+    "nargs": 1,
+    "opts": [
+     "--jobs",
+     "-j"
+    ],
+    "required": false,
+    "show_default": true,
+    "type": "integer"
+   },
+   {
+    "default": "False",
+    "help": "Skip the per-kind trim/loudness export pass (copy/transcode verbatim)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "no_loudness",
+    "nargs": 1,
+    "opts": [
+     "--no-loudness"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "With --base: add only samples whose library path contains this (a new pack)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "only_pack",
+    "nargs": 1,
+    "opts": [
+     "--only-pack"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "With --base: add only samples scanned on or after this date (YYYY-MM-DD)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "since",
+    "nargs": 1,
+    "opts": [
+     "--since"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "With --base: share of each category's budget it may grow by (default 0.15)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "allowance",
+    "nargs": 1,
+    "opts": [
+     "--allowance"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "False",
+    "help": "--all: keep the categories an unfinished build already made, if nothing changed",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "resume",
+    "nargs": 1,
+    "opts": [
+     "--resume"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Print files and disk space per category (every category unless one is given), and what size = auto does; write nothing",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "dry_run",
+    "nargs": 1,
+    "opts": [
+     "--dry-run"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Skip the scan and the analysis: build from the database as it is",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "no_scan",
+    "nargs": 1,
+    "opts": [
+     "--no-scan"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Build even when a linked folder in the library is unavailable (its samples are left out)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "allow_missing",
+    "nargs": 1,
+    "opts": [
+     "--allow-missing"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Everything the Build and Verify stages say (default: on when the output isn't a terminal); --quiet: a summary, with the rest in a log file",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "verbose",
+    "nargs": 1,
+    "opts": [
+     "--verbose",
+     "--quiet"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Scan and analyze what's new, build the master and verify it."
+ },
+ "fourier config": {
+  "group": true,
+  "help": "Your settings: what the config layers resolve to (preset, overlay, fourier.toml,\n--set), what each setting does, and `config edit` to change them.\n\n\b\n  fourier config edit              # open fourier.toml in your text editor\n  fourier config show              # what's in effect, and where each value came from\n  fourier config explain words     # what one setting does",
+  "hidden": false,
+  "params": [],
+  "short_help": "Show, explain or edit your settings (fourier.toml)."
+ },
+ "fourier config edit": {
+  "group": false,
+  "help": "Open the fourier.toml in use in a text editor: $VISUAL or $EDITOR when set, else the\nsystem's (TextEdit on a Mac). It's a plain text file of `name = value` lines; save it and\nthe next command uses it. `fourier config show` checks what it sets.",
+  "hidden": false,
+  "params": [],
+  "short_help": "Open your fourier.toml in a text editor."
+ },
+ "fourier config explain": {
+  "group": false,
+  "help": "One tunable: its class, the knob that sets it, its default and current value. A knob\n(scale, size, tempo, ...): what it does and the tunables behind it. `categories`\ninstead: every folder the taxonomy makes, with example files.",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "key",
+    "nargs": 1,
+    "opts": [
+     "key"
+    ],
+    "required": true,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "For a setting: the exact rule and the advanced settings behind it",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "detail",
+    "nargs": 1,
+    "opts": [
+     "--detail"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Explain one setting, or list the category folders."
+ },
+ "fourier config show": {
+  "group": false,
+  "help": "The preset, the knobs the config files set, and each tunable that differs from the\ncode's default with the layer that set it (--all: every tunable).",
+  "hidden": false,
+  "params": [
+   {
+    "default": "False",
+    "help": "Every tunable, not just the overridden ones",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "show_all",
+    "nargs": 1,
+    "opts": [
+     "--all"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Show the preset, knobs and tunables the config sets."
+ },
+ "fourier demo": {
+  "group": false,
+  "help": "A first run that can't touch anything of yours: generate a small synthetic library,\nanalyze it with stand-in data, build the master and render it for the Digitakt 2 and the\nM8, all inside one folder with its own Fourier home and config. Needs no samples, no\nmodel and no download; takes a minute or two.\n\n\b\n  fourier demo\n  fourier demo --dir /tmp/fourier-demo",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "The sandbox folder: new, empty, or an earlier demo's (default: ./fourier-demo)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "root",
+    "nargs": 1,
+    "opts": [
+     "--dir"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "directory"
+   }
+  ],
+  "short_help": "Try Fourier Samples on a generated library, in a sandbox folder."
+ },
+ "fourier devices": {
+  "group": true,
+  "help": "The device profiles: what each device plays and its limits, each value cited from the\ndevice's manual or marked a convention or unverified. The package's are in\nconfig/devices; your own go in ~/.config/fourier/devices (or the folders in\n$FOURIER_DEVICES), where `fourier devices new` writes them. Your device isn't listed?\nMake a profile with `fourier devices new`.\n\n\b\n  fourier devices list\n  fourier devices show m8_tracker\n  fourier devices new",
+  "hidden": false,
+  "params": [],
+  "short_help": "List, show and make device profiles."
+ },
+ "fourier devices list": {
+  "group": false,
+  "help": "List the device profiles: format, how samples are loaded, storage, and whether the\nvalues are checked against the manual.",
+  "hidden": false,
+  "params": [],
+  "short_help": "List the device profiles."
+ },
+ "fourier devices new": {
+  "group": false,
+  "help": "Make a device profile of your own: asks what the device plays and how its files are\norganized (each answer can be given as an option instead), writes it with every value\n`status: unverified` to ~/.config/fourier/devices/<id>.yaml, and loads it to check it.\nThe comment at its top says how to cite the manual (docs/device-profiles.md, on GitHub:\nhttps://github.com/bvk7787/fourier-samples/blob/main/docs/device-profiles.md).\n\n\b\n  fourier devices new\n  fourier devices new --name \"My Sampler\" --load card --card-dir /Samples \\\n      --sample-rate 48000 --bit-depth 16 --max-path 255 --yes",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "The device's name, e.g. \"My Sampler\"",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "name",
+    "nargs": 1,
+    "opts": [
+     "--name"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "The profile's id (default: from the name, e.g. my_sampler)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "device_id",
+    "nargs": 1,
+    "opts": [
+     "--id"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "choices": [
+     "card",
+     "transfer",
+     "folder"
+    ],
+    "default": "None",
+    "help": "How samples get on: card: the device reads an SD card or USB drive (fourier sync copies the render onto it); transfer: its maker's app sends files and never overwrites one; folder: you copy the render yourself (a DAW, a computer folder)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "load_way",
+    "nargs": 1,
+    "opts": [
+     "--load"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "choice"
+   },
+   {
+    "choices": [
+     "44100",
+     "48000"
+    ],
+    "default": "None",
+    "help": "The rate the device plays",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "sample_rate",
+    "nargs": 1,
+    "opts": [
+     "--sample-rate"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "choice"
+   },
+   {
+    "choices": [
+     "8",
+     "16",
+     "24"
+    ],
+    "default": "None",
+    "help": "Bit depth (8 only if the device takes it)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "bit_depth",
+    "nargs": 1,
+    "opts": [
+     "--bit-depth"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "choice"
+   },
+   {
+    "choices": [
+     "stereo",
+     "mono"
+    ],
+    "default": "None",
+    "help": "stereo: keep each file's channels; mono: fold every file to one",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "channels",
+    "nargs": 1,
+    "opts": [
+     "--channels"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "choice"
+   },
+   {
+    "choices": [
+     "wav",
+     "aiff"
+    ],
+    "default": "None",
+    "help": "File format the device reads",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "fmt",
+    "nargs": 1,
+    "opts": [
+     "--format"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "choice"
+   },
+   {
+    "default": "None",
+    "help": "The folder on the card the render goes in (a card device), e.g. /Samples",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "card_dir",
+    "nargs": 1,
+    "opts": [
+     "--card-dir"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "2: CATEGORY/family folders; 1: CATEGORY folders, the family in the file name",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "folder_depth",
+    "nargs": 1,
+    "opts": [
+     "--folder-depth"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "integer range"
+   },
+   {
+    "default": "None",
+    "help": "Most files in one folder (0: no limit)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "files_per_folder",
+    "nargs": 1,
+    "opts": [
+     "--files-per-folder"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "integer range"
+   },
+   {
+    "default": "None",
+    "help": "Longest file path the device takes, card folder included (0: no limit)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "max_path",
+    "nargs": 1,
+    "opts": [
+     "--max-path"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "integer range"
+   },
+   {
+    "default": "None",
+    "help": "Longest file or folder name (0: no limit)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "max_name",
+    "nargs": 1,
+    "opts": [
+     "--max-name"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "integer range"
+   },
+   {
+    "default": "None",
+    "help": "Longest file in seconds (0: no limit)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "max_seconds",
+    "nargs": 1,
+    "opts": [
+     "--max-seconds"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float range"
+   },
+   {
+    "default": "None",
+    "help": "Storage for samples in GB (0: don't say)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "storage_gb",
+    "nargs": 1,
+    "opts": [
+     "--storage-gb"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float range"
+   },
+   {
+    "default": "None",
+    "help": "Plain-ASCII file and folder names (accents dropped), for devices that show only ASCII",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "ascii_names",
+    "nargs": 1,
+    "opts": [
+     "--ascii-names",
+     "--any-names"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Folder to write it to (default: ~/.config/fourier/devices, or the first of $FOURIER_DEVICES)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "out_dir",
+    "nargs": 1,
+    "opts": [
+     "--dir"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "directory"
+   },
+   {
+    "default": "False",
+    "help": "Ask nothing: the default for every value not given",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "yes",
+    "nargs": 1,
+    "opts": [
+     "--yes",
+     "-y"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Replace a profile of your own with the same id",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "force",
+    "nargs": 1,
+    "opts": [
+     "--force"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Make a profile for a device that isn't listed."
+ },
+ "fourier devices show": {
+  "group": false,
+  "help": "Show a device profile: each value with the manual page it comes from, or its status\n(convention, unverified).",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "device_id",
+    "nargs": 1,
+    "opts": [
+     "device_id"
+    ],
+    "required": true,
+    "type": "text"
+   }
+  ],
+  "short_help": "Show a device profile, each value with its source."
+ },
+ "fourier diff": {
+  "group": false,
+  "help": "What changed between two builds: folders renamed / new / gone, files added,\nremoved or moved. OLD and NEW are master folders, manifest files or archived build\nstamps (~/.fourier/builds); defaults: the previous archived build vs your current master.\n\n\b\n  fourier diff\n  fourier diff ~/Music/FourierCurated.prev ~/Music/FourierCurated",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "old",
+    "nargs": 1,
+    "opts": [
+     "old"
+    ],
+    "required": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "new",
+    "nargs": 1,
+    "opts": [
+     "new"
+    ],
+    "required": false,
+    "type": "text"
+   }
+  ],
+  "short_help": "Show what changed between two builds."
+ },
+ "fourier doctor": {
+  "group": false,
+  "help": "Check what a build needs: the config, the library and its database (and how many of\nits files a cloud drive keeps only online), the providers (Sononym, Live, the built-in\nfallback), the analysis, the CLAP model and index, and the devices, and estimate the\nanalysis and build time (from this machine's last runs, else built-in reference rates).\nOK is ready, WARN worth a look, NEXT what the first build does itself (scan, analyze, index,\ndownload the model) and FAIL what would stop a build; it exits non-zero only on a FAIL.\n\n\b\n  fourier doctor",
+  "hidden": false,
+  "params": [],
+  "short_help": "Check what a build needs and estimate how long it takes."
+ },
+ "fourier open": {
+  "group": false,
+  "help": "Show one of Fourier's folders in your file browser (Finder on a Mac): the master\n(the default), the renders (one device's with DEVICE), the releases, the build logs, the\nFourier home, or `config`: your fourier.toml in a text editor (as `fourier config edit`).\n`report` writes a page about the master and opens it in your web browser: every\ncategory and family with a play button for each file, where it came from, what the last\nbuild left out and why, and Keep / Drop / Misfiled buttons that export a CSV for\n`fourier review import`.\n\n\b\n  fourier open                      # the master\n  fourier open report               # listen, understand and rate in your web browser\n  fourier open renders digitakt_2   # the folder to drag into Elektron Transfer\n  fourier open logs                 # every build's full log",
+  "hidden": false,
+  "params": [
+   {
+    "default": "'master'",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "what",
+    "nargs": 1,
+    "opts": [
+     "what"
+    ],
+    "required": false,
+    "type": "choice"
+   },
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "device",
+    "nargs": 1,
+    "opts": [
+     "device"
+    ],
+    "required": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Print the path instead of opening it",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "print_only",
+    "nargs": 1,
+    "opts": [
+     "--print"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Show the master, its report page, a render or the logs."
+ },
+ "fourier publish": {
+  "group": false,
+  "help": "Cut an immutable release from the master (releases/v<N> under the publish root).\n\nYour working draft is the master ([output] master, ~/Music/FourierCurated by default):\nrebuild and iterate there freely; nothing touches the releases until you publish.\nPublishing copies the master to <publish root>/releases/v<N>, immutable and recorded in\nthe database, for transfer to hardware. It never overwrites a release unless --force,\nand never one a device lock uses.\n\n\b\n  fourier publish --dry-run          # what the release would change, against the last one\n  fourier publish --notes \"first set\"",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "Master dir (default: $FOURIER_CURATED_DIR or ~/Music/FourierCurated)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "src",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Publish root (default: [output] publish, else ~/Music/Fourier)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "root",
+    "nargs": 1,
+    "opts": [
+     "--to"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "''",
+    "help": "Release notes",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "notes",
+    "nargs": 1,
+    "opts": [
+     "--notes"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Force this release version number",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "as_version",
+    "nargs": 1,
+    "opts": [
+     "--as-version"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "integer"
+   },
+   {
+    "default": "False",
+    "help": "Overwrite an existing release version",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "force",
+    "nargs": 1,
+    "opts": [
+     "--force"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "(deprecated; publish always cuts a release now)",
+    "hidden": true,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "as_release",
+    "nargs": 1,
+    "opts": [
+     "--release"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Preview what the release would change against the last one (or --base); copy nothing. Exits non-zero when it would move, change or remove a released file",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "dry_run",
+    "nargs": 1,
+    "opts": [
+     "--dry-run"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "With --dry-run: the release to compare with (default: the latest)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "base",
+    "nargs": 1,
+    "opts": [
+     "--base"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Publish even if `fourier verify` fails (a release is permanent: avoid)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "no_verify",
+    "nargs": 1,
+    "opts": [
+     "--no-verify"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Cut an immutable release from the master."
+ },
+ "fourier releases": {
+  "group": true,
+  "help": "The releases on disk and which is LATEST, and any problem with the releases folder\n(subcommands: the database's record of them).\n\n\b\n  fourier releases\n  fourier releases recorded\n  fourier releases import v1     # record a release the database doesn't know",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "Publish root (default: [output] publish, else ~/Music/Fourier)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "root",
+    "nargs": 1,
+    "opts": [
+     "--to"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   }
+  ],
+  "short_help": "List the releases on disk and which is LATEST."
+ },
+ "fourier releases import": {
+  "group": false,
+  "help": "Record a published release (v1, v2, ...) in the database's release tables, for one\npublished before the database knew it (publish records it).",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "version",
+    "nargs": 1,
+    "opts": [
+     "version"
+    ],
+    "required": true,
+    "type": "text"
+   }
+  ],
+  "short_help": "Record a published release in the database."
+ },
+ "fourier releases recorded": {
+  "group": false,
+  "help": "List the releases the database records.",
+  "hidden": false,
+  "params": [],
+  "short_help": "List the releases the database records."
+ },
+ "fourier render": {
+  "group": false,
+  "help": "Render the master (or a release) for a device: its sample rate, bit depth, channels,\nfolder depth and path limits. Paths already on the device (its path lock, written when\nyou render a release) never change: locked files keep their names and original audio,\nand retired ones stay in the image.\n\n\b\n  fourier render m8_tracker                   # preview from the master\n  fourier render m8_tracker --release v1      # render v1 for transfer; locks paths\n  fourier render m8_tracker --dry-run         # what it would change on the device\n  fourier render m8_tracker --check           # on-card paths vs the path-length limit\n  fourier render digitakt_2 --release v2 --new-only   # and v2's new files on their own",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "device_id",
+    "nargs": 1,
+    "opts": [
+     "device_id"
+    ],
+    "required": true,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Master dir to render from (default: the master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Render an immutable release (e.g. v1) instead of the master, and lock its paths",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "release",
+    "nargs": 1,
+    "opts": [
+     "--release"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "With --release: render without recording new paths in the device lock",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "no_lock",
+    "nargs": 1,
+    "opts": [
+     "--no-lock"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Output dir (default: [output] renders, else FourierRenders beside the master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "out_dir",
+    "nargs": 1,
+    "opts": [
+     "--out"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Cap the rendered image size in MB (default: full)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "max_mb",
+    "nargs": 1,
+    "opts": [
+     "--max-mb"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "False",
+    "help": "Only check the on-card paths against the device's path-length limit",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "check",
+    "nargs": 1,
+    "opts": [
+     "--check"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "With --check: the folder the render is copied to (default: paths.card_dir)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "card_dir",
+    "nargs": 1,
+    "opts": [
+     "--card-dir"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Only preview what the render would change on the device (its path lock); exits non-zero when a path on the device would lose its audio",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "dry_run",
+    "nargs": 1,
+    "opts": [
+     "--dry-run"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "With --release: also put the files this release adds to the device in a folder of their own (<render>-new-in-vN), to copy across on their own",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "new_only",
+    "nargs": 1,
+    "opts": [
+     "--new-only"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Render the master or a release for a device."
+ },
+ "fourier review": {
+  "group": true,
+  "help": "The listening loop: rate the master's files Keep, Drop or Misfiled, and the next build\nfollows the ratings (a Keep stays, a Drop goes, a Misfiled moves). Rate with `review\nrate` or `review import` (a CSV file), or in Ableton Live's browser with tags\n(Fourier|Keep / Drop / Misfiled / Move-<CAT>) that `review ratings` harvests. All of\nthem write the same ratings store ($FOURIER_HOME/ratings.json).\n\n\b\nWithout Live: rate, import, queue, score, misfiles.\nNeeds Live:   ratings (it harvests Live's tags; queue, score and builds harvest them\n              too when Live has tagged the master).\n\n\b\n  fourier review rate \"Kick 01\" keep\n  fourier review rate \"Snare Tight 03\" misfiled --to CLAPS\n  fourier review import ratings.csv   # columns: path (or name), rating, category\n  fourier review queue                # the next files to listen to, in <master>/_REVIEW\n  fourier review score                # a build against the ratings\n  fourier review misfiles --dry-run",
+  "hidden": false,
+  "params": [],
+  "short_help": "The listening loop: rate files, import ratings, queue and score."
+ },
+ "fourier review import": {
+  "group": false,
+  "help": "Import ratings from a CSV file with a header row: `path` (or `name`: anything `review\nrate` takes), `rating` (keep, drop or misfiled) and an optional `category` (for\nmisfiled: the category it belongs in). Rows that match no file, or several, are listed\nand skipped (exit 1); the rest are stored as `review rate` stores them.\n\n\b\n  path,rating,category\n  KICKS/punchy/Kick_01.wav,keep,\n  Snare Tight 03,misfiled,CLAPS",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "csv_path",
+    "nargs": 1,
+    "opts": [
+     "csv_path"
+    ],
+    "required": true,
+    "type": "file"
+   },
+   {
+    "default": "None",
+    "help": "Master the files are in (default: your master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Match the rows and report, store nothing",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "dry_run",
+    "nargs": 1,
+    "opts": [
+     "--dry-run"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Import ratings from a CSV file, without Live."
+ },
+ "fourier review misfiles": {
+  "group": false,
+  "help": "Treat the misfile detector's most confident calls as Misfiled (next build re-homes them).\n\nStored apart from your ratings; any rating you give a file wins.",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "Min margin (other-folder minus own-folder similarity); default 0.4",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "margin",
+    "nargs": 1,
+    "opts": [
+     "--margin"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": "Master (default: your master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "List detections, store nothing",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "dry_run",
+    "nargs": 1,
+    "opts": [
+     "--dry-run"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Remove all automatic detections",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "clear",
+    "nargs": 1,
+    "opts": [
+     "--clear"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Mark the misfile detector's confident calls."
+ },
+ "fourier review queue": {
+  "group": false,
+  "help": "Build a review queue in <master>/_REVIEW: the samples whose rating teaches Fourier Samples most.\n\nSaves the previous queue's tags first (harvest + write-back into the master), then\npicks suspected misfiles, shaky placements, neighbors of your Drops, and random spot\nchecks. Tag them in Live like anything else, or rate them with `review rate` (a queue\nfile's name works as its QUERY).",
+  "hidden": false,
+  "params": [
+   {
+    "default": "40",
+    "help": "Files in the queue",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "n",
+    "nargs": 1,
+    "opts": [
+     "--n"
+    ],
+    "required": false,
+    "show_default": true,
+    "type": "integer"
+   },
+   {
+    "default": "None",
+    "help": "Master (default: your master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   }
+  ],
+  "short_help": "Queue the files whose rating teaches the most."
+ },
+ "fourier review rate": {
+  "group": false,
+  "help": "Rate one of the master's files: keep (it stays), drop (the next build leaves it out) or\nmisfiled (the next build moves it to another category; --to names which); clear removes\na rating given here or imported (also one whose file is gone from the master or the\nlibrary). QUERY is what `fourier why` takes: a source path, a master path\n(KICKS/family/file.wav) or a piece of a file name or library path. When it matches\nseveral files, you pick one.\n\n\b\n  fourier review rate \"Kick 01\" keep\n  fourier review rate KICKS/punchy/Kick_01.wav drop\n  fourier review rate \"Snare Tight 03\" misfiled --to CLAPS\n  fourier review rate \"Kick 01\" clear",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "query",
+    "nargs": 1,
+    "opts": [
+     "query"
+    ],
+    "required": true,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "verdict",
+    "nargs": 1,
+    "opts": [
+     "verdict"
+    ],
+    "required": true,
+    "type": "choice"
+   },
+   {
+    "default": "None",
+    "help": "With misfiled: the category it belongs in (the next build puts it there)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "move_to",
+    "nargs": 1,
+    "opts": [
+     "--to"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Master the file is in (default: your master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   }
+  ],
+  "short_help": "Rate one file Keep, Drop or Misfiled, without Live."
+ },
+ "fourier review ratings": {
+  "group": false,
+  "help": "Harvest Fourier|Keep / Drop / Misfiled tags (Ableton browser) into the ratings store.\nNeeds Ableton Live: without it, rate with `review rate` or `review import`.\n\nA Favorite (red Collection) on an untagged file counts as Keep; --apply then writes\nthe Keep tag into Live right away.",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "Master to harvest (default: your master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Also write stored ratings back into the master as Live tags",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "do_apply",
+    "nargs": 1,
+    "opts": [
+     "--apply"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Harvest the rating tags from Live's browser (needs Live)."
+ },
+ "fourier review score": {
+  "group": false,
+  "help": "Score a built master against your ratings (harvests Live's tags from your master\nfirst, when it has any).",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "Built master to score (default: your master); e.g. a temp build before swapping it in",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   }
+  ],
+  "short_help": "Score a build against the ratings."
+ },
+ "fourier search": {
+  "group": false,
+  "help": "Search the library: by words that describe the sound, by a reference file, or by\nfilters.\n\nQUERY (or --like TEXT) and --like-file compare sounds with CLAP: they need the CLAP\nmodel and index (`fourier setup` installs the model; `fourier build` makes the index).\n--class, --categories and the\nbrightness, noisiness, harmonicity and peak filters read Sononym's analysis and use its\nvocabulary, so they apply only when the library was scanned from Sononym; duration, BPM\nand favorites work without it.\n\n\b\nExamples:\n  fourier search dark sub-heavy kick --top 20\n  fourier search --like-file ~/Desktop/reference.wav --top 20\n  fourier search --min-dur 1.0 --max-dur 4.0 --bpm-min 160 --bpm-max 180\nWith Sononym:\n  fourier search --class Loop --bpm-min 160 --bpm-max 180 --bpm-octave\n  fourier search --categories \"XFX Sweeps & Lasers,XFX Whooshes & Whips\" --min-dur 1.0\n  fourier search metal hit --categories \"Perc Metal Hits\"",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "query",
+    "nargs": -1,
+    "opts": [
+     "query"
+    ],
+    "required": false,
+    "type": "text"
+   },
+   {
+    "choices": [
+     "OneShot",
+     "Loop"
+    ],
+    "default": "None",
+    "help": "Sononym's class (OneShot or Loop)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "cls",
+    "nargs": 1,
+    "opts": [
+     "--class"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "choice"
+   },
+   {
+    "default": "None",
+    "help": "Comma-separated Sononym category names (e.g. 'XFX Sweeps & Lasers,Tone Pads & Textures')",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "categories",
+    "nargs": 1,
+    "opts": [
+     "--categories",
+     "-c"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Min duration in seconds",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "min_dur",
+    "nargs": 1,
+    "opts": [
+     "--min-dur"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": "Max duration in seconds",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "max_dur",
+    "nargs": 1,
+    "opts": [
+     "--max-dur"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": "Sononym's brightness, 0 to 1",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "brightness_min",
+    "nargs": 1,
+    "opts": [
+     "--brightness-min"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": null,
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "brightness_max",
+    "nargs": 1,
+    "opts": [
+     "--brightness-max"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": "Sononym's noisiness, 0 to 1",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "noisiness_min",
+    "nargs": 1,
+    "opts": [
+     "--noisiness-min"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": null,
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "noisiness_max",
+    "nargs": 1,
+    "opts": [
+     "--noisiness-max"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": "Sononym's harmonicity, 0 to 1",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "harmonicity_min",
+    "nargs": 1,
+    "opts": [
+     "--harmonicity-min"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": null,
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "harmonicity_max",
+    "nargs": 1,
+    "opts": [
+     "--harmonicity-max"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": "Min BPM: a loop's tempo as a build resolves it (one-shots never match)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "bpm_min",
+    "nargs": 1,
+    "opts": [
+     "--bpm-min"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "None",
+    "help": "Max BPM",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "bpm_max",
+    "nargs": 1,
+    "opts": [
+     "--bpm-max"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "False",
+    "help": "Also match loops at half or double the tempo",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "bpm_octave",
+    "nargs": 1,
+    "opts": [
+     "--bpm-octave"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Sononym's min peak dB (e.g. -12)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "peak_min",
+    "nargs": 1,
+    "opts": [
+     "--peak-min"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "False",
+    "help": "Only samples marked as favorites",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "favorites_only",
+    "nargs": 1,
+    "opts": [
+     "--favorites-only"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "20",
+    "help": "How many results to show",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "top",
+    "nargs": 1,
+    "opts": [
+     "--top"
+    ],
+    "required": false,
+    "show_default": true,
+    "type": "integer"
+   },
+   {
+    "default": "None",
+    "help": "Text describing the sound (CLAP), the same as QUERY. E.g. 'dark sub kick'",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "like_text",
+    "nargs": 1,
+    "opts": [
+     "--like"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "An audio file to find similar sounds to (CLAP)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "like_file",
+    "nargs": 1,
+    "opts": [
+     "--like-file"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "path"
+   }
+  ],
+  "short_help": "Search the library by sound (CLAP) or by filters."
+ },
+ "fourier setup": {
+  "group": false,
+  "help": "Set Fourier Samples up for your library, step by step: where your samples are, your\ndevices and style, the config file, the CLAP model a build needs, an optional local LLM,\nand a check of everything. Each step says what it's for and can be skipped; run it\nagain any time.\n\n\b\n  fourier setup\n  fourier setup --yes --library ~/Samples --device digitakt_2 --preset balanced\n  fourier setup --yes --force --library ~/Samples --device m8_tracker   # replace a config",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "A folder of samples (repeatable, or comma-separated)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": true,
+    "name": "library",
+    "nargs": 1,
+    "opts": [
+     "--library"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "A device id (repeatable, or comma-separated; fourier devices list)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": true,
+    "name": "devices",
+    "nargs": 1,
+    "opts": [
+     "--device"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "The style: balanced (the default), breaks-acid, hiphop-lofi, house-techno, ambient-cinematic, trap, or a preset file",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "preset",
+    "nargs": 1,
+    "opts": [
+     "--preset"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Where the master goes (default: ~/Music/FourierCurated; FourierCurated-<config name> for a config --to puts elsewhere)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master",
+    "nargs": 1,
+    "opts": [
+     "--master"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Where device renders go (default: beside the master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "renders",
+    "nargs": 1,
+    "opts": [
+     "--renders"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Where releases go (default: ~/Music/Fourier; Fourier-<config name> for a config --to puts elsewhere)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "publish",
+    "nargs": 1,
+    "opts": [
+     "--publish"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Where to write the config (default: ~/.config/fourier/fourier.toml); another path is a second library's, with its own master, renders and releases",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "path",
+    "nargs": 1,
+    "opts": [
+     "--to"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Replace an existing config",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "force",
+    "nargs": 1,
+    "opts": [
+     "--force"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Install the CLAP model a build needs (default: ask; yes with --yes); when it's installed, update PyTorch and Transformers (default: ask; no with --yes)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "clap",
+    "nargs": 1,
+    "opts": [
+     "--clap",
+     "--no-clap"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Set up folder descriptions with a local LLM (default: ask; no with --yes)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "llm",
+    "nargs": 1,
+    "opts": [
+     "--llm",
+     "--no-llm"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Without Sononym, let a build train a sound model on your library's own names (default: on; --no-sound-model writes SOUND_TRAIN = false to the config)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "sound_model",
+    "nargs": 1,
+    "opts": [
+     "--sound-model",
+     "--no-sound-model"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "How big a set: starter (about 1 GB), standard (about 3 GB), full (the style's own size; the default), or a card size like 4GB",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "size",
+    "nargs": 1,
+    "opts": [
+     "--size"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "choices": [
+     "prepared",
+     "as-is"
+    ],
+    "default": "None",
+    "help": "prepared: melodic one-shots tuned to C, loops levelled, tidy names (the default); as-is: every sound as it is, with its own name",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "processing",
+    "nargs": 1,
+    "opts": [
+     "--processing"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "choice"
+   },
+   {
+    "default": "None",
+    "help": "Start `fourier build` at the end (default: ask; no with --yes)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "build",
+    "nargs": 1,
+    "opts": [
+     "--build",
+     "--no-build"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Ask nothing: the options given, defaults for the rest",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "yes",
+    "nargs": 1,
+    "opts": [
+     "--yes",
+     "-y"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Set Fourier Samples up for your library, step by step."
+ },
+ "fourier sync": {
+  "group": false,
+  "help": "Copy a device render onto a mounted card, such as the M8's SD card.\n\nVOLUME must be where the card is mounted (/Volumes/M8, /media/<you>/M8), or a card an\nearlier sync wrote to; --force takes any other folder. Copies into <VOLUME><card_dir>\n(M8: /Samples/Fourier) with rsync (or Python) and without\nextended attributes, so macOS writes no \"._\" AppleDouble twins onto the FAT/exFAT card\n(they show up in the device's browser as .wav files that fail to load). Dotfiles\n(the render marker, .DS_Store) are skipped, any \"._\" file under the target is removed,\nand the audio file count on the card is checked against the render.\n\n\b\n  fourier sync m8_tracker /Volumes/M8",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "device_id",
+    "nargs": 1,
+    "opts": [
+     "device_id"
+    ],
+    "required": true,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "volume",
+    "nargs": 1,
+    "opts": [
+     "volume"
+    ],
+    "required": true,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Render to copy (default: [output] renders, else FourierRenders beside the master, /<device_id>)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "render_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Also remove files in the card folder (<card_dir>) that the render doesn't have (refused if it holds a file neither this render nor an earlier sync made)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "delete",
+    "nargs": 1,
+    "opts": [
+     "--delete"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Show what would be copied",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "dry_run",
+    "nargs": 1,
+    "opts": [
+     "--dry-run"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Sync into VOLUME even when it isn't a mounted card or drive (a folder you chose)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "force",
+    "nargs": 1,
+    "opts": [
+     "--force"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Copy a device render onto a mounted SD card."
+ },
+ "fourier tools": {
+  "group": true,
+  "help": "Power tools for the steps `fourier build` runs for you, and for looking after the\nlibrary and its database.\n\n\b\n  fourier tools scan               # bring new and changed files into the database\n  fourier tools analyze --status   # how far each analysis step has got\n  fourier tools train              # train the sound model on your library\n  fourier tools audit              # what the master leaves out of the library\n  fourier tools import-folder ~/Downloads/new-pack",
+  "hidden": false,
+  "params": [],
+  "short_help": "Power tools: scan, analyze, audit, imports and the database."
+ },
+ "fourier tools analyze": {
+  "group": false,
+  "help": "Analyze the audio curation reads, step by step (`fourier build` does this after its\nscan). Incremental: only samples not done yet. The steps: derived features (from\nSononym's), librosa features, CLAP embeddings and their index, sample-chain events,\nquality, Sononym's folded tempo, loop trims, Fourier's own roots (pYIN) and keys, and the\nsound model's labels (without Sononym, trained on the library first when it has none).\nFourier's own analysis runs with or without Sononym; `--only own` fills it in on a\nlibrary analyzed before it existed.\nFiles a cloud drive keeps only online are skipped unless --download is given.\n\n\b\n  fourier tools analyze\n  fourier tools analyze --only clap\n  fourier tools analyze --only own\n  fourier tools analyze --status",
+  "hidden": false,
+  "params": [
+   {
+    "choices": [
+     "derived",
+     "librosa",
+     "clap",
+     "events",
+     "quality",
+     "bpm-fix",
+     "loop-trim",
+     "own",
+     "key",
+     "sound"
+    ],
+    "default": "None",
+    "help": "Just this step (repeatable)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": true,
+    "name": "only",
+    "nargs": 1,
+    "opts": [
+     "--only"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "choice"
+   },
+   {
+    "default": "None",
+    "help": "Parallel workers for the steps that take them",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "workers",
+    "nargs": 1,
+    "opts": [
+     "--workers"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "integer"
+   },
+   {
+    "default": "False",
+    "help": "Recompute samples already done",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "force",
+    "nargs": 1,
+    "opts": [
+     "--force"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Show how far each step has got, and stop",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "status",
+    "nargs": 1,
+    "opts": [
+     "--status"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Download cloud-only library files first (otherwise they're skipped and counted)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "download",
+    "nargs": 1,
+    "opts": [
+     "--download"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Analyze the library's audio (incremental)."
+ },
+ "fourier tools audit": {
+  "group": false,
+  "help": "Audit the master against the whole library for blind spots: kinds of sound the\nlibrary has plenty of and the master barely covers.\n\nThree lenses: the classifier's categories the master leaves uncovered, CLAP\nnearest-neighbor coverage (regions far from every pick, clustered and named by a local\nLLM when Ollama runs), and packs big in the library but thin in the master.\n\n\b\n  fourier tools audit\n  fourier tools audit --out ~/audit.md",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "Master to audit (default: $FOURIER_CURATED_DIR)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Write the markdown report to this path",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "out_path",
+    "nargs": 1,
+    "opts": [
+     "--out"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "0.55",
+    "help": "Nearest-curated-cosine threshold below which a sample counts as poorly covered",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "far",
+    "nargs": 1,
+    "opts": [
+     "--far"
+    ],
+    "required": false,
+    "show_default": true,
+    "type": "float"
+   }
+  ],
+  "short_help": "Find what the master leaves out of the library."
+ },
+ "fourier tools db-stats": {
+  "group": false,
+  "help": "Show what the library database holds: samples, favorites, and with Sononym's data its\ncategories (count, average length, brightness and noisiness; the names `fourier search\n--categories` takes). --missing lists samples whose files are gone (--prune removes\nthem); --metadata checks the classifiers' labels against their sources;\n--disagreements lists where Sononym's readings and Fourier's own differ, a place to look\nfor misfiled samples.\n\n\b\n  fourier tools db-stats\n  fourier tools db-stats --missing --prune\n  fourier tools db-stats --metadata --shadow\n  fourier tools db-stats --disagreements --examples 30",
+  "hidden": false,
+  "params": [
+   {
+    "default": "False",
+    "help": "Also list samples whose files are no longer on disk",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "missing",
+    "nargs": 1,
+    "opts": [
+     "--missing"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "With --missing: remove those samples from the database",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "prune",
+    "nargs": 1,
+    "opts": [
+     "--prune"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Also check each provider's labels and descriptors against its source (exits 1 on any difference)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "metadata",
+    "nargs": 1,
+    "opts": [
+     "--metadata"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "With --metadata: rebuild every provider's labels and descriptors first",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "do_rebuild",
+    "nargs": 1,
+    "opts": [
+     "--rebuild"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "With --metadata: also score the path and audio providers against Sononym",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "shadow",
+    "nargs": 1,
+    "opts": [
+     "--shadow"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Also list samples where Sononym and Fourier's own analysis disagree (one-shot or loop, tempo beyond an octave, pitched, root note, and the sound model's category): a report, nothing changes",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "disagreements",
+    "nargs": 1,
+    "opts": [
+     "--disagreements"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "10",
+    "help": "With --metadata or --disagreements: differences to print (of each kind)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "examples",
+    "nargs": 1,
+    "opts": [
+     "--examples"
+    ],
+    "required": false,
+    "show_default": true,
+    "type": "integer"
+   }
+  ],
+  "short_help": "Show what the database holds; check files and metadata."
+ },
+ "fourier tools dedup": {
+  "group": false,
+  "help": "Find samples that share the same content hash (the first 8 KB of the file): the same\nfile in more than one pack or folder. Nothing on disk changes.\n\n\b\nIn each group, the one kept is chosen by:\n  1. a favorite first\n  2. the highest sample rate\n  3. the longest\n  4. the earliest scanned\n\nWith --hide, the other copies are marked hidden in the database, so `fourier search`\nleaves them out; builds don't use the mark.\n\n\b\n  fourier tools dedup --dry-run\n  fourier tools dedup --hide",
+  "hidden": false,
+  "params": [
+   {
+    "default": "False",
+    "help": "Mark redundant copies as hidden (is_hidden=True)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "hide",
+    "nargs": 1,
+    "opts": [
+     "--hide"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Report duplicates without making changes",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "dry_run",
+    "nargs": 1,
+    "opts": [
+     "--dry-run"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Find copies of the same file in the library."
+ },
+ "fourier tools import-folder": {
+  "group": false,
+  "help": "Copy a folder of audio into a library folder (with several library folders, pass\n--to). The only command that writes into the library, and it only adds copies.\n\nCopies WAV/AIFF/FLAC verbatim and decodes OGG/Opus/MP3/CAF to WAV. A file whose extension an\nenabled preparer names (a codec soundfile lacks) is written as WAV. The source folder\nis never modified. Re-runnable: incremental by default, --clean wipes and reloads.\n\n\b\n  fourier tools import-folder ~/Downloads/new-pack",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "src",
+    "nargs": 1,
+    "opts": [
+     "src"
+    ],
+    "required": true,
+    "type": "directory"
+   },
+   {
+    "default": "None",
+    "help": "Destination (default: <library>/<the source folder's name>)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "dest_root",
+    "nargs": 1,
+    "opts": [
+     "--to"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Copy .ogg as-is instead of decoding it to WAV",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "no_convert_ogg",
+    "nargs": 1,
+    "opts": [
+     "--no-convert-ogg"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Don't offer files to the preparers fourier.toml enables (fourier/preparers.py)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "no_preparers",
+    "nargs": 1,
+    "opts": [
+     "--no-preparers"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "0.0",
+    "help": "Skip source files larger than N MB (0 = no cap).",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "max_mb",
+    "nargs": 1,
+    "opts": [
+     "--max-mb"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "float"
+   },
+   {
+    "default": "False",
+    "help": "Wipe the destination first (default: incremental, skip unchanged)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "clean",
+    "nargs": 1,
+    "opts": [
+     "--clean"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Use an existing destination that holds only earlier imports (marks it as one)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "adopt",
+    "nargs": 1,
+    "opts": [
+     "--adopt"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Copy a folder of audio into a library folder."
+ },
+ "fourier tools resolve": {
+  "group": false,
+  "help": "Store each sample's resolution between the two classifiers (Sononym and Live's tags)\nin the sample_resolution table: its home category, how well they agree, and both\nclassifiers' labels, so the second opinion can be queried across the library.\n\n\b\n  fourier tools resolve",
+  "hidden": false,
+  "params": [],
+  "short_help": "Store each sample's resolved category for queries."
+ },
+ "fourier tools scan": {
+  "group": false,
+  "help": "Bring the library into the database (`fourier build` does this first): Sononym's\nanalysis when it's there (new and changed samples), otherwise a walk of the library\nfolders (fourier.toml's library), then Live's auto-tags when Live's file index is there.\n\nThe walk reads every audio file soundfile can (.wav .aif .aiff .aifc .flac .mp3 .ogg\n.opus .caf), follows folder symlinks that lead out of the library folder, says what it\nskipped, and marks samples it no longer finds missing (a build leaves them out). A\nlibrary folder that is missing or empty (an unmounted drive) stops it, and nothing is\nmarked. With Sononym, --walk walks too: the files it adds wait for Sononym's analysis\nbefore a build uses them, and samples whose files are gone are left out of builds.\n\n\b\n  fourier tools scan\n  fourier tools scan --only files\n  fourier tools scan --walk          # Sononym, then a walk of the library folders\n  fourier tools scan --prune",
+  "hidden": false,
+  "params": [
+   {
+    "choices": [
+     "sononym",
+     "ableton",
+     "files"
+    ],
+    "default": "None",
+    "help": "Just this source (repeatable)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": true,
+    "name": "only",
+    "nargs": 1,
+    "opts": [
+     "--only"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "choice"
+   },
+   {
+    "default": "False",
+    "help": "Sononym: also drop samples Sononym no longer has",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "prune",
+    "nargs": 1,
+    "opts": [
+     "--prune"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "With Sononym: also walk the library folders (adds the files it hasn't indexed, marks samples whose files are gone)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "walk",
+    "nargs": 1,
+    "opts": [
+     "--walk"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Bring new and changed library files into the database."
+ },
+ "fourier tools train": {
+  "group": false,
+  "help": "Train the sound model on your library: a small classifier over each sample's CLAP\nembedding and Fourier's own measurements, taught by how your sample makers named their\nfiles and folders (and your ratings), never by Sononym's or Live's analysis. About a\nminute; it reads the database only. Without Sononym a build trains one by itself once\nyour library's names label enough samples, and places with it what no name rule\nrecognizes; this trains it now (or again). A model is kept only when it's reliable on the\npacks it didn't learn from (--keep keeps it anyway). The weights and the report stay in\nyour Fourier home: they're learned from your library, whose licences are yours.\n\n\b\n  fourier tools train\n  fourier tools analyze --only sound    # label the library with it (a build does this)",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "Where the weights go (default: <Fourier home>/sound_model.npz, where builds look)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "out",
+    "nargs": 1,
+    "opts": [
+     "--out"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "file"
+   },
+   {
+    "default": "None",
+    "help": "Where the training report goes (default: beside the weights)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "report",
+    "nargs": 1,
+    "opts": [
+     "--report"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "file"
+   },
+   {
+    "default": "False",
+    "help": "Pull the weights toward the taxonomy's CLAP prompts instead of zero",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "clap_prior",
+    "nargs": 1,
+    "opts": [
+     "--clap-prior"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Keep the model even when it isn't reliable on the packs it didn't learn from",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "keep",
+    "nargs": 1,
+    "opts": [
+     "--keep"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Train the sound model on your library (it stays on this machine)."
+ },
+ "fourier verify": {
+  "group": false,
+  "help": "Check the master against every curation rule (it runs after each build and before\npublish), and with --render in scratch device renders: manifest against disk, budgets,\nnames, ratings, routing, sample chains, length caps, identical audio, DC and more. Exits\nnon-zero on any FAIL.\n\n\b\n  fourier verify\n  fourier verify --render m8_tracker --render digitakt_2\n  fourier verify --quick",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "help": "Master to verify (default: your master)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--from"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Also render for this device into a scratch dir and check it (repeatable)",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": true,
+    "name": "renders",
+    "nargs": 1,
+    "opts": [
+     "--render"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Keep the scratch renders in this dir",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "keep",
+    "nargs": 1,
+    "opts": [
+     "--keep-renders"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Skip the checks that read every file's audio",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "no_audio",
+    "nargs": 1,
+    "opts": [
+     "--no-audio"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Skip DB-backed checks (sample chains, twins, hygiene)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "no_db",
+    "nargs": 1,
+    "opts": [
+     "--no-db"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Only the quick invariants (budgets, ceilings, vendor cap, hygiene, names)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "quick",
+    "nargs": 1,
+    "opts": [
+     "--quick"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Check the master against every curation rule."
+ },
+ "fourier why": {
+  "group": false,
+  "help": "Where a sample landed and which routing rule put it there, or, for one the master left\nout, why the last build left it out (the per-vendor share, a near-duplicate of which\nfile, a category's gate, the budget, or a category the library can't fill). QUERY is a\nfull source path or a piece of a file name / library path.\n\n\b\n  fourier why \"Kick Round 03\"\n  fourier why --rules\n  fourier why --unrecognized",
+  "hidden": false,
+  "params": [
+   {
+    "default": "None",
+    "kind": "Argument",
+    "multiple": false,
+    "name": "query",
+    "nargs": 1,
+    "opts": [
+     "query"
+    ],
+    "required": false,
+    "type": "text"
+   },
+   {
+    "default": "None",
+    "help": "Master to look in (default: your master).",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "master_dir",
+    "nargs": 1,
+    "opts": [
+     "--master"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "Print the routing precedence table and exit.",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "rules",
+    "nargs": 1,
+    "opts": [
+     "--rules"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "None",
+    "help": "Most samples to explain (default 5), or to list with --unrecognized (default 20).",
+    "hidden": false,
+    "is_flag": false,
+    "kind": "Option",
+    "multiple": false,
+    "name": "limit",
+    "nargs": 1,
+    "opts": [
+     "--limit"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "integer range"
+   },
+   {
+    "default": "False",
+    "help": "List the samples no name rule recognized, and those recognized that no category took (without Sononym), and what to do about them.",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "unrecognized",
+    "nargs": 1,
+    "opts": [
+     "--unrecognized"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Every rule that matched, the classifiers' votes and labels, and the scores",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "detail",
+    "nargs": 1,
+    "opts": [
+     "--detail"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   }
+  ],
+  "short_help": "Show where a sample landed and which rule put it there."
+ }
+}

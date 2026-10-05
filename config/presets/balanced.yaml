@@ -1,0 +1,12 @@
+description: every category, budgets spread evenly, drum loops of every style from 70 to 180 BPM (the default)
+# balanced: the default style, and the code's own defaults, so this preset resolves to no
+# overrides. Every category, budgets spread evenly (drum loops 1,140, then phrases, pads and
+# keys), 5-BPM loop bands from 70 to 180 BPM (hip hop to dnb), drum loops of every style
+# (only folders that hold no drum loops are left out). size auto: budgets fit the smallest
+# device's storage, and what a category's pool can't fill goes to the categories that filled
+# theirs. The other styles scale its budgets with `categories` weights.
+tempo: 70-180
+size: auto            # fit the devices' storage; a pool's surplus moves to the others
+loudness: standard
+retune: detect
+stereo: fold-near-mono

@@ -1,0 +1,711 @@
+# The taxonomy: which folders a build makes and what goes in each (docs/design-history.md,
+# "How it became configurable"). A style (a preset) decides how much of each and which files; this file decides what
+# the folders are. The code reads it once (src/fourier/taxonomy.py) into the tunables it has
+# always had (CATEGORY_ORDER, KICK_PHRASES, KIT_CATS, ...), so [advanced] overrides by those
+# names still work. `fourier config explain categories` prints it with example files.
+#
+# CLAP prompts are compared as text: changing one misses the clap_text cache and moves picks,
+# so edit them on purpose. A {library: NAME} prompt entry is where a library overlay's own
+# prompts go (the library-class tunable NAME, empty by default; fourier/taxonomy.py prompts()).
+# A library overlay can also add whole categories of its own (add_categories; docs/curation.md,
+# "Adding a category"): they are numbered after these.
+
+# folder order: a category's position is its folder number (01_KICKS, 02_SNARES, ...)
+order: [KICKS, SNARES, CLAPS, HATS, CYMBALS, TOMS, PERC, DRUMLOOPS, PHRASES, SUB, SYNTH, STABS, PADS,
+  PIANO, ACOUSTIC, WAVES, FX, BLIPS, VOX]
+# the derived sets, numbered 00 so they sit above the categories
+sets: {KITS: 00_KITS, SLICE: 00_SLICE}
+# where special files go: musical loops, single-cycle waves, named scratches, chords on keys
+homes: {phrases: PHRASES, waves: WAVES, scratches: FX, key_chords: null}
+# one-shots with these labels may be single-note keys for PIANO
+piano_pool_labels: [lead, bass, blip, stab]
+# categories that were merged into others: ratings on them follow
+renamed: {BELLS: ACOUSTIC, ORCHESTRAL: ACOUSTIC, MALLETS: ACOUSTIC, SCRATCHES: FX}
+# band folders within a category, in folder order (PHRASES' bands are its roles, below)
+bands:
+  wave: [cycle, table]
+  chord: [note, chord]
+  hat: [closed, open]
+  cymbal: [ride, crash, cymbal]
+  fx: [impact, whoosh, riser, downlifter, sweep, noise, ambience, foley, synth, scratch, misc]
+  loop: [classic, full, tops]
+  acoustic: [string, wind, plucked, mallet]
+# PHRASES' roles (acid lines, basslines, chords, leads, live playing)
+phrase_roles: [acid, bass, chords, lead, live]
+
+# Each category: kind (oneshot, loop, gated, instrument, waves), the canonical labels that
+# make a file a candidate (metadata/vocab.py; none: chosen by other rules), the noun its
+# folders leave out, roles (kit: 00_KITS draws from it; melodic / tonal: notes and retuning;
+# note_lead: folders named by note; no_sets: left out of the together-sets), and its CLAP
+# prompts (anti: prompts it must sound less like).
+categories:
+  KICKS:
+    kind: oneshot
+    labels: [kick]
+    noun: kick
+    roles: [kit]
+    prompts:
+    - boom bap kick
+    - trap 808 kick
+    - punchy techno kick
+    - deep house kick
+    - hard techno kick
+    - distorted industrial kick
+    - lo-fi dusty kick
+    - acoustic drum kit kick
+    - 808 sub kick
+    - 909 house kick
+    - 606 electro kick
+    - clicky click kick
+    - soft round kick
+    - tight punchy kick
+    - long boomy kick
+    - gated kick
+    - vinyl crackle kick
+    - tape saturated kick
+    - analog warm kick
+    - digital fm kick
+    - drum and bass kick
+    - jungle kick
+    - footwork kick
+    - gabber distorted kick
+    - minimal click kick
+    - lofi hip hop kick
+    - deep sub rumble
+    - snappy attack kick
+    - dark heavy kick
+    - bright thin kick
+    - wooden knock kick
+    - metallic kick
+    - noisy gritty kick
+    - clean studio kick
+    - vintage drum machine kick
+    - modular percussion kick
+    - cardboard box kick
+    - reggae one drop kick
+    - punchy funk kick
+    - dusty vinyl break kick
+  SNARES:
+    kind: oneshot
+    labels: [snare]
+    noun: snare
+    roles: [kit]
+    prompts:
+    - tight snare
+    - fat snare
+    - clap snare
+    - rimshot snare
+    - piccolo snare
+    - deep snare
+    - 808 snare
+    - 909 snare
+    - 606 snare
+    - trap snare
+    - boom bap snare
+    - acoustic snare
+    - brushed snare
+    - gated reverb snare
+    - lo-fi dusty snare
+    - crunchy snare
+    - noisy snare
+    - clean studio snare
+    - snappy snare
+    - wooden snare
+    - metallic snare
+    - vinyl crackle snare
+    - layered snare
+    - hip hop snare
+    - drum and bass snare
+    - jungle snare
+    - house snare
+    - techno snare
+    - industrial snare
+    - reggae snare
+    - funk snare
+    - ghost snare
+    - cracky snare
+    - bright snare
+    - dark snare
+    - short snare
+    - long snare
+    - reverb snare
+    - dry snare
+    - punchy snare
+  HATS:
+    kind: oneshot
+    labels: [hat]
+    noun: hat
+    roles: [kit]
+    prompts:
+    - closed hi-hat
+    - open hi-hat
+    - 808 hat
+    - 909 hat
+    - 606 hat
+    - trap hat
+    - tight hat
+    - sizzly open hat
+    - washy hat
+    - shaker
+    - tambourine
+    - analog hat
+    - acoustic hi-hat
+    - metallic hat
+    - noisy hat
+    - clean hat
+    - short hat
+    - long hat
+    - bright hat
+    - dark hat
+    - lo-fi hat
+    - crispy hat
+    - pedal hat
+    - half-open hat
+    - ticky hat
+    - white noise hat
+    - filtered hat
+    - house hat
+    - techno hat
+    - drum and bass hat
+    - jungle hat
+    - hip hop hat
+    - funk hat
+    - vinyl hat
+    - dusty hat
+    - rolling hat
+    - offbeat hat
+    - glassy hat
+    - digital hat
+    - tape hat
+  SUB:
+    kind: oneshot
+    labels: [bass]
+    noun: bass
+    roles: [melodic, tonal]
+    prompts:
+    - 808 sub bass
+    - reese bass
+    - deep sub bass
+    - fm bass
+    - acid squelch bass
+    - moog bass
+    - wobble bass
+    - growl bass
+    - saw bass
+    - square bass
+    - pure sine sub
+    - plucked bass
+    - distorted bass
+    - warm analog bass
+    - hard reese bass
+    - neuro bass
+    - house bass stab
+    - techno rumble bass
+    - dub bass
+    - detuned bass
+    - gritty bass
+    - clean sub bass
+    - punchy bass
+    - hoover bass
+    - rubber bass
+    - organ bass
+    - upright acoustic bass
+    - slap bass
+    - electric finger bass
+    - donk bass
+    - brass sub
+    - metallic bass
+    - dark sub drone
+    - bright pluck bass
+  SYNTH:
+    kind: oneshot
+    labels: [lead, bell]
+    noun: synth
+    roles: [melodic, tonal]
+    prompts:
+    - analog saw lead
+    - square lead
+    - supersaw stab
+    - pluck synth
+    - bell synth
+    - fm electric piano
+    - organ stab
+    - rhodes key
+    - grand piano note
+    - brass stab
+    - string stab
+    - choir pad note
+    - acid lead
+    - hoover stab
+    - chiptune lead
+    - detuned lead
+    - bright lead
+    - dark hollow lead
+    - glassy bell
+    - metallic lead
+    - vintage analog synth
+    - digital fm synth
+    - mono bass lead
+    - poly chord stab
+    - arp pluck
+    - trance lead
+    - reese lead
+    - dusty lofi key
+    - wavetable lead
+    - vocal synth stab
+    - noise sweep stab
+    - warm pad note
+    - sync lead
+  CLAPS:
+    kind: oneshot
+    labels: [clap]
+    noun: clap
+    roles: [kit]
+    prompts:
+    - 808 clap
+    - 909 clap
+    - trap clap
+    - layered clap
+    - single hand clap
+    - crowd clap
+    - tight clap
+    - wide clap
+    - reverb clap
+    - gated clap
+    - snappy clap
+    - dry clap
+    - analog clap
+    - acoustic clap
+    - finger snap
+    - lo-fi clap
+    - distorted clap
+    - house clap
+    - techno clap
+    - hip hop clap
+    - vinyl clap
+    - bright clap
+    - dark clap
+    - short clap
+    - long clap
+    - stacked clap
+    - noisy clap
+    - clean clap
+    - electro clap
+    - reversed clap
+  TOMS:
+    kind: oneshot
+    labels: [tom]
+    noun: tom
+    roles: [kit]
+    prompts:
+    - 808 tom
+    - 909 tom
+    - acoustic tom
+    - floor tom
+    - rack tom
+    - rototom
+    - tuned tom
+    - deep tom
+    - high tom
+    - electronic tom
+    - analog tom
+    - synth tom
+    - descending tom
+    - gated tom
+    - reverb tom
+    - dry tom
+    - punchy tom
+    - boomy tom
+    - short tom
+    - long tom
+    - tribal tom
+    - dark tom
+    - bright tom
+    - pitched tom
+    - fm tom
+    - lo-fi tom
+    - vinyl tom
+    - hand tom
+    - dub tom
+    - distorted tom
+  PERC:
+    kind: oneshot
+    labels: [perc.hand, perc.wood, perc.metal, perc.scrape, snap]
+    noun: perc
+    roles: [kit]
+    prompts:
+    - conga hit
+    - bongo hit
+    - djembe hit
+    - tabla hit
+    - cowbell
+    - woodblock
+    - clave
+    - rim click
+    - shaker hit
+    - guiro scrape
+    - cabasa
+    - agogo bell
+    - tambourine hit
+    - triangle ding
+    - castanet
+    - metal hit
+    - anvil clang
+    - bell percussion
+    - udu drum
+    - cajon hit
+    - timbale
+    - taiko drum
+    - frame drum
+    - wood knock
+    - metallic perc
+    - shaken perc
+    - scraped perc
+    - hand percussion
+    - tribal percussion
+    - glassy perc
+  CYMBALS:
+    kind: oneshot
+    labels: [cymbal.crash, cymbal.ride]
+    noun: cymbal
+    roles: [kit]
+    prompts:
+    - crash cymbal
+    - ride cymbal
+    - splash cymbal
+    - china cymbal
+    - reverse cymbal
+    - ride bell
+    - sizzle cymbal
+    - short crash
+    - long crash wash
+    - gated crash
+    - dark crash
+    - bright crash
+    - trashy cymbal
+    - 808 cymbal
+    - electronic cymbal
+    - cymbal wash
+    - crash choke
+    - swelling cymbal
+    - cymbal roll
+    - lo-fi cymbal
+    - vinyl cymbal
+    - acoustic cymbal
+    - metallic wash
+    - shimmer cymbal
+    - bright ride
+    - dark ride
+    - filtered cymbal
+    - noisy cymbal
+    - clean cymbal
+    - hand cymbal
+  FX:
+    kind: oneshot
+    labels: [fx.nature, fx.noise, fx.impact, fx.sweep, fx.whoosh, fx.rustle]
+    noun: fx
+    prompts:
+    - riser build-up
+    - downlifter fall
+    - sub drop impact
+    - boom explosion
+    - gunshot
+    - laser zap
+    - sci-fi beam
+    - white noise sweep
+    - reverse swell
+    - tape stop
+    - vinyl crackle
+    - record scratch
+    - glitch stutter
+    - bitcrush noise
+    - distortion blast
+    - radio static
+    - digital error beep
+    - alarm siren
+    - rain and thunder
+    - wind gust
+    - ocean waves
+    - fire crackle
+    - water droplet
+    - {library: FX_PROMPTS_EXTRA}   # a library overlay's own FX prompts, if any
+    - insect ambience
+    - metallic scrape
+    - chain rattle
+    - paper rustle
+    - footstep foley
+    - door slam
+    - glass shatter
+    - wood crack
+    - whoosh swipe
+    - whip crack
+    - air burst
+    - mechanical whir
+    - engine rumble
+    - electric zap
+    - granular texture
+    - dark drone
+  VOX:
+    kind: oneshot
+    labels: [vocal]
+    noun: vox
+    roles: [melodic, tonal]
+    prompts:
+    - vocal chop
+    - sustained sung note
+    - spoken word phrase
+    - rap verse
+    - vocal ad-lib
+    - hey shout
+    - yeah shout
+    - crowd chant
+    - choir chord hit
+    - vocoder robotic vocal
+    - talkbox vocal
+    - pitched vocal stab
+    - female vocal
+    - male vocal
+    - whisper
+    - scream
+    - gospel soul vocal
+    - operatic vocal
+    - baby coo
+    - laughing
+    - breath intake
+    - reversed vocal
+    - formant vowel
+    - telephone radio vocal
+    - lo-fi dusty vocal
+    - harmonized stack
+    - beatbox vocal
+    - vocal riff run
+    - humming
+    - glitched vocal cut
+  PADS:
+    kind: oneshot
+    labels: [pad]
+    noun: pad
+    roles: [melodic, tonal]
+    prompts:
+    - warm analog pad
+    - lush string pad
+    - dark drone pad
+    - evolving texture
+    - glassy pad
+    - choir pad
+    - ambient synth pad
+    - detuned pad
+    - cinematic swell
+    - vhs tape pad
+    - granular texture
+    - noise wash pad
+    - bright shimmer pad
+    - ominous drone
+    - rhodes pad
+    - brass pad
+    - vocal pad
+    - filtered sweep pad
+    - fifths pad
+    - warped texture
+    - warm strings
+    - cold digital pad
+    - sci-fi atmosphere
+    - organ pad
+    - airy pad
+    - sub drone
+    - metallic texture
+    - reverb wash
+    - breathy pad
+    - tape hiss texture
+  STABS:
+    kind: oneshot
+    labels: [stab]
+    noun: stab
+    roles: [melodic, tonal]
+    prompts:
+    - orchestra hit
+    - house piano stab
+    - organ stab
+    - brass stab
+    - string stab
+    - rave stab
+    - hoover stab
+    - synth chord stab
+    - reggae organ stab
+    - choir stab
+    - staccato strings
+    - big band hit
+    - jazz chord stab
+    - guitar stab
+    - funk clav stab
+    - disco strings hit
+    - bell stab
+    - detuned stab
+    - minor chord stab
+    - major chord stab
+    - horn section hit
+    - vox stab
+    - saw chord stab
+    - trance stab
+    - dub chord stab
+    - gospel organ stab
+    - orchestral swell hit
+    - electric piano stab
+    - pizzicato stab
+    - acid stab
+  BLIPS:
+    kind: oneshot
+    labels: [blip, zap]
+    noun: blip
+    prompts:
+    - 8-bit blip
+    - arcade coin
+    - laser zap
+    - sine blip
+    - data beep
+    - chiptune blip
+    - modem noise
+    - short bleep
+    - high key pluck
+    - telephone tone
+    - video game sfx
+    - retro computer beep
+    - ping blip
+    - square blip
+    - glitch blip
+    - ui click
+    - notification chime
+    - sci-fi blip
+    - zap pew
+    - electric spark
+    - morse code
+    - digital droplet
+    - menu select beep
+    - pixel blip
+    - high sine ping
+    - bit noise
+    - coin pickup
+    - power up sound
+    - cursor tick
+    - radar ping
+  DRUMLOOPS:
+    kind: loop
+    labels: null
+    noun: loop
+    roles: [no_sets]
+    prompts:
+    - amen break
+    - funk drum break
+    - jungle breakbeat
+    - hip hop drum break
+    - boom bap break
+    - {library: CLASSIC_BREAK_PROMPTS}   # a library overlay's own classic-break prompts, if any
+    - soul drum break
+    - vinyl drum break
+    - chopped break
+    - rolling dnb break
+    - lo-fi drum loop
+    - live drum loop
+    - acoustic drum loop
+    - dusty break
+    - half-time break
+    - two-step break
+    - ghost-note funk break
+    - tight studio break
+    - loose live break
+    - distorted break
+    - reggae drum break
+    - disco drum loop
+    - techno drum loop
+    - house drum loop
+    - percussion loop
+    - tribal drum loop
+    - trap drum loop
+    - footwork drum loop
+    anti:
+    - melodic synth loop
+    - bassline loop
+    - chord progression loop
+    - piano loop
+    - guitar loop
+    - vocal loop
+    - pad texture loop
+    - arpeggio loop
+    - string loop
+    - ambient drone loop
+    - fx sweep loop
+    - riser loop
+    - full music loop
+    - melodic groove loop
+    - full track loop with melody
+    - instrumental beat with melody
+    - chords and drums loop
+    - full arrangement loop
+    - beat with bassline and melody
+    - song loop
+  PHRASES:
+    kind: loop
+    labels: null
+    noun: loop
+    roles: [no_sets]
+  PIANO:
+    kind: instrument
+    labels: null
+    noun: piano
+    roles: [melodic, note_lead, no_sets]
+    prompts:
+    - grand piano note
+    - bright grand piano
+    - mellow grand piano
+    - upright piano note
+    - electric piano note
+    - rhodes note
+    - wurlitzer note
+    - warm electric piano
+    - clavinet note
+    - tine electric piano
+    anti:
+    - drum hit
+    - synth bass note
+    - sawtooth synth lead
+    - string section
+    - brass section
+    - pad texture
+    - bell chime
+    - vocal note
+    - pluck synth
+    - organ chord
+    - acoustic guitar note
+    - percussion hit
+  WAVES:
+    kind: waves
+    labels: null
+    noun: wave
+    roles: [no_sets]
+    prompts:
+    - pure sine tone
+    - bright sawtooth buzz
+    - hollow square wave
+    - thin pulse wave
+    - soft triangle tone
+    - metallic fm tone
+    - vocal formant tone
+    - noisy digital tone
+    - organ drawbar tone
+    - reedy nasal tone
+    - bell-like tone
+    - gritty bitcrushed tone
+  ACOUSTIC:
+    kind: instrument
+    labels: null
+    noun: acoustic
+    roles: [melodic, no_sets]
+    prompts:
+    - grand piano note
+    - electric piano
+    - mellow keys
+    - bright piano
+    - lush strings
+    - bold brass section
+    - airy woodwinds
+    - bright mallets

@@ -1,0 +1,30 @@
+description: trap and drill; 808s and hard drums, drum loops at 130-160 BPM (half time at 65-80 folded up), vocals and FX
+extends: breaks-acid    # its budgets are what the weights below scale
+# trap: drum loops banded 130-160 BPM (a 70 BPM half-time read is filed at 140), held to
+# trap prompts by the drum loops' CLAP gate, no trap exclusion, a harmonicity gate that takes
+# drum loops with an 808 under them; more 808s (SUB), hats,
+# claps and vocals, fewer breaks-style phrases and acoustic instruments.
+tempo: 130-160
+size: auto            # fit the devices' storage; a pool's surplus moves to the others
+loudness: hot
+retune: detect
+stereo: fold-near-mono
+categories:
+  SUB: 1.4
+  HATS: 1.2
+  CLAPS: 1.1
+  DRUMLOOPS: 0.8
+  PHRASES: 0.8
+  PADS: 0.8
+  VOX: 1.2
+  TOMS: 0.6
+  CYMBALS: 0.6
+  PIANO: 0.8
+  ACOUSTIC: 0.5
+  WAVES: 0.5
+advanced:
+  DRUMLOOP_STYLE_EXCLUDE: '(?<![a-z])(?:fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])'
+  DRUMLOOP_HAR_MAX: 0.75      # an 808 under the drums reads tonal
+  BREAK_PHRASES: [trap drum loop, trap hi-hat roll loop, 808 trap beat, drill drum loop,
+    half-time hip hop drum loop, rolling hi-hat loop, hard trap drums, phonk drum loop,
+    trap snare roll loop, hip hop drum break, boom bap break, percussion loop]

@@ -1,0 +1,21 @@
+id: generic_48k
+name: Generic 48000 Hz sampler
+status: unverified
+description: >
+  For a device without its own profile: 48000 Hz / 16-bit stereo WAV in CATEGORY/family
+  folders. Nothing here was checked against a manual, so it sets no path-length limit and
+  no storage size; copy the render to the device yourself. An agent can draft a real
+  profile from the device's manual (docs/device-profiles.md).
+load: copy
+sample_refs: path
+
+paths:
+  folder_depth: {value: 2, status: unverified}
+  files_per_folder: {value: 128, status: unverified}
+
+audio:
+  sample_rate: {value: 48000, status: unverified}
+  bit_depth: {value: 16, status: unverified}
+  channels: {value: stereo, status: unverified}
+  formats: {value: [wav], status: unverified}
+  dither: {value: true, status: unverified}

@@ -1,0 +1,100 @@
+[build-system]
+requires = ["hatchling>=1.27"]     # PEP 639 license and license-files
+build-backend = "hatchling.build"
+
+[project]
+name = "fourier-samples"
+version = "0.1.0"
+description = "Curate a sample library into device-ready folders for hardware samplers"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
+authors = [{name = "The Fourier Samples authors"}]
+requires-python = ">=3.11"
+keywords = ["sampler", "sample-library", "digitakt", "elektron", "m8", "dirtywave", "audio",
+            "music", "clap", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Multimedia :: Sound/Audio :: Conversion",
+]
+dependencies = [
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "duckdb>=0.10",
+    "duckdb-engine>=0.9",
+    "librosa>=0.10",
+    "soundfile>=0.12",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "pyyaml>=6.0",
+    "click>=8.1",
+    "rich>=13.0",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "threadpoolctl>=3.1",
+]
+
+[project.optional-dependencies]
+clap = [
+    "transformers>=4.40",
+    "torch>=2.2",
+]
+stretch = [
+    "pyrubberband>=0.3",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-xdist>=3.6",   # MIT: the suite runs in parallel (-n auto)
+    "ruff>=0.4.0",
+    "pypdfium2>=4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/bvk7787/fourier-samples"
+Repository = "https://github.com/bvk7787/fourier-samples"
+Issues = "https://github.com/bvk7787/fourier-samples/issues"
+Changelog = "https://github.com/bvk7787/fourier-samples/blob/main/CHANGELOG.md"
+
+[project.scripts]
+fourier = "fourier.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fourier"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"config" = "fourier/_config"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/", "config/", "tests/", "scripts/", "docs/*.md", "README.md", "LICENSE", "NOTICE",
+           "THIRD_PARTY_NOTICES.md", "CHANGELOG.md", "SECURITY.md", "CODE_OF_CONDUCT.md",
+           "CONTRIBUTING.md", "AGENTS.md", "CLAUDE.md", "conftest.py", "pyproject.toml", "uv.lock",
+           ".github/"]
+
+[tool.pytest.ini_options]
+# `pytest -n auto` runs the suite in parallel (pytest-xdist, the dev extra); conftest.py gives
+# each worker its own home, temp folders and numba cache, and makes `--dist loadgroup` the default
+markers = [
+    "slow: an end-to-end run (CLI subprocesses or whole builds); -m 'not slow' leaves them out",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# Pinned to ruff's classic default set, so a newer ruff with more default rules lints the same.
+select = ["E4", "E7", "E9", "F"]
+# House style: short statements share a line, small helpers are named lambdas, and
+# l/I/O appear as loop names in a few numeric helpers.
+ignore = ["E702", "E731", "E741"]

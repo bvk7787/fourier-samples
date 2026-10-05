@@ -1,0 +1,8254 @@
+{
+ "curate_config.MACHINE_ALIASES": {
+  "type": "dict",
+  "value": {
+   "$dict": []
+  }
+ },
+ "curate.ABLETON_LOOP_TAGS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "Loop",
+    "Drum Loop"
+   ]
+  }
+ },
+ "curate.BAND_ORDER": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "wave",
+     {
+      "$tuple": [
+       "cycle",
+       "table"
+      ]
+     }
+    ],
+    [
+     "chord",
+     {
+      "$tuple": [
+       "note",
+       "chord"
+      ]
+     }
+    ],
+    [
+     "hat",
+     {
+      "$tuple": [
+       "closed",
+       "open"
+      ]
+     }
+    ],
+    [
+     "cymbal",
+     {
+      "$tuple": [
+       "ride",
+       "crash",
+       "cymbal"
+      ]
+     }
+    ],
+    [
+     "fx",
+     {
+      "$tuple": [
+       "impact",
+       "whoosh",
+       "riser",
+       "downlifter",
+       "sweep",
+       "noise",
+       "ambience",
+       "foley",
+       "synth",
+       "scratch",
+       "misc"
+      ]
+     }
+    ],
+    [
+     "loop",
+     {
+      "$tuple": [
+       "classic",
+       "full",
+       "tops"
+      ]
+     }
+    ],
+    [
+     "acoustic",
+     {
+      "$tuple": [
+       "string",
+       "wind",
+       "plucked",
+       "mallet"
+      ]
+     }
+    ],
+    [
+     "phrase",
+     {
+      "$tuple": [
+       "acid",
+       "bass",
+       "chords",
+       "lead",
+       "live"
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "curate.BAR_COUNTS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    1,
+    2,
+    4,
+    8,
+    16
+   ]
+  }
+ },
+ "curate.BAR_TOL_BEATS": {
+  "type": "float",
+  "value": 0.15
+ },
+ "curate.CATEGORY_AB_FAMILY": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     "drum"
+    ],
+    [
+     "SNARES",
+     "drum"
+    ],
+    [
+     "HATS",
+     "drum"
+    ],
+    [
+     "CLAPS",
+     "drum"
+    ],
+    [
+     "TOMS",
+     "drum"
+    ],
+    [
+     "PERC",
+     "drum"
+    ],
+    [
+     "CYMBALS",
+     "drum"
+    ],
+    [
+     "SUB",
+     "tonal"
+    ],
+    [
+     "SYNTH",
+     "tonal"
+    ],
+    [
+     "PADS",
+     "tonal"
+    ],
+    [
+     "STABS",
+     "tonal"
+    ],
+    [
+     "BLIPS",
+     "tonal"
+    ],
+    [
+     "VOX",
+     "vocal"
+    ]
+   ]
+  }
+ },
+ "curate.CHAIN_GUARD_REGULAR": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "FX",
+    "VOX"
+   ]
+  }
+ },
+ "curate.CHAIN_GUARD_STRICT": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "ACOUSTIC",
+    "CLAPS",
+    "CYMBALS",
+    "HATS",
+    "KICKS",
+    "PADS",
+    "PERC",
+    "PIANO",
+    "SNARES",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "TOMS"
+   ]
+  }
+ },
+ "curate.CHAIN_REGULAR_CV": {
+  "type": "float",
+  "value": 0.2
+ },
+ "curate.DC_FIX": {
+  "type": "float",
+  "value": 0.015
+ },
+ "curate.DC_HPF_HZ": {
+  "type": "float",
+  "value": 5.0
+ },
+ "curate.DEFAULT_MODEL": {
+  "type": "str",
+  "value": "qwen3.5:9b"
+ },
+ "curate.DEFAULT_PER_FAMILY": {
+  "type": "int",
+  "value": 25
+ },
+ "curate.DRUM_LOOP_TAGS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "Drum Loop",
+    "Kick",
+    "Snare Hit",
+    "Closed Hihat",
+    "Open Hihat",
+    "Clap",
+    "Rim",
+    "Ride",
+    "Crash",
+    "Low Tom",
+    "Mid Tom",
+    "High Tom",
+    "Conga",
+    "Cowbell",
+    "Shaker",
+    "Tambourine",
+    "Bongo",
+    "Timbale",
+    "Pedal Hihat",
+    "Splash",
+    "Snare Articulation",
+    "Misc Percussion"
+   ]
+  }
+ },
+ "curate.FAMILY_HEADROOM": {
+  "type": "float",
+  "value": 1.5
+ },
+ "curate.FAVOR_WEIGHT": {
+  "type": "float",
+  "value": 0.1
+ },
+ "curate.INSTR_TAIL_FLOOR_DB": {
+  "type": "float",
+  "value": -60.0
+ },
+ "curate.KEYS_FAMILY_SHARE": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate.KEYS_PHRASE_WORDS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "clav",
+    "clavinet",
+    "key",
+    "keys",
+    "piano",
+    "rhodes",
+    "wurlitzer"
+   ]
+  }
+ },
+ "curate.KIT_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "CLAPS",
+    "CYMBALS",
+    "HATS",
+    "KICKS",
+    "PERC",
+    "SNARES",
+    "TOMS"
+   ]
+  }
+ },
+ "curate.LOOP_GUARD_ONSET": {
+  "type": "int",
+  "value": 7
+ },
+ "curate.LOOP_GUARD_TAG_AND_ONSET": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "CYMBALS",
+    "PERC",
+    "TOMS"
+   ]
+  }
+ },
+ "curate.LOOP_GUARD_TAG_OR_ONSET": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "CLAPS",
+    "HATS",
+    "KICKS",
+    "SNARES"
+   ]
+  }
+ },
+ "curate.LOOP_RMS_DB": {
+  "type": "float",
+  "value": -20.0
+ },
+ "curate.MAX_GAIN_DB": {
+  "type": "float",
+  "value": 18.0
+ },
+ "curate.MAX_PER_FAMILY": {
+  "type": "int",
+  "value": 120
+ },
+ "curate.MERGE_COS": {
+  "type": "float",
+  "value": 0.8
+ },
+ "curate.MIN_PER_FAMILY": {
+  "type": "int",
+  "value": 6
+ },
+ "curate.NAMED_BAR_COUNTS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    1,
+    2,
+    4,
+    6,
+    8,
+    12,
+    16,
+    32
+   ]
+  }
+ },
+ "curate.NAME_SHARE": {
+  "type": "float",
+  "value": 0.4
+ },
+ "curate.NEAR_DUP_COS": {
+  "type": "float",
+  "value": 0.985
+ },
+ "curate.NOTE_CONF": {
+  "type": "float",
+  "value": 0.4
+ },
+ "curate.NOTE_WINDOW": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "SUB",
+     {
+      "$tuple": [
+       12,
+       64
+      ]
+     }
+    ],
+    [
+     "SYNTH",
+     {
+      "$tuple": [
+       24,
+       96
+      ]
+     }
+    ],
+    [
+     "STABS",
+     {
+      "$tuple": [
+       24,
+       96
+      ]
+     }
+    ],
+    [
+     "PADS",
+     {
+      "$tuple": [
+       24,
+       93
+      ]
+     }
+    ],
+    [
+     "VOX",
+     {
+      "$tuple": [
+       36,
+       96
+      ]
+     }
+    ],
+    [
+     "PIANO",
+     {
+      "$tuple": [
+       21,
+       100
+      ]
+     }
+    ],
+    [
+     "ACOUSTIC",
+     {
+      "$tuple": [
+       24,
+       100
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "curate.NOTE_WINDOW_DEFAULT": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    24,
+    96
+   ]
+  }
+ },
+ "curate.PEAK_CEILING_DB": {
+  "type": "float",
+  "value": -1.0
+ },
+ "curate.QUAL_WEIGHT": {
+  "type": "float",
+  "value": 0.06
+ },
+ "curate.SIBLING_COS": {
+  "type": "float",
+  "value": 0.75
+ },
+ "curate.STICKY_SHARE": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate.TAIL_FADE_MS": {
+  "type": "float",
+  "value": 5.0
+ },
+ "curate.TAIL_PEAK_FLOOR_DB": {
+  "type": "float",
+  "value": -50.0
+ },
+ "curate.TRIM_FLOOR_DB": {
+  "type": "float",
+  "value": -50.0
+ },
+ "curate.TRIM_PAD_MS": {
+  "type": "float",
+  "value": 3.0
+ },
+ "curate.WAVES_CATEGORY": {
+  "type": "str",
+  "value": "WAVES"
+ },
+ "curate_config.ABLETON_TAGS_BY_CATEGORY": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     [
+      "Kick"
+     ]
+    ],
+    [
+     "SNARES",
+     [
+      "Snare Hit",
+      "Rim"
+     ]
+    ],
+    [
+     "HATS",
+     [
+      "Closed Hihat",
+      "Open Hihat",
+      "Shaker",
+      "Tambourine"
+     ]
+    ],
+    [
+     "CLAPS",
+     [
+      "Clap"
+     ]
+    ],
+    [
+     "TOMS",
+     [
+      "High Tom",
+      "Mid Tom",
+      "Low Tom"
+     ]
+    ],
+    [
+     "PERC",
+     [
+      "Conga",
+      "Bongo",
+      "Wood",
+      "Cowbell",
+      "Woodblock",
+      "Timbale",
+      "Cabasa",
+      "Guiro"
+     ]
+    ],
+    [
+     "CYMBALS",
+     [
+      "Ride",
+      "Crash"
+     ]
+    ],
+    [
+     "SUB",
+     [
+      "Synth Bass"
+     ]
+    ],
+    [
+     "SYNTH",
+     [
+      "Lead",
+      "Synth Keys",
+      "Bell",
+      "Misc Mallets",
+      "Bell Chromatic",
+      "Chime",
+      "Synth Mallets"
+     ]
+    ],
+    [
+     "PADS",
+     [
+      "Pad",
+      "Atmosphere"
+     ]
+    ],
+    [
+     "VOX",
+     [
+      "Solo Voice",
+      "Synth Voice",
+      "Choir"
+     ]
+    ],
+    [
+     "FX",
+     [
+      "Sound FX",
+      "Sweep",
+      "Impact",
+      "Noise",
+      "Field & Foley"
+     ]
+    ],
+    [
+     "DRUMLOOPS",
+     [
+      "Drum Loop"
+     ]
+    ]
+   ]
+  }
+ },
+ "curate_config.ABLETON_TAG_CATEGORY": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "Kick",
+     "KICKS"
+    ],
+    [
+     "Snare Hit",
+     "SNARES"
+    ],
+    [
+     "Rim",
+     "SNARES"
+    ],
+    [
+     "Closed Hihat",
+     "HATS"
+    ],
+    [
+     "Open Hihat",
+     "HATS"
+    ],
+    [
+     "Shaker",
+     "HATS"
+    ],
+    [
+     "Tambourine",
+     "HATS"
+    ],
+    [
+     "Clap",
+     "CLAPS"
+    ],
+    [
+     "High Tom",
+     "TOMS"
+    ],
+    [
+     "Mid Tom",
+     "TOMS"
+    ],
+    [
+     "Low Tom",
+     "TOMS"
+    ],
+    [
+     "Conga",
+     "PERC"
+    ],
+    [
+     "Bongo",
+     "PERC"
+    ],
+    [
+     "Wood",
+     "PERC"
+    ],
+    [
+     "Cowbell",
+     "PERC"
+    ],
+    [
+     "Woodblock",
+     "PERC"
+    ],
+    [
+     "Timbale",
+     "PERC"
+    ],
+    [
+     "Cabasa",
+     "PERC"
+    ],
+    [
+     "Guiro",
+     "PERC"
+    ],
+    [
+     "Ride",
+     "CYMBALS"
+    ],
+    [
+     "Crash",
+     "CYMBALS"
+    ],
+    [
+     "Synth Bass",
+     "SUB"
+    ],
+    [
+     "Lead",
+     "SYNTH"
+    ],
+    [
+     "Synth Keys",
+     "SYNTH"
+    ],
+    [
+     "Pad",
+     "PADS"
+    ],
+    [
+     "Atmosphere",
+     "PADS"
+    ],
+    [
+     "Bell",
+     "SYNTH"
+    ],
+    [
+     "Misc Mallets",
+     "SYNTH"
+    ],
+    [
+     "Bell Chromatic",
+     "SYNTH"
+    ],
+    [
+     "Chime",
+     "SYNTH"
+    ],
+    [
+     "Synth Mallets",
+     "SYNTH"
+    ],
+    [
+     "Solo Voice",
+     "VOX"
+    ],
+    [
+     "Synth Voice",
+     "VOX"
+    ],
+    [
+     "Choir",
+     "VOX"
+    ],
+    [
+     "Sound FX",
+     "FX"
+    ],
+    [
+     "Sweep",
+     "FX"
+    ],
+    [
+     "Impact",
+     "FX"
+    ],
+    [
+     "Noise",
+     "FX"
+    ],
+    [
+     "Field & Foley",
+     "FX"
+    ],
+    [
+     "Drum Loop",
+     "DRUMLOOPS"
+    ]
+   ]
+  }
+ },
+ "curate_config.ACOUSTIC_ABLETON_TAGS": {
+  "type": "list",
+  "value": [
+   "Violin",
+   "Viola",
+   "Cello",
+   "Double Bass",
+   "Upright Bass",
+   "Acoustic Bass",
+   "String Ensemble",
+   "Misc Strings",
+   "Harp",
+   "Sitar",
+   "Misc Plucked",
+   "Flute",
+   "Clarinet",
+   "Oboe",
+   "Bassoon",
+   "English Horn",
+   "Woodwind Ensemble",
+   "Sax",
+   "Misc Woodwind",
+   "Trumpet",
+   "Trombone",
+   "Tuba",
+   "French Horn",
+   "Brass Ensemble",
+   "Timpani",
+   "Gong",
+   "Classical Guitar",
+   "Acoustic Guitar",
+   "Electric Guitar",
+   "Xylophone",
+   "Vibraphone",
+   "Marimba",
+   "Glockenspiel",
+   "Misc Mallets",
+   "Bell Chromatic",
+   "Chime"
+  ]
+ },
+ "curate_config.ACOUSTIC_BAND_TAGS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "mallet",
+     {
+      "$set": [
+       "Bell Chromatic",
+       "Chime",
+       "Glockenspiel",
+       "Gong",
+       "Marimba",
+       "Misc Mallets",
+       "Timpani",
+       "Vibraphone",
+       "Xylophone"
+      ]
+     }
+    ],
+    [
+     "plucked",
+     {
+      "$set": [
+       "Acoustic Guitar",
+       "Classical Guitar",
+       "Electric Guitar",
+       "Harp",
+       "Misc Plucked",
+       "Sitar"
+      ]
+     }
+    ],
+    [
+     "wind",
+     {
+      "$set": [
+       "Bassoon",
+       "Brass Ensemble",
+       "Clarinet",
+       "English Horn",
+       "Flute",
+       "French Horn",
+       "Misc Woodwind",
+       "Oboe",
+       "Sax",
+       "Trombone",
+       "Trumpet",
+       "Tuba",
+       "Woodwind Ensemble"
+      ]
+     }
+    ],
+    [
+     "string",
+     {
+      "$set": [
+       "Acoustic Bass",
+       "Cello",
+       "Double Bass",
+       "Misc Strings",
+       "String Ensemble",
+       "Upright Bass",
+       "Viola",
+       "Violin"
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "curate_config.ACOUSTIC_NAME_EXCLUDE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "piano|rhodes|wurli|clavinet|\\bclav\\b|harpsichord|(?<![a-z])(?:fm|synth\\w*|saw(?:tooth)?|square|pwm|303|moog|juno)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.ACOUSTIC_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "guitar|zither|(?<![a-z])lyre|(?<![a-z])harp(?!si)|banjo|sitar|koto|mandolin|ukulele|cigar ?box|bouzouki|(?<![a-z])oud(?![a-z])|balalaika|dulcimer|(?<![a-z])lute(?![a-z])|violin|viola|cello|contrabass|double ?bass|upright ?bass|acoustic ?bass|string|pizz|bowed|(?<![a-z])arco(?![a-z])|flute|clarinet|oboe|bassoon|(?<![a-z])sax|recorder|harmonica|accordion|melodica|ocarina|kazoo|pan ?pipe|trumpet|trombone|tuba|(?<![a-z])horns?(?![a-z])|brass|woodwind|(?<![a-z])timpani(?![a-z])|(?<![a-z])gong(?![a-z])|erhu|(?<![a-z])kora(?![a-z])|xylo|marimba|vibraphone|(?<![a-z])vibes(?![a-z])|glock|kalimba|thumb ?piano|mbira|music ?box|toy ?piano|steel ?(?:drum|pan)|celest|gamelan|chimes?(?![a-z])|tubular|church ?bell|hand ?bell|singing ?bowl|tibetan|bell ?tree|handpan|hang ?drum",
+   "flags": 34
+  }
+ },
+ "curate_config.ACOUSTIC_SOURCE_MIN": {
+  "type": "float",
+  "value": 0.4
+ },
+ "curate_config.ADD_ALLOWANCE": {
+  "type": "float",
+  "value": 0.15
+ },
+ "curate_config.ADD_ROUTE_MIN": {
+  "type": "float",
+  "value": 0.8
+ },
+ "curate_config.ATTACK_START_FRAC": {
+  "type": "float",
+  "value": 0.1
+ },
+ "curate_config.AVG_FILE_MB": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     0.06
+    ],
+    [
+     "SNARES",
+     0.05
+    ],
+    [
+     "CLAPS",
+     0.05
+    ],
+    [
+     "HATS",
+     0.04
+    ],
+    [
+     "CYMBALS",
+     0.29
+    ],
+    [
+     "TOMS",
+     0.1
+    ],
+    [
+     "PERC",
+     0.05
+    ],
+    [
+     "DRUMLOOPS",
+     1.01
+    ],
+    [
+     "PHRASES",
+     1.89
+    ],
+    [
+     "SUB",
+     0.37
+    ],
+    [
+     "SYNTH",
+     0.47
+    ],
+    [
+     "STABS",
+     0.26
+    ],
+    [
+     "PADS",
+     1.53
+    ],
+    [
+     "PIANO",
+     0.64
+    ],
+    [
+     "ACOUSTIC",
+     0.44
+    ],
+    [
+     "WAVES",
+     0.03
+    ],
+    [
+     "FX",
+     0.72
+    ],
+    [
+     "BLIPS",
+     0.05
+    ],
+    [
+     "VOX",
+     0.46
+    ]
+   ]
+  }
+ },
+ "curate_config.BLIP_PHRASES": {
+  "type": "list",
+  "value": [
+   "8-bit blip",
+   "arcade coin",
+   "laser zap",
+   "sine blip",
+   "data beep",
+   "chiptune blip",
+   "modem noise",
+   "short bleep",
+   "high key pluck",
+   "telephone tone",
+   "video game sfx",
+   "retro computer beep",
+   "ping blip",
+   "square blip",
+   "glitch blip",
+   "ui click",
+   "notification chime",
+   "sci-fi blip",
+   "zap pew",
+   "electric spark",
+   "morse code",
+   "digital droplet",
+   "menu select beep",
+   "pixel blip",
+   "high sine ping",
+   "bit noise",
+   "coin pickup",
+   "power up sound",
+   "cursor tick",
+   "radar ping"
+  ]
+ },
+ "curate_config.BPM_NAME_GUARD": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "ACOUSTIC",
+    "BLIPS",
+    "CLAPS",
+    "CYMBALS",
+    "HATS",
+    "KICKS",
+    "PADS",
+    "PERC",
+    "PIANO",
+    "SNARES",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "TOMS",
+    "VOX"
+   ]
+  }
+ },
+ "curate_config.BPM_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "\\d{2,3}\\s*[_-]?\\s*bpm|bpm\\s*[_-]?\\s*\\d{2,3}|(?<![0-9a-z])(?:[6-9]\\d|1\\d\\d|200)[ _-]+[a-g](?:#|b)?(?:maj|min|m)(?![a-z])(?!.*[ _-][a-g](?:#|b|s)?-?\\d(?:[ _-]\\d+)?(?:\\.\\w+)?$)",
+   "flags": 34
+  }
+ },
+ "curate_config.BREAK_ANTI_PHRASES": {
+  "type": "list",
+  "value": [
+   "melodic synth loop",
+   "bassline loop",
+   "chord progression loop",
+   "piano loop",
+   "guitar loop",
+   "vocal loop",
+   "pad texture loop",
+   "arpeggio loop",
+   "string loop",
+   "ambient drone loop",
+   "fx sweep loop",
+   "riser loop",
+   "full music loop",
+   "melodic groove loop",
+   "full track loop with melody",
+   "instrumental beat with melody",
+   "chords and drums loop",
+   "full arrangement loop",
+   "beat with bassline and melody",
+   "song loop"
+  ]
+ },
+ "curate_config.BREAK_PHRASES": {
+  "type": "list",
+  "value": [
+   "amen break",
+   "funk drum break",
+   "jungle breakbeat",
+   "hip hop drum break",
+   "boom bap break",
+   "soul drum break",
+   "vinyl drum break",
+   "chopped break",
+   "rolling dnb break",
+   "lo-fi drum loop",
+   "live drum loop",
+   "acoustic drum loop",
+   "dusty break",
+   "half-time break",
+   "two-step break",
+   "ghost-note funk break",
+   "tight studio break",
+   "loose live break",
+   "distorted break",
+   "reggae drum break",
+   "disco drum loop",
+   "techno drum loop",
+   "house drum loop",
+   "percussion loop",
+   "tribal drum loop",
+   "trap drum loop",
+   "footwork drum loop"
+  ]
+ },
+ "curate_config.BUDGETS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "DRUMLOOPS",
+     1140
+    ],
+    [
+     "PHRASES",
+     720
+    ],
+    [
+     "KICKS",
+     660
+    ],
+    [
+     "SNARES",
+     600
+    ],
+    [
+     "HATS",
+     600
+    ],
+    [
+     "PERC",
+     600
+    ],
+    [
+     "SUB",
+     630
+    ],
+    [
+     "TOMS",
+     340
+    ],
+    [
+     "CLAPS",
+     360
+    ],
+    [
+     "CYMBALS",
+     300
+    ],
+    [
+     "FX",
+     660
+    ],
+    [
+     "SYNTH",
+     800
+    ],
+    [
+     "PADS",
+     720
+    ],
+    [
+     "STABS",
+     390
+    ],
+    [
+     "BLIPS",
+     270
+    ],
+    [
+     "VOX",
+     488
+    ],
+    [
+     "PIANO",
+     455
+    ],
+    [
+     "WAVES",
+     350
+    ],
+    [
+     "ACOUSTIC",
+     455
+    ]
+   ]
+  }
+ },
+ "curate_config.CATEGORIES": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "kick"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "boom bap kick",
+         "trap 808 kick",
+         "punchy techno kick",
+         "deep house kick",
+         "hard techno kick",
+         "distorted industrial kick",
+         "lo-fi dusty kick",
+         "acoustic drum kit kick",
+         "808 sub kick",
+         "909 house kick",
+         "606 electro kick",
+         "clicky click kick",
+         "soft round kick",
+         "tight punchy kick",
+         "long boomy kick",
+         "gated kick",
+         "vinyl crackle kick",
+         "tape saturated kick",
+         "analog warm kick",
+         "digital fm kick",
+         "drum and bass kick",
+         "jungle kick",
+         "footwork kick",
+         "gabber distorted kick",
+         "minimal click kick",
+         "lofi hip hop kick",
+         "deep sub rumble",
+         "snappy attack kick",
+         "dark heavy kick",
+         "bright thin kick",
+         "wooden knock kick",
+         "metallic kick",
+         "noisy gritty kick",
+         "clean studio kick",
+         "vintage drum machine kick",
+         "modular percussion kick",
+         "cardboard box kick",
+         "reggae one drop kick",
+         "punchy funk kick",
+         "dusty vinyl break kick"
+        ]
+       ],
+       [
+        "noise",
+        "(^sd[ _-]|snare|snr|clap|\\bhat\\b|^(?:lt|mt|ht)[._ -]|\\btoms?\\b|low tune)"
+       ],
+       [
+        "trim_lead_db",
+        -40.0
+       ]
+      ]
+     }
+    ],
+    [
+     "SNARES",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "snare"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "tight snare",
+         "fat snare",
+         "clap snare",
+         "rimshot snare",
+         "piccolo snare",
+         "deep snare",
+         "808 snare",
+         "909 snare",
+         "606 snare",
+         "trap snare",
+         "boom bap snare",
+         "acoustic snare",
+         "brushed snare",
+         "gated reverb snare",
+         "lo-fi dusty snare",
+         "crunchy snare",
+         "noisy snare",
+         "clean studio snare",
+         "snappy snare",
+         "wooden snare",
+         "metallic snare",
+         "vinyl crackle snare",
+         "layered snare",
+         "hip hop snare",
+         "drum and bass snare",
+         "jungle snare",
+         "house snare",
+         "techno snare",
+         "industrial snare",
+         "reggae snare",
+         "funk snare",
+         "ghost snare",
+         "cracky snare",
+         "bright snare",
+         "dark snare",
+         "short snare",
+         "long snare",
+         "reverb snare",
+         "dry snare",
+         "punchy snare"
+        ]
+       ],
+       [
+        "noise",
+        "(^bd[ _-]|kick|\\bhat\\b|hi.?hat|cymbal|\\bride\\b|^oh[ _]|^ch[ _])"
+       ],
+       [
+        "trim_lead_db",
+        -40.0
+       ]
+      ]
+     }
+    ],
+    [
+     "HATS",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "hat"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "closed hi-hat",
+         "open hi-hat",
+         "808 hat",
+         "909 hat",
+         "606 hat",
+         "trap hat",
+         "tight hat",
+         "sizzly open hat",
+         "washy hat",
+         "shaker",
+         "tambourine",
+         "analog hat",
+         "acoustic hi-hat",
+         "metallic hat",
+         "noisy hat",
+         "clean hat",
+         "short hat",
+         "long hat",
+         "bright hat",
+         "dark hat",
+         "lo-fi hat",
+         "crispy hat",
+         "pedal hat",
+         "half-open hat",
+         "ticky hat",
+         "white noise hat",
+         "filtered hat",
+         "house hat",
+         "techno hat",
+         "drum and bass hat",
+         "jungle hat",
+         "hip hop hat",
+         "funk hat",
+         "vinyl hat",
+         "dusty hat",
+         "rolling hat",
+         "offbeat hat",
+         "glassy hat",
+         "digital hat",
+         "tape hat"
+        ]
+       ],
+       [
+        "band",
+        "hat"
+       ],
+       [
+        "noise",
+        "(^bd[ _-]|kick|snare|\\bsnr\\b|\\bclap\\b|\\btom\\b|cymbal|crash)"
+       ]
+      ]
+     }
+    ],
+    [
+     "SUB",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "bass"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "808 sub bass",
+         "reese bass",
+         "deep sub bass",
+         "fm bass",
+         "acid squelch bass",
+         "moog bass",
+         "wobble bass",
+         "growl bass",
+         "saw bass",
+         "square bass",
+         "pure sine sub",
+         "plucked bass",
+         "distorted bass",
+         "warm analog bass",
+         "hard reese bass",
+         "neuro bass",
+         "house bass stab",
+         "techno rumble bass",
+         "dub bass",
+         "detuned bass",
+         "gritty bass",
+         "clean sub bass",
+         "punchy bass",
+         "hoover bass",
+         "rubber bass",
+         "organ bass",
+         "upright acoustic bass",
+         "slap bass",
+         "electric finger bass",
+         "donk bass",
+         "brass sub",
+         "metallic bass",
+         "dark sub drone",
+         "bright pluck bass"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ],
+       [
+        "kmax",
+        40
+       ]
+      ]
+     }
+    ],
+    [
+     "SYNTH",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "lead",
+          "bell"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "analog saw lead",
+         "square lead",
+         "supersaw stab",
+         "pluck synth",
+         "bell synth",
+         "fm electric piano",
+         "organ stab",
+         "rhodes key",
+         "grand piano note",
+         "brass stab",
+         "string stab",
+         "choir pad note",
+         "acid lead",
+         "hoover stab",
+         "chiptune lead",
+         "detuned lead",
+         "bright lead",
+         "dark hollow lead",
+         "glassy bell",
+         "metallic lead",
+         "vintage analog synth",
+         "digital fm synth",
+         "mono bass lead",
+         "poly chord stab",
+         "arp pluck",
+         "trance lead",
+         "reese lead",
+         "dusty lofi key",
+         "wavetable lead",
+         "vocal synth stab",
+         "noise sweep stab",
+         "warm pad note",
+         "sync lead"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ],
+       [
+        "kmax",
+        48
+       ]
+      ]
+     }
+    ],
+    [
+     "CLAPS",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "clap"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "808 clap",
+         "909 clap",
+         "trap clap",
+         "layered clap",
+         "single hand clap",
+         "crowd clap",
+         "tight clap",
+         "wide clap",
+         "reverb clap",
+         "gated clap",
+         "snappy clap",
+         "dry clap",
+         "analog clap",
+         "acoustic clap",
+         "finger snap",
+         "lo-fi clap",
+         "distorted clap",
+         "house clap",
+         "techno clap",
+         "hip hop clap",
+         "vinyl clap",
+         "bright clap",
+         "dark clap",
+         "short clap",
+         "long clap",
+         "stacked clap",
+         "noisy clap",
+         "clean clap",
+         "electro clap",
+         "reversed clap"
+        ]
+       ],
+       [
+        "noise",
+        "(kick|snare|\\bhat\\b|\\btom\\b)"
+       ],
+       [
+        "trim_lead_db",
+        -40.0
+       ]
+      ]
+     }
+    ],
+    [
+     "TOMS",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "tom"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "808 tom",
+         "909 tom",
+         "acoustic tom",
+         "floor tom",
+         "rack tom",
+         "rototom",
+         "tuned tom",
+         "deep tom",
+         "high tom",
+         "electronic tom",
+         "analog tom",
+         "synth tom",
+         "descending tom",
+         "gated tom",
+         "reverb tom",
+         "dry tom",
+         "punchy tom",
+         "boomy tom",
+         "short tom",
+         "long tom",
+         "tribal tom",
+         "dark tom",
+         "bright tom",
+         "pitched tom",
+         "fm tom",
+         "lo-fi tom",
+         "vinyl tom",
+         "hand tom",
+         "dub tom",
+         "distorted tom"
+        ]
+       ],
+       [
+        "noise",
+        "(kick|snare|\\bhat\\b|\\bclap\\b|cymbal)"
+       ],
+       [
+        "trim_lead_db",
+        -40.0
+       ]
+      ]
+     }
+    ],
+    [
+     "PERC",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "perc.hand",
+          "perc.wood",
+          "perc.metal",
+          "perc.scrape",
+          "snap"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "conga hit",
+         "bongo hit",
+         "djembe hit",
+         "tabla hit",
+         "cowbell",
+         "woodblock",
+         "clave",
+         "rim click",
+         "shaker hit",
+         "guiro scrape",
+         "cabasa",
+         "agogo bell",
+         "tambourine hit",
+         "triangle ding",
+         "castanet",
+         "metal hit",
+         "anvil clang",
+         "bell percussion",
+         "udu drum",
+         "cajon hit",
+         "timbale",
+         "taiko drum",
+         "frame drum",
+         "wood knock",
+         "metallic perc",
+         "shaken perc",
+         "scraped perc",
+         "hand percussion",
+         "tribal percussion",
+         "glassy perc"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ]
+      ]
+     }
+    ],
+    [
+     "CYMBALS",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "cymbal.crash",
+          "cymbal.ride"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "crash cymbal",
+         "ride cymbal",
+         "splash cymbal",
+         "china cymbal",
+         "reverse cymbal",
+         "ride bell",
+         "sizzle cymbal",
+         "short crash",
+         "long crash wash",
+         "gated crash",
+         "dark crash",
+         "bright crash",
+         "trashy cymbal",
+         "808 cymbal",
+         "electronic cymbal",
+         "cymbal wash",
+         "crash choke",
+         "swelling cymbal",
+         "cymbal roll",
+         "lo-fi cymbal",
+         "vinyl cymbal",
+         "acoustic cymbal",
+         "metallic wash",
+         "shimmer cymbal",
+         "bright ride",
+         "dark ride",
+         "filtered cymbal",
+         "noisy cymbal",
+         "clean cymbal",
+         "hand cymbal"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ],
+       [
+        "band",
+        "cymbal"
+       ]
+      ]
+     }
+    ],
+    [
+     "FX",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "fx.nature",
+          "fx.noise",
+          "fx.impact",
+          "fx.sweep",
+          "fx.whoosh",
+          "fx.rustle"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "riser build-up",
+         "downlifter fall",
+         "sub drop impact",
+         "boom explosion",
+         "gunshot",
+         "laser zap",
+         "sci-fi beam",
+         "white noise sweep",
+         "reverse swell",
+         "tape stop",
+         "vinyl crackle",
+         "record scratch",
+         "glitch stutter",
+         "bitcrush noise",
+         "distortion blast",
+         "radio static",
+         "digital error beep",
+         "alarm siren",
+         "rain and thunder",
+         "wind gust",
+         "ocean waves",
+         "fire crackle",
+         "water droplet",
+         "insect ambience",
+         "metallic scrape",
+         "chain rattle",
+         "paper rustle",
+         "footstep foley",
+         "door slam",
+         "glass shatter",
+         "wood crack",
+         "whoosh swipe",
+         "whip crack",
+         "air burst",
+         "mechanical whir",
+         "engine rumble",
+         "electric zap",
+         "granular texture",
+         "dark drone",
+         "metal hit",
+         "cinematic hit",
+         "fast pass-by",
+         "robot bleep",
+         "arcade game sound",
+         "ring modulated tone",
+         "modem chirp",
+         "synth drop",
+         "police siren"
+        ]
+       ],
+       [
+        "band",
+        "fx"
+       ],
+       [
+        "kmax",
+        40
+       ],
+       [
+        "band_share",
+        {
+         "$dict": [
+          [
+           "riser",
+           0.15
+          ],
+          [
+           "downlifter",
+           0.06
+          ],
+          [
+           "sweep",
+           0.08
+          ],
+          [
+           "impact",
+           0.19
+          ],
+          [
+           "noise",
+           0.14
+          ],
+          [
+           "synth",
+           0.14
+          ],
+          [
+           "foley",
+           0.1
+          ],
+          [
+           "ambience",
+           0.05
+          ],
+          [
+           "whoosh",
+           0.05
+          ],
+          [
+           "scratch",
+           0.04
+          ]
+         ]
+        }
+       ],
+       [
+        "noise",
+        "clap|snare|(?<![a-z])ride(?![a-z])|hi-?hat|(?<![a-z])(oh|ch|hh|bd|sd)(?![a-z])|kick ?drum|(?<![a-z])kick(?![a-z])"
+       ]
+      ]
+     }
+    ],
+    [
+     "VOX",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "vocal"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "vocal chop",
+         "sustained sung note",
+         "spoken word phrase",
+         "rap verse",
+         "vocal ad-lib",
+         "hey shout",
+         "yeah shout",
+         "crowd chant",
+         "choir chord hit",
+         "vocoder robotic vocal",
+         "talkbox vocal",
+         "pitched vocal stab",
+         "female vocal",
+         "male vocal",
+         "whisper",
+         "scream",
+         "gospel soul vocal",
+         "operatic vocal",
+         "baby coo",
+         "laughing",
+         "breath intake",
+         "reversed vocal",
+         "formant vowel",
+         "telephone radio vocal",
+         "lo-fi dusty vocal",
+         "harmonized stack",
+         "beatbox vocal",
+         "vocal riff run",
+         "humming",
+         "glitched vocal cut"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ]
+      ]
+     }
+    ],
+    [
+     "PADS",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "pad"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "warm analog pad",
+         "lush string pad",
+         "dark drone pad",
+         "evolving texture",
+         "glassy pad",
+         "choir pad",
+         "ambient synth pad",
+         "detuned pad",
+         "cinematic swell",
+         "vhs tape pad",
+         "granular texture",
+         "noise wash pad",
+         "bright shimmer pad",
+         "ominous drone",
+         "rhodes pad",
+         "brass pad",
+         "vocal pad",
+         "filtered sweep pad",
+         "fifths pad",
+         "warped texture",
+         "warm strings",
+         "cold digital pad",
+         "sci-fi atmosphere",
+         "organ pad",
+         "airy pad",
+         "sub drone",
+         "metallic texture",
+         "reverb wash",
+         "breathy pad",
+         "tape hiss texture"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ]
+      ]
+     }
+    ],
+    [
+     "STABS",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "stab"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "orchestra hit",
+         "house piano stab",
+         "organ stab",
+         "brass stab",
+         "string stab",
+         "rave stab",
+         "hoover stab",
+         "synth chord stab",
+         "reggae organ stab",
+         "choir stab",
+         "staccato strings",
+         "big band hit",
+         "jazz chord stab",
+         "guitar stab",
+         "funk clav stab",
+         "disco strings hit",
+         "bell stab",
+         "detuned stab",
+         "minor chord stab",
+         "major chord stab",
+         "horn section hit",
+         "vox stab",
+         "saw chord stab",
+         "trance stab",
+         "dub chord stab",
+         "gospel organ stab",
+         "orchestral swell hit",
+         "electric piano stab",
+         "pizzicato stab",
+         "acid stab"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ],
+       [
+        "stab_names",
+        true
+       ]
+      ]
+     }
+    ],
+    [
+     "BLIPS",
+     {
+      "$dict": [
+       [
+        "kind",
+        "oneshot"
+       ],
+       [
+        "labels",
+        {
+         "$tuple": [
+          "blip",
+          "zap"
+         ]
+        }
+       ],
+       [
+        "phrases",
+        [
+         "8-bit blip",
+         "arcade coin",
+         "laser zap",
+         "sine blip",
+         "data beep",
+         "chiptune blip",
+         "modem noise",
+         "short bleep",
+         "high key pluck",
+         "telephone tone",
+         "video game sfx",
+         "retro computer beep",
+         "ping blip",
+         "square blip",
+         "glitch blip",
+         "ui click",
+         "notification chime",
+         "sci-fi blip",
+         "zap pew",
+         "electric spark",
+         "morse code",
+         "digital droplet",
+         "menu select beep",
+         "pixel blip",
+         "high sine ping",
+         "bit noise",
+         "coin pickup",
+         "power up sound",
+         "cursor tick",
+         "radar ping"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ]
+      ]
+     }
+    ],
+    [
+     "DRUMLOOPS",
+     {
+      "$dict": [
+       [
+        "kind",
+        "loop"
+       ],
+       [
+        "labels",
+        null
+       ],
+       [
+        "phrases",
+        [
+         "amen break",
+         "funk drum break",
+         "jungle breakbeat",
+         "hip hop drum break",
+         "boom bap break",
+         "soul drum break",
+         "vinyl drum break",
+         "chopped break",
+         "rolling dnb break",
+         "lo-fi drum loop",
+         "live drum loop",
+         "acoustic drum loop",
+         "dusty break",
+         "half-time break",
+         "two-step break",
+         "ghost-note funk break",
+         "tight studio break",
+         "loose live break",
+         "distorted break",
+         "reggae drum break",
+         "disco drum loop",
+         "techno drum loop",
+         "house drum loop",
+         "percussion loop",
+         "tribal drum loop",
+         "trap drum loop",
+         "footwork drum loop"
+        ]
+       ],
+       [
+        "band",
+        "loop"
+       ],
+       [
+        "anti",
+        [
+         "melodic synth loop",
+         "bassline loop",
+         "chord progression loop",
+         "piano loop",
+         "guitar loop",
+         "vocal loop",
+         "pad texture loop",
+         "arpeggio loop",
+         "string loop",
+         "ambient drone loop",
+         "fx sweep loop",
+         "riser loop",
+         "full music loop",
+         "melodic groove loop",
+         "full track loop with melody",
+         "instrumental beat with melody",
+         "chords and drums loop",
+         "full arrangement loop",
+         "beat with bassline and melody",
+         "song loop"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ],
+       [
+        "break_min",
+        0.3
+       ],
+       [
+        "har_max",
+        0.68
+       ],
+       [
+        "dur_min",
+        1.0
+       ],
+       [
+        "dur_max",
+        16.0
+       ],
+       [
+        "bpm_min",
+        60
+       ],
+       [
+        "bpm_max",
+        200
+       ],
+       [
+        "kdiv",
+        180
+       ],
+       [
+        "kmax",
+        40
+       ],
+       [
+        "kmin",
+        12
+       ],
+       [
+        "drum_tag_required",
+        true
+       ],
+       [
+        "tempo_bands",
+        {
+         "$tuple": [
+          60,
+          70,
+          75,
+          80,
+          85,
+          90,
+          95,
+          100,
+          105,
+          110,
+          115,
+          120,
+          125,
+          130,
+          135,
+          140,
+          145,
+          150,
+          155,
+          160,
+          165,
+          170,
+          175,
+          180,
+          190,
+          201
+         ]
+        }
+       ],
+       [
+        "tempo_fold",
+        {
+         "$tuple": [
+          90.0,
+          180.0
+         ]
+        }
+       ],
+       [
+        "require_tempo",
+        true
+       ],
+       [
+        "path_exclude",
+        {
+         "$re": "(?<![a-z])(?:fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])",
+         "flags": 34
+        }
+       ],
+       [
+        "band_tempo",
+        {
+         "$dict": [
+          [
+           "tops",
+           {
+            "$tuple": [
+             60,
+             90,
+             120,
+             125,
+             130,
+             150,
+             201
+            ]
+           }
+          ],
+          [
+           "classic",
+           {
+            "$tuple": [
+             0,
+             1000
+            ]
+           }
+          ]
+         ]
+        }
+       ],
+       [
+        "folder_max",
+        32
+       ],
+       [
+        "no_fold",
+        {
+         "$re": "hip ?-?hop|trip ?-?hop|down ?-?tempo|lo ?-?fi|boom ?-?bap|nu ?-?jazz|chill ?-?out|reggae|(?<![a-z])dub(?!step)",
+         "flags": 34
+        }
+       ],
+       [
+        "keep_all_bands",
+        {
+         "$tuple": [
+          "classic"
+         ]
+        }
+       ],
+       [
+        "tempo_folder_files",
+        110
+       ]
+      ]
+     }
+    ],
+    [
+     "PHRASES",
+     {
+      "$dict": [
+       [
+        "kind",
+        "loop"
+       ],
+       [
+        "labels",
+        null
+       ],
+       [
+        "phrases",
+        [
+         "303 bassline",
+         "squelchy resonant riff",
+         "rolling sixteenth sequence",
+         "303 lead riff",
+         "reese bass riff",
+         "deep house bassline",
+         "funk bass groove",
+         "dub reggae bassline",
+         "wobble bass riff",
+         "rolling sub bassline",
+         "electro bassline",
+         "slap bass groove",
+         "techno bass sequence",
+         "deep house chords",
+         "dub techno chords",
+         "rave piano riff",
+         "rhodes chord progression",
+         "organ groove",
+         "jazzy keys loop",
+         "detroit chord progression",
+         "lush pad progression",
+         "soul piano loop",
+         "chord stab sequence",
+         "synth arpeggio",
+         "acid lead riff",
+         "rave hoover riff",
+         "melodic synth lead",
+         "plucked synth sequence",
+         "chiptune melody",
+         "detroit synth melody",
+         "trance lead riff",
+         "bleep sequence",
+         "modular sequence",
+         "funk guitar riff",
+         "string swell",
+         "pizzicato strings",
+         "brass section riff",
+         "flute melody",
+         "reggae guitar skank",
+         "blues guitar riff",
+         "orchestral string phrase",
+         "sitar melody",
+         "jazz horn riff"
+        ]
+       ],
+       [
+        "anti",
+        [
+         "amen break",
+         "funk drum break",
+         "jungle breakbeat",
+         "hip hop drum break",
+         "boom bap break",
+         "soul drum break",
+         "vinyl drum break",
+         "chopped break",
+         "rolling dnb break",
+         "lo-fi drum loop",
+         "live drum loop",
+         "acoustic drum loop",
+         "dusty break",
+         "half-time break",
+         "two-step break",
+         "ghost-note funk break",
+         "tight studio break",
+         "loose live break",
+         "distorted break",
+         "reggae drum break",
+         "disco drum loop",
+         "techno drum loop",
+         "house drum loop",
+         "percussion loop",
+         "tribal drum loop",
+         "trap drum loop",
+         "footwork drum loop"
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ],
+       [
+        "dims",
+        [
+         {
+          "$tuple": [
+           "br",
+           {
+            "$tuple": [
+             "dark",
+             "bright"
+            ]
+           }
+          ]
+         },
+         {
+          "$tuple": [
+           "noi",
+           {
+            "$tuple": [
+             "clean",
+             "gritty"
+            ]
+           }
+          ]
+         },
+         {
+          "$tuple": [
+           "atk",
+           {
+            "$tuple": [
+             "plucky",
+             "swelling"
+            ]
+           }
+          ]
+         }
+        ]
+       ],
+       [
+        "break_min",
+        0.0
+       ],
+       [
+        "dur_min",
+        1.0
+       ],
+       [
+        "dur_max",
+        20.0
+       ],
+       [
+        "bpm_min",
+        60
+       ],
+       [
+        "bpm_max",
+        200
+       ],
+       [
+        "band",
+        "phrase"
+       ],
+       [
+        "band_share",
+        {
+         "$dict": [
+          [
+           "acid",
+           0.1
+          ],
+          [
+           "bass",
+           0.15
+          ],
+          [
+           "chords",
+           0.3
+          ],
+          [
+           "lead",
+           0.25
+          ],
+          [
+           "live",
+           0.2
+          ]
+         ]
+        }
+       ],
+       [
+        "folder_max",
+        20
+       ],
+       [
+        "tempo_bands",
+        {
+         "$tuple": [
+          60,
+          90,
+          120,
+          140,
+          201
+         ]
+        }
+       ],
+       [
+        "tempo_fold",
+        {
+         "$tuple": [
+          90.0,
+          180.0
+         ]
+        }
+       ],
+       [
+        "kdiv",
+        100000
+       ],
+       [
+        "kmax",
+        8
+       ],
+       [
+        "kmin",
+        8
+       ],
+       [
+        "chain_guard",
+        null
+       ],
+       [
+        "loop_guard",
+        null
+       ],
+       [
+        "name_instruments",
+        "phrase"
+       ],
+       [
+        "dir_cap",
+        30
+       ]
+      ]
+     }
+    ],
+    [
+     "PIANO",
+     {
+      "$dict": [
+       [
+        "kind",
+        "instrument"
+       ],
+       [
+        "labels",
+        null
+       ],
+       [
+        "pack_re",
+        {
+         "$re": "(?!)",
+         "flags": 34
+        }
+       ],
+       [
+        "phrases",
+        [
+         "grand piano note",
+         "bright grand piano",
+         "mellow grand piano",
+         "upright piano note",
+         "electric piano note",
+         "rhodes note",
+         "wurlitzer note",
+         "warm electric piano",
+         "clavinet note",
+         "tine electric piano"
+        ]
+       ],
+       [
+        "dims",
+        [
+         {
+          "$tuple": [
+           "br",
+           {
+            "$tuple": [
+             "dark",
+             "bright"
+            ]
+           }
+          ]
+         },
+         {
+          "$tuple": [
+           "noi",
+           {
+            "$tuple": [
+             "clean",
+             "airy"
+            ]
+           }
+          ]
+         },
+         {
+          "$tuple": [
+           "har",
+           {
+            "$tuple": [
+             "noisy",
+             "tonal"
+            ]
+           }
+          ]
+         }
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ],
+       [
+        "clap_source",
+        true
+       ],
+       [
+        "chord_band",
+        true
+       ],
+       [
+        "band",
+        "chord"
+       ],
+       [
+        "clap_anti",
+        [
+         "drum hit",
+         "synth bass note",
+         "sawtooth synth lead",
+         "string section",
+         "brass section",
+         "pad texture",
+         "bell chime",
+         "vocal note",
+         "pluck synth",
+         "organ chord",
+         "acoustic guitar note",
+         "percussion hit"
+        ]
+       ],
+       [
+        "clap_min",
+        0.3
+       ],
+       [
+        "pool_labels",
+        [
+         "lead",
+         "bass",
+         "blip",
+         "stab"
+        ]
+       ],
+       [
+        "max_onsets",
+        2.0
+       ],
+       [
+        "min_chroma",
+        1.6
+       ],
+       [
+        "dur_max",
+        30.0
+       ],
+       [
+        "ableton_exclude",
+        [
+         "Violin",
+         "Viola",
+         "Cello",
+         "Double Bass",
+         "Upright Bass",
+         "Acoustic Bass",
+         "String Ensemble",
+         "Misc Strings",
+         "Harp",
+         "Sitar",
+         "Misc Plucked",
+         "Flute",
+         "Clarinet",
+         "Oboe",
+         "Bassoon",
+         "English Horn",
+         "Woodwind Ensemble",
+         "Sax",
+         "Misc Woodwind",
+         "Trumpet",
+         "Trombone",
+         "Tuba",
+         "French Horn",
+         "Brass Ensemble",
+         "Timpani",
+         "Gong",
+         "Classical Guitar",
+         "Acoustic Guitar",
+         "Electric Guitar",
+         "Xylophone",
+         "Vibraphone",
+         "Marimba",
+         "Glockenspiel",
+         "Misc Mallets",
+         "Bell Chromatic",
+         "Chime"
+        ]
+       ],
+       [
+        "ableton_exclude_unless_name",
+        {
+         "$re": "piano|rhodes|wurli|clavinet|\\bclav\\b|harpsichord",
+         "flags": 34
+        }
+       ],
+       [
+        "kdiv",
+        40
+       ],
+       [
+        "kmax",
+        14
+       ],
+       [
+        "kmin",
+        6
+       ]
+      ]
+     }
+    ],
+    [
+     "WAVES",
+     {
+      "$dict": [
+       [
+        "kind",
+        "waves"
+       ],
+       [
+        "labels",
+        null
+       ],
+       [
+        "phrases",
+        [
+         "pure sine tone",
+         "bright sawtooth buzz",
+         "hollow square wave",
+         "thin pulse wave",
+         "soft triangle tone",
+         "metallic fm tone",
+         "vocal formant tone",
+         "noisy digital tone",
+         "organ drawbar tone",
+         "reedy nasal tone",
+         "bell-like tone",
+         "gritty bitcrushed tone"
+        ]
+       ],
+       [
+        "dims",
+        [
+         {
+          "$tuple": [
+           "br",
+           {
+            "$tuple": [
+             "dark",
+             "bright"
+            ]
+           }
+          ]
+         },
+         {
+          "$tuple": [
+           "noi",
+           {
+            "$tuple": [
+             "smooth",
+             "gritty"
+            ]
+           }
+          ]
+         },
+         {
+          "$tuple": [
+           "har",
+           {
+            "$tuple": [
+             "inharmonic",
+             "pure"
+            ]
+           }
+          ]
+         }
+        ]
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ],
+       [
+        "band",
+        "wave"
+       ],
+       [
+        "near_dup_cos",
+        1.0
+       ],
+       [
+        "kmin",
+        6
+       ],
+       [
+        "kmax",
+        16
+       ],
+       [
+        "kdiv",
+        60
+       ]
+      ]
+     }
+    ],
+    [
+     "ACOUSTIC",
+     {
+      "$dict": [
+       [
+        "kind",
+        "instrument"
+       ],
+       [
+        "labels",
+        null
+       ],
+       [
+        "pack_re",
+        {
+         "$re": "(?!)",
+         "flags": 34
+        }
+       ],
+       [
+        "phrases",
+        [
+         "grand piano note",
+         "electric piano",
+         "mellow keys",
+         "bright piano",
+         "lush strings",
+         "bold brass section",
+         "airy woodwinds",
+         "bright mallets"
+        ]
+       ],
+       [
+        "dims",
+        [
+         {
+          "$tuple": [
+           "br",
+           {
+            "$tuple": [
+             "dark",
+             "bright"
+            ]
+           }
+          ]
+         },
+         {
+          "$tuple": [
+           "noi",
+           {
+            "$tuple": [
+             "clean",
+             "airy"
+            ]
+           }
+          ]
+         },
+         {
+          "$tuple": [
+           "har",
+           {
+            "$tuple": [
+             "noisy",
+             "tonal"
+            ]
+           }
+          ]
+         }
+        ]
+       ],
+       [
+        "name_any",
+        {
+         "$re": "(?<!bass )(?<!bass)guitar|zither|(?<![a-z])lyre|(?<![a-z])harp(?!si)|banjo|sitar|koto|mandolin|ukulele|cigar ?box|bouzouki|(?<![a-z])oud(?![a-z])|balalaika|dulcimer|(?<![a-z])lute(?![a-z])|nylon[ _-]?(?:string|gtr)|(?:string|gtr)[ _-]?nylon|steel[ _-]?string",
+         "flags": 34
+        }
+       ],
+       [
+        "band",
+        "acoustic"
+       ],
+       [
+        "band_share",
+        {
+         "$dict": [
+          [
+           "string",
+           0.3
+          ],
+          [
+           "wind",
+           0.2
+          ],
+          [
+           "plucked",
+           0.25
+          ],
+          [
+           "mallet",
+           0.25
+          ]
+         ]
+        }
+       ],
+       [
+        "band_min_folders",
+        2
+       ],
+       [
+        "noise",
+        "(?!x)x"
+       ],
+       [
+        "max_onsets",
+        2.5
+       ],
+       [
+        "dur_max",
+        30.0
+       ],
+       [
+        "ableton_any",
+        [
+         "Violin",
+         "Viola",
+         "Cello",
+         "Double Bass",
+         "Upright Bass",
+         "Acoustic Bass",
+         "String Ensemble",
+         "Misc Strings",
+         "Harp",
+         "Sitar",
+         "Misc Plucked",
+         "Flute",
+         "Clarinet",
+         "Oboe",
+         "Bassoon",
+         "English Horn",
+         "Woodwind Ensemble",
+         "Sax",
+         "Misc Woodwind",
+         "Trumpet",
+         "Trombone",
+         "Tuba",
+         "French Horn",
+         "Brass Ensemble",
+         "Timpani",
+         "Gong",
+         "Classical Guitar",
+         "Acoustic Guitar",
+         "Electric Guitar",
+         "Xylophone",
+         "Vibraphone",
+         "Marimba",
+         "Glockenspiel",
+         "Misc Mallets",
+         "Bell Chromatic",
+         "Chime"
+        ]
+       ],
+       [
+        "pack_exclude",
+        {
+         "$re": "(?!)",
+         "flags": 34
+        }
+       ],
+       [
+        "name_exclude",
+        {
+         "$re": "piano|rhodes|wurli|clavinet|\\bclav\\b|harpsichord|(?<![a-z])(?:fm|synth\\w*|saw(?:tooth)?|square|pwm|303|moog|juno)(?![a-z])",
+         "flags": 34
+        }
+       ],
+       [
+        "kdiv",
+        20
+       ],
+       [
+        "kmax",
+        30
+       ],
+       [
+        "kmin",
+        12
+       ]
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "curate_config.CATEGORIES_OFF": {
+  "type": "set",
+  "value": {
+   "$set": []
+  }
+ },
+ "curate_config.CATEGORY_ORDER": {
+  "type": "list",
+  "value": [
+   "KICKS",
+   "SNARES",
+   "CLAPS",
+   "HATS",
+   "CYMBALS",
+   "TOMS",
+   "PERC",
+   "DRUMLOOPS",
+   "PHRASES",
+   "SUB",
+   "SYNTH",
+   "STABS",
+   "PADS",
+   "PIANO",
+   "ACOUSTIC",
+   "WAVES",
+   "FX",
+   "BLIPS",
+   "VOX"
+  ]
+ },
+ "curate_config.CLAP_PHRASES": {
+  "type": "list",
+  "value": [
+   "808 clap",
+   "909 clap",
+   "trap clap",
+   "layered clap",
+   "single hand clap",
+   "crowd clap",
+   "tight clap",
+   "wide clap",
+   "reverb clap",
+   "gated clap",
+   "snappy clap",
+   "dry clap",
+   "analog clap",
+   "acoustic clap",
+   "finger snap",
+   "lo-fi clap",
+   "distorted clap",
+   "house clap",
+   "techno clap",
+   "hip hop clap",
+   "vinyl clap",
+   "bright clap",
+   "dark clap",
+   "short clap",
+   "long clap",
+   "stacked clap",
+   "noisy clap",
+   "clean clap",
+   "electro clap",
+   "reversed clap"
+  ]
+ },
+ "curate_config.CLASSIC_BREAK_PATH_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.CLASSIC_BREAK_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])amen(?![a-z])|classic ?breaks?",
+   "flags": 34
+  }
+ },
+ "curate_config.CURATION_SEED": {
+  "type": "int",
+  "value": 0
+ },
+ "curate_config.CYMBAL_CRASH_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:crash(?:es)?|splash|china)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.CYMBAL_PHRASES": {
+  "type": "list",
+  "value": [
+   "crash cymbal",
+   "ride cymbal",
+   "splash cymbal",
+   "china cymbal",
+   "reverse cymbal",
+   "ride bell",
+   "sizzle cymbal",
+   "short crash",
+   "long crash wash",
+   "gated crash",
+   "dark crash",
+   "bright crash",
+   "trashy cymbal",
+   "808 cymbal",
+   "electronic cymbal",
+   "cymbal wash",
+   "crash choke",
+   "swelling cymbal",
+   "cymbal roll",
+   "lo-fi cymbal",
+   "vinyl cymbal",
+   "acoustic cymbal",
+   "metallic wash",
+   "shimmer cymbal",
+   "bright ride",
+   "dark ride",
+   "filtered cymbal",
+   "noisy cymbal",
+   "clean cymbal",
+   "hand cymbal"
+  ]
+ },
+ "curate_config.CYMBAL_RIDE_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])rides?(?![a-z])|(?<![a-z])rd(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.DEMO_PATH": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(ableton folder info/previews|/demos?/|[ _-]demo[s]?[ _.)\\-]|\\bpreview\\b|full[ _-]?(mix|track|song)|construction[ _-]?kit)",
+   "flags": 34
+  }
+ },
+ "curate_config.DERIVED_DIRS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KITS",
+     "00_KITS"
+    ],
+    [
+     "SLICE",
+     "00_SLICE"
+    ]
+   ]
+  }
+ },
+ "curate_config.DESCRIBE": {
+  "type": "bool",
+  "value": false
+ },
+ "curate_config.DRUMLOOP_STYLE_EXCLUDE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.DRUM_LEVEL_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "CLAPS",
+    "CYMBALS",
+    "HATS",
+    "KICKS",
+    "PERC",
+    "SNARES",
+    "TOMS"
+   ]
+  }
+ },
+ "curate_config.DRUM_LEVEL_OVER_DB": {
+  "type": "float",
+  "value": 3.0
+ },
+ "curate_config.DRUM_MACHINES": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     "909",
+     "(?<![0-9])909(?![0-9])"
+    ]
+   },
+   {
+    "$tuple": [
+     "808",
+     "(?<![0-9])808(?![0-9])"
+    ]
+   },
+   {
+    "$tuple": [
+     "707",
+     "(?<![0-9])(?:707|727)(?![0-9])"
+    ]
+   },
+   {
+    "$tuple": [
+     "606",
+     "(?<![0-9])606(?![0-9])"
+    ]
+   },
+   {
+    "$tuple": [
+     "cr78",
+     "cr-?78"
+    ]
+   },
+   {
+    "$tuple": [
+     "linndrum",
+     "linn|lindrum|(?<![a-z])lm-?1(?![0-9])"
+    ]
+   },
+   {
+    "$tuple": [
+     "dmx",
+     "(?<![a-z])dmx"
+    ]
+   },
+   {
+    "$tuple": [
+     "drumulator",
+     "drumulat"
+    ]
+   },
+   {
+    "$tuple": [
+     "drumtraks",
+     "drumtra[xk]"
+    ]
+   },
+   {
+    "$tuple": [
+     "sp1200",
+     "sp-?1200"
+    ]
+   },
+   {
+    "$tuple": [
+     "mpc60",
+     "mpc ?60(?![0-9])"
+    ]
+   },
+   {
+    "$tuple": [
+     "mpc3000",
+     "mpc ?3000|mpc3k"
+    ]
+   },
+   {
+    "$tuple": [
+     "simmons",
+     "simmons|sds ?v|sdsv|sds ?800"
+    ]
+   },
+   {
+    "$tuple": [
+     "synare",
+     "synare"
+    ]
+   },
+   {
+    "$tuple": [
+     "rytm",
+     "analog ?rytm"
+    ]
+   },
+   {
+    "$tuple": [
+     "505",
+     "(?<![0-9])505(?![0-9])"
+    ]
+   },
+   {
+    "$tuple": [
+     "626",
+     "(?<![0-9])626(?![0-9])"
+    ]
+   }
+  ]
+ },
+ "curate_config.DRUM_MACHINES_EXTRA": {
+  "type": "list",
+  "value": []
+ },
+ "curate_config.DRUM_MACHINE_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "CLAPS",
+    "CYMBALS",
+    "HATS",
+    "KICKS",
+    "PERC",
+    "SNARES",
+    "TOMS"
+   ]
+  }
+ },
+ "curate_config.DRUM_NAME_FROM": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "BLIPS",
+    "CLAPS",
+    "CYMBALS",
+    "FX",
+    "HATS",
+    "KICKS",
+    "PADS",
+    "PERC",
+    "SNARES",
+    "SUB",
+    "SYNTH",
+    "TOMS"
+   ]
+  }
+ },
+ "curate_config.DRUM_NAME_RULES": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])(?:kicks?|kiks?|bds?|bass ?drums?)(?![a-z])|(?<![a-z])bass(?= ?sds ?800)|(?-i:(?<=[a-z])Kick)",
+      "flags": 34
+     },
+     "KICKS"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])(?:snares?|snrs?|sd|rims?|rimshots?|sidesticks?|side ?stick)(?![a-z])|^rs(?= )|(?-i:(?<=[a-z])Snare)",
+      "flags": 34
+     },
+     "SNARES"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])(?:clap|claps|handclap|snaps?|finger ?snaps?)(?![a-z])",
+      "flags": 34
+     },
+     "CLAPS"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "hi-?hats?|hihats?|(?<![a-z])(?:hh|oh|ch|hat|hats|shakers?|tambourines?)(?![a-z])",
+      "flags": 34
+     },
+     "HATS"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![A-Za-z])(?:Tom|tom|Toms|toms)(?![a-z])",
+      "flags": 32
+     },
+     "TOMS"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "cymbal|(?<![a-z])(?:crash|ride|cy|cymbs?|splash|china)(?![a-z])|(?-i:(?<=[a-z])Cymb)",
+      "flags": 34
+     },
+     "CYMBALS"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])(?:conga|bongo|cowbell|clave|woodblock|timbale|agogo)s?(?![a-z])",
+      "flags": 34
+     },
+     "PERC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])zaps?(?![a-z])",
+      "flags": 34
+     },
+     "BLIPS"
+    ]
+   }
+  ]
+ },
+ "curate_config.DUR_CAP": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     4.0
+    ],
+    [
+     "SNARES",
+     3.0
+    ],
+    [
+     "CLAPS",
+     3.0
+    ],
+    [
+     "HATS",
+     4.0
+    ],
+    [
+     "TOMS",
+     5.0
+    ],
+    [
+     "PERC",
+     4.0
+    ],
+    [
+     "CYMBALS",
+     12.0
+    ],
+    [
+     "SUB",
+     8.0
+    ],
+    [
+     "SYNTH",
+     10.0
+    ],
+    [
+     "STABS",
+     4.0
+    ],
+    [
+     "PADS",
+     20.0
+    ],
+    [
+     "VOX",
+     20.0
+    ],
+    [
+     "BLIPS",
+     3.0
+    ],
+    [
+     "FX",
+     30.0
+    ]
+   ]
+  }
+ },
+ "curate_config.EDGE_FADE_MS": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate_config.EDGE_HOT_DB": {
+  "type": "float",
+  "value": -40.0
+ },
+ "curate_config.END_FADE_MS": {
+  "type": "float",
+  "value": 10.0
+ },
+ "curate_config.END_HOT_DB": {
+  "type": "float",
+  "value": -40.0
+ },
+ "curate_config.FAMILY_NAME_MAX": {
+  "type": "int",
+  "value": 44
+ },
+ "curate_config.FAVORED_SOURCES": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.FOLDER_MAX": {
+  "type": "int",
+  "value": 12
+ },
+ "curate_config.FOLDER_MIN": {
+  "type": "int",
+  "value": 3
+ },
+ "curate_config.FOLDER_MIN_FILES": {
+  "type": "int",
+  "value": 15
+ },
+ "curate_config.FOLDER_TARGET_FILES": {
+  "type": "int",
+  "value": 45
+ },
+ "curate_config.FOLD_ANYWAY_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "jungle|dnb|drum ?(?:&|and|n|'n') ?bass|break|rave|amen|hardcore",
+   "flags": 34
+  }
+ },
+ "curate_config.FX_AB_BANDS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "Impact",
+     "impact"
+    ],
+    [
+     "Sweep",
+     "sweep"
+    ],
+    [
+     "Noise",
+     "noise"
+    ],
+    [
+     "Field & Foley",
+     "foley"
+    ]
+   ]
+  }
+ },
+ "curate_config.FX_BANDS": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     "Explosions & Shots",
+     "impact"
+    ]
+   },
+   {
+    "$tuple": [
+     "Whooshes & Whips",
+     "whoosh"
+    ]
+   },
+   {
+    "$tuple": [
+     "Sweeps & Lasers",
+     "sweep"
+    ]
+   },
+   {
+    "$tuple": [
+     "Noise & Distortion",
+     "noise"
+    ]
+   },
+   {
+    "$tuple": [
+     "Nature & Athmospheric",
+     "ambience"
+    ]
+   },
+   {
+    "$tuple": [
+     "Cracks & Rustle",
+     "foley"
+    ]
+   }
+  ]
+ },
+ "curate_config.FX_BAND_PHRASES": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "impact",
+     [
+      "boom explosion",
+      "sub drop impact",
+      "gunshot",
+      "distortion blast",
+      "door slam",
+      "glass shatter",
+      "metal hit",
+      "cinematic hit"
+     ]
+    ],
+    [
+     "whoosh",
+     [
+      "whoosh swipe",
+      "whip crack",
+      "air burst",
+      "fast pass-by",
+      "reverse swell"
+     ]
+    ],
+    [
+     "sweep",
+     [
+      "white noise sweep",
+      "laser zap",
+      "sci-fi beam",
+      "tape stop",
+      "reverse swell"
+     ]
+    ],
+    [
+     "riser",
+     [
+      "riser build-up",
+      "white noise sweep",
+      "reverse swell",
+      "sci-fi beam"
+     ]
+    ],
+    [
+     "downlifter",
+     [
+      "downlifter fall",
+      "white noise sweep",
+      "tape stop"
+     ]
+    ],
+    [
+     "noise",
+     [
+      "radio static",
+      "bitcrush noise",
+      "glitch stutter",
+      "vinyl crackle",
+      "digital error beep",
+      "electric zap",
+      "distortion blast"
+     ]
+    ],
+    [
+     "ambience",
+     [
+      "rain and thunder",
+      "wind gust",
+      "ocean waves",
+      "fire crackle",
+      "water droplet",
+      "insect ambience",
+      "dark drone",
+      "engine rumble",
+      "granular texture"
+     ]
+    ],
+    [
+     "foley",
+     [
+      "footstep foley",
+      "metallic scrape",
+      "chain rattle",
+      "paper rustle",
+      "wood crack",
+      "mechanical whir",
+      "door slam",
+      "glass shatter"
+     ]
+    ],
+    [
+     "synth",
+     [
+      "alarm siren",
+      "sci-fi beam",
+      "laser zap",
+      "digital error beep",
+      "robot bleep",
+      "arcade game sound",
+      "ring modulated tone",
+      "modem chirp",
+      "synth drop",
+      "police siren"
+     ]
+    ]
+   ]
+  }
+ },
+ "curate_config.FX_BAND_SHARE": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "riser",
+     0.15
+    ],
+    [
+     "downlifter",
+     0.06
+    ],
+    [
+     "sweep",
+     0.08
+    ],
+    [
+     "impact",
+     0.19
+    ],
+    [
+     "noise",
+     0.14
+    ],
+    [
+     "synth",
+     0.14
+    ],
+    [
+     "foley",
+     0.1
+    ],
+    [
+     "ambience",
+     0.05
+    ],
+    [
+     "whoosh",
+     0.05
+    ],
+    [
+     "scratch",
+     0.04
+    ]
+   ]
+  }
+ },
+ "curate_config.FX_DRUM_SON": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "Perc Kicks",
+    "Perc Snares",
+    "Perc Claps",
+    "Perc Hats & Shakers",
+    "Perc Cymbal Crashes",
+    "Perc Cymbal Rides",
+    "Perc Toms"
+   ]
+  }
+ },
+ "curate_config.FX_FALL_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:down ?lift(?:er)?s?|falls?|falling|fx ?down|sweep ?down|down ?sweep)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.FX_PHRASES": {
+  "type": "list",
+  "value": [
+   "riser build-up",
+   "downlifter fall",
+   "sub drop impact",
+   "boom explosion",
+   "gunshot",
+   "laser zap",
+   "sci-fi beam",
+   "white noise sweep",
+   "reverse swell",
+   "tape stop",
+   "vinyl crackle",
+   "record scratch",
+   "glitch stutter",
+   "bitcrush noise",
+   "distortion blast",
+   "radio static",
+   "digital error beep",
+   "alarm siren",
+   "rain and thunder",
+   "wind gust",
+   "ocean waves",
+   "fire crackle",
+   "water droplet",
+   "insect ambience",
+   "metallic scrape",
+   "chain rattle",
+   "paper rustle",
+   "footstep foley",
+   "door slam",
+   "glass shatter",
+   "wood crack",
+   "whoosh swipe",
+   "whip crack",
+   "air burst",
+   "mechanical whir",
+   "engine rumble",
+   "electric zap",
+   "granular texture",
+   "dark drone"
+  ]
+ },
+ "curate_config.FX_RISE_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:up ?lift(?:er)?s?|risers?|rise|rising|fx ?up|build ?ups?|sweep ?up|up ?sweep)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.FX_SCRATCH_PHRASES": {
+  "type": "list",
+  "value": [
+   "turntable scratch",
+   "baby scratch",
+   "chirp scratch",
+   "transformer scratch",
+   "record stop",
+   "vinyl rewind",
+   "vinyl spinback",
+   "echo scratch",
+   "scribble scratch",
+   "hip hop scratch"
+  ]
+ },
+ "curate_config.FX_SYNTH_SON": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "Tone Leads",
+    "Tone Bass",
+    "Tone Blips",
+    "Tone Stabs",
+    "Perc Zaps"
+   ]
+  }
+ },
+ "curate_config.FX_TRANSITION_FROM": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "BLIPS",
+    "PADS",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "VOX"
+   ]
+  }
+ },
+ "curate_config.FX_TRANSITION_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:up ?lift(?:er)?s?|down ?lift(?:er)?s?|risers?|sweep(?:s|ing)?|build ?ups?|fx ?up|fx ?down)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.FX_TRANSITION_NOT_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])pads?(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.GENERIC_ACOUSTIC_TAGS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "Misc Plucked",
+    "Misc Strings",
+    "Misc Woodwind",
+    "Misc Mallets",
+    "Bell Chromatic",
+    "Chime"
+   ]
+  }
+ },
+ "curate_config.GENRE_SUPPORT_MIN": {
+  "type": "float",
+  "value": 0.3
+ },
+ "curate_config.GENRE_WORDS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "909",
+     "909"
+    ],
+    [
+     "808",
+     "808"
+    ],
+    [
+     "606",
+     "606"
+    ],
+    [
+     "707",
+     "707|727"
+    ],
+    [
+     "303",
+     "303|acid"
+    ],
+    [
+     "cr78",
+     "cr-?78"
+    ],
+    [
+     "linndrum",
+     "linn|lindrum|(?<![a-z])lm-?1(?![0-9])"
+    ],
+    [
+     "dmx",
+     "(?<![a-z])dmx"
+    ],
+    [
+     "drumulator",
+     "drumulator"
+    ],
+    [
+     "drumtraks",
+     "drumtra[xk]"
+    ],
+    [
+     "sp1200",
+     "sp-?1200"
+    ],
+    [
+     "mpc60",
+     "mpc ?60(?![0-9])"
+    ],
+    [
+     "mpc3000",
+     "mpc ?3000|mpc3k"
+    ],
+    [
+     "simmons",
+     "simmons|sds ?v|sdsv|sds ?800"
+    ],
+    [
+     "synare",
+     "synare"
+    ],
+    [
+     "rytm",
+     "rytm"
+    ],
+    [
+     "acid",
+     "acid|303"
+    ],
+    [
+     "house",
+     "house"
+    ],
+    [
+     "techno",
+     "techno"
+    ],
+    [
+     "footwork",
+     "footwork|juke"
+    ],
+    [
+     "reggae",
+     "reggae|dub(?!step)"
+    ],
+    [
+     "dub",
+     "dub(?!step)"
+    ],
+    [
+     "dubstep",
+     "dubstep"
+    ],
+    [
+     "jungle",
+     "jungle|@jt@"
+    ],
+    [
+     "dnb",
+     "dnb|drum ?(?:&|and|n|'n') ?bass|(?<![a-z])d ?& ?b(?![a-z])|jungle"
+    ],
+    [
+     "drum and bass",
+     "dnb|drum ?(?:&|and|n|'n') ?bass|(?<![a-z])d ?& ?b(?![a-z])|jungle"
+    ],
+    [
+     "trance",
+     "trance"
+    ],
+    [
+     "rave",
+     "rave|hardcore"
+    ],
+    [
+     "hardcore",
+     "hardcore|rave"
+    ],
+    [
+     "hip hop",
+     "hip ?-?hop"
+    ],
+    [
+     "boom bap",
+     "boom ?-?bap"
+    ],
+    [
+     "disco",
+     "disco"
+    ],
+    [
+     "gospel",
+     "gospel"
+    ],
+    [
+     "funk",
+     "funk"
+    ],
+    [
+     "soul",
+     "soul"
+    ],
+    [
+     "jazz",
+     "jazz"
+    ],
+    [
+     "blues",
+     "blues"
+    ],
+    [
+     "detroit",
+     "detroit"
+    ],
+    [
+     "amen",
+     "amen"
+    ],
+    [
+     "garage",
+     "garage|2 ?-?step|ukg"
+    ],
+    [
+     "trap",
+     "(?<![a-z])trap"
+    ],
+    [
+     "tribal",
+     "tribal"
+    ],
+    [
+     "electro",
+     "electro"
+    ],
+    [
+     "m1",
+     "(?<![a-z])m1(?![a-z])|korg"
+    ],
+    [
+     "ragga",
+     "ragga|reggae|dancehall|jungle"
+    ],
+    [
+     "dancehall",
+     "dancehall|ragga|reggae"
+    ]
+   ]
+  }
+ },
+ "curate_config.HAT_CLOSED_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "closed|(?<![a-z])c\\.?h(?:h)?(?![a-z])|pedal|(?<![a-z])p\\.?h(?![a-z])|tight",
+   "flags": 34
+  }
+ },
+ "curate_config.HAT_OPEN_MIN_S": {
+  "type": "float",
+  "value": 0.35
+ },
+ "curate_config.HAT_OPEN_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "open|(?<![a-z])o\\.?h(?:h)?(?![a-z])|sizzl|washy",
+   "flags": 34
+  }
+ },
+ "curate_config.HAT_PHRASES": {
+  "type": "list",
+  "value": [
+   "closed hi-hat",
+   "open hi-hat",
+   "808 hat",
+   "909 hat",
+   "606 hat",
+   "trap hat",
+   "tight hat",
+   "sizzly open hat",
+   "washy hat",
+   "shaker",
+   "tambourine",
+   "analog hat",
+   "acoustic hi-hat",
+   "metallic hat",
+   "noisy hat",
+   "clean hat",
+   "short hat",
+   "long hat",
+   "bright hat",
+   "dark hat",
+   "lo-fi hat",
+   "crispy hat",
+   "pedal hat",
+   "half-open hat",
+   "ticky hat",
+   "white noise hat",
+   "filtered hat",
+   "house hat",
+   "techno hat",
+   "drum and bass hat",
+   "jungle hat",
+   "hip hop hat",
+   "funk hat",
+   "vinyl hat",
+   "dusty hat",
+   "rolling hat",
+   "offbeat hat",
+   "glassy hat",
+   "digital hat",
+   "tape hat"
+  ]
+ },
+ "curate_config.HIT_LEAD_FLOOR_DB": {
+  "type": "float",
+  "value": -40.0
+ },
+ "curate_config.INSTRUMENT_CAP": {
+  "type": "int",
+  "value": 20
+ },
+ "curate_config.INSTRUMENT_PACKS": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.INSTRUMENT_LABELS_EXTRA": {
+  "type": "list",
+  "value": []
+ },
+ "curate_config.INSTRUMENT_PACK_MAX_SHARE": {
+  "type": "float",
+  "value": 0.2
+ },
+ "curate_config.INSTRUMENT_WORDS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "agogo",
+     "agogo"
+    ],
+    [
+     "bongo",
+     "bongo"
+    ],
+    [
+     "cabasa",
+     "cabasa"
+    ],
+    [
+     "cajon",
+     "cajon"
+    ],
+    [
+     "castanet",
+     "castanet"
+    ],
+    [
+     "china",
+     "china"
+    ],
+    [
+     "clave",
+     "clave"
+    ],
+    [
+     "conga",
+     "conga|tumba|quinto"
+    ],
+    [
+     "cowbell",
+     "cow ?bell|(?<![a-z])cb(?![a-z])"
+    ],
+    [
+     "djembe",
+     "djembe"
+    ],
+    [
+     "guiro",
+     "guiro"
+    ],
+    [
+     "pedal",
+     "pedal|(?<![a-z])ph(?![a-z])|foot"
+    ],
+    [
+     "rimshot",
+     "rim|(?<![a-z])rs(?![a-z])|side ?stick"
+    ],
+    [
+     "rim",
+     "rim|(?<![a-z])rs(?![a-z])|side ?stick"
+    ],
+    [
+     "ride",
+     "ride"
+    ],
+    [
+     "rototom",
+     "roto"
+    ],
+    [
+     "tabla",
+     "tabla"
+    ],
+    [
+     "taiko",
+     "taiko"
+    ],
+    [
+     "tambourine",
+     "tamb"
+    ],
+    [
+     "timbale",
+     "timbal"
+    ],
+    [
+     "triangle",
+     "triang"
+    ],
+    [
+     "udu",
+     "(?<![a-z])udu"
+    ],
+    [
+     "woodblock",
+     "wood ?block|(?<![a-z])wb(?![a-z])"
+    ],
+    [
+     "anvil",
+     "anvil"
+    ],
+    [
+     "shaker",
+     "shak|maraca|cabasa"
+    ],
+    [
+     "clav",
+     "clav"
+    ],
+    [
+     "clavinet",
+     "clav"
+    ],
+    [
+     "rhodes",
+     "rhodes|fender|e-?piano|electric piano|(?<![a-z])ep(?![a-z])|suitcase"
+    ],
+    [
+     "wurlitzer",
+     "wurli"
+    ],
+    [
+     "piano",
+     "piano|grand|upright|(?<![a-z])keys?(?![a-z])"
+    ],
+    [
+     "organ",
+     "organ|hammond|b-?3|drawbar"
+    ],
+    [
+     "flute",
+     "flute|piccolo"
+    ],
+    [
+     "piccolo",
+     "piccolo"
+    ],
+    [
+     "sitar",
+     "sitar"
+    ],
+    [
+     "guitar",
+     "guitar|gtr"
+    ],
+    [
+     "marimba",
+     "marimba"
+    ],
+    [
+     "brass",
+     "brass|horn|trumpet|trombone|tuba|sax"
+    ],
+    [
+     "horn",
+     "horn"
+    ],
+    [
+     "choir",
+     "choir|choral|(?<![a-z])(?:aah|ooh)(?![a-z])"
+    ],
+    [
+     "female",
+     "female|(?<![a-z])fem|girl|woman|lady|diva|soprano"
+    ],
+    [
+     "male",
+     "(?<![a-z])(?:male|man|guy|baritone)(?![a-z])"
+    ],
+    [
+     "diva",
+     "diva|female|soul"
+    ],
+    [
+     "reese",
+     "reese"
+    ],
+    [
+     "hoover",
+     "hoover"
+    ],
+    [
+     "supersaw",
+     "super ?saw|jp-?8000"
+    ],
+    [
+     "donk",
+     "donk"
+    ],
+    [
+     "talkbox",
+     "talk ?box|vocoder"
+    ],
+    [
+     "vocoder",
+     "vocoder"
+    ],
+    [
+     "beatbox",
+     "beat ?box|human ?beat"
+    ],
+    [
+     "cardboard",
+     "cardboard|box"
+    ],
+    [
+     "modular",
+     "modular|eurorack|buchla|serge"
+    ],
+    [
+     "slap",
+     "slap"
+    ],
+    [
+     "vinyl",
+     "vinyl|record|dusty|crackle"
+    ],
+    [
+     "tape",
+     "tape|cassette"
+    ]
+   ]
+  }
+ },
+ "curate_config.INSTR_DIMS": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     "br",
+     {
+      "$tuple": [
+       "dark",
+       "bright"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "noi",
+     {
+      "$tuple": [
+       "clean",
+       "airy"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "har",
+     {
+      "$tuple": [
+       "noisy",
+       "tonal"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "curate_config.INSTR_PHRASES": {
+  "type": "list",
+  "value": [
+   "grand piano note",
+   "electric piano",
+   "mellow keys",
+   "bright piano",
+   "lush strings",
+   "bold brass section",
+   "airy woodwinds",
+   "bright mallets"
+  ]
+ },
+ "curate_config.INST_ROUTED_PACKS": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.IR_PATH_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?:^|/)(?:irs?|impulse ?responses?|impulses|convolution reverb[^/]*)/",
+   "flags": 34
+  }
+ },
+ "curate_config.JUNGLE_BPM": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    155.0,
+    180.0
+   ]
+  }
+ },
+ "curate_config.JUNGLE_TEMPO_TOKEN": {
+  "type": "str",
+  "value": "@jt@"
+ },
+ "curate_config.KEYBOARD_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "piano|rhodes|wurli|clavinet|\\bclav\\b|harpsichord",
+   "flags": 34
+  }
+ },
+ "curate_config.KEYS_CHORD_HOME": {
+  "type": "NoneType",
+  "value": null
+ },
+ "curate_config.KEYS_CHORD_MAX_DUR": {
+  "type": "float",
+  "value": 4.0
+ },
+ "curate_config.KEYS_CHORD_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "chord|(?<![a-z])(?:maj|min|major|minor|m7|maj7|min7|sus[24]?|dim|aug|add9)(?![a-z])|(?-i:(?<![A-Za-z])[A-G](?:#|s|b)?(?:m|maj|min|dim|aug|sus)\\d*(?![A-Za-z]))",
+   "flags": 34
+  }
+ },
+ "curate_config.KEYS_CLAP_MARGIN": {
+  "type": "float",
+  "value": 0.1
+ },
+ "curate_config.KEYS_EXCLUDE": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "FX",
+    "STABS",
+    "SUB",
+    "SYNTH"
+   ]
+  }
+ },
+ "curate_config.KEYS_MIN_HARMONICITY": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate_config.KEYS_PHRASE_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "\\d+\\s*bpm|progression|\\bprog\\b|\\bloop|\\bpt\\s*\\d",
+   "flags": 34
+  }
+ },
+ "curate_config.KICK_PHRASES": {
+  "type": "list",
+  "value": [
+   "boom bap kick",
+   "trap 808 kick",
+   "punchy techno kick",
+   "deep house kick",
+   "hard techno kick",
+   "distorted industrial kick",
+   "lo-fi dusty kick",
+   "acoustic drum kit kick",
+   "808 sub kick",
+   "909 house kick",
+   "606 electro kick",
+   "clicky click kick",
+   "soft round kick",
+   "tight punchy kick",
+   "long boomy kick",
+   "gated kick",
+   "vinyl crackle kick",
+   "tape saturated kick",
+   "analog warm kick",
+   "digital fm kick",
+   "drum and bass kick",
+   "jungle kick",
+   "footwork kick",
+   "gabber distorted kick",
+   "minimal click kick",
+   "lofi hip hop kick",
+   "deep sub rumble",
+   "snappy attack kick",
+   "dark heavy kick",
+   "bright thin kick",
+   "wooden knock kick",
+   "metallic kick",
+   "noisy gritty kick",
+   "clean studio kick",
+   "vintage drum machine kick",
+   "modular percussion kick",
+   "cardboard box kick",
+   "reggae one drop kick",
+   "punchy funk kick",
+   "dusty vinyl break kick"
+  ]
+ },
+ "curate_config.LEVEL_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "ACOUSTIC",
+    "PADS",
+    "PIANO",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "VOX"
+   ]
+  }
+ },
+ "curate_config.LEVEL_MAX_UP_DB": {
+  "type": "float",
+  "value": 6.0
+ },
+ "curate_config.LEVEL_TOL_DB": {
+  "type": "float",
+  "value": 3.0
+ },
+ "curate_config.LEVEL_WINDOW_MS": {
+  "type": "int",
+  "value": 75
+ },
+ "curate_config.LIMIT_MS": {
+  "type": "float",
+  "value": 5.0
+ },
+ "curate_config.LOOP_DIR_ONESHOT_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "PADS",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "VOX"
+   ]
+  }
+ },
+ "curate_config.LOOP_DIR_ONESHOT_MAX_S": {
+  "type": "float",
+  "value": 4.0
+ },
+ "curate_config.LOOP_FULL_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "break|full|(?<![a-z])beat|drum ?loop|kit",
+   "flags": 34
+  }
+ },
+ "curate_config.LOOP_KIT_TAGS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "Kick",
+    "Snare Hit"
+   ]
+  }
+ },
+ "curate_config.LOOP_LIMIT_DB": {
+  "type": "float",
+  "value": 3.0
+ },
+ "curate_config.LOOP_TOPS_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])tops?(?![a-z])|hi-?hats?|(?<![a-z])hats?(?![a-z])|shaker|perc(ussion)?[ _-]*loop|conga|bongo|tambourine|(?<![a-z])ride(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.MACHINE_SHARE": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate_config.MALLET_ABLETON_TAGS": {
+  "type": "list",
+  "value": [
+   "Xylophone",
+   "Vibraphone",
+   "Marimba",
+   "Glockenspiel",
+   "Misc Mallets",
+   "Bell Chromatic",
+   "Chime"
+  ]
+ },
+ "curate_config.MALLET_INSTRUMENTS": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     {
+      "$re": "toy ?piano",
+      "flags": 34
+     },
+     "toy-piano"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "music ?box",
+      "flags": 34
+     },
+     "music-box"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "xylo",
+      "flags": 34
+     },
+     "xylophone"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "marimba|(?<![a-z])arimba",
+      "flags": 34
+     },
+     "marimba"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "vibraphone|(?<![a-z])vibes?(?![a-z])|(?<![a-z])vibra(?![a-z])",
+      "flags": 34
+     },
+     "vibraphone"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "glock",
+      "flags": 34
+     },
+     "glockenspiel"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "kalimba|thumb ?piano|mbira",
+      "flags": 34
+     },
+     "kalimba"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "steel ?(drum|pan)",
+      "flags": 34
+     },
+     "steel-drum"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "celest",
+      "flags": 34
+     },
+     "celesta"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "gamelan",
+      "flags": 34
+     },
+     "gamelan"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "singing ?bowl|tibetan",
+      "flags": 34
+     },
+     "singing-bowl"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "handpan|hang ?drum",
+      "flags": 34
+     },
+     "handpan"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "chime",
+      "flags": 34
+     },
+     "chimes"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "triangle",
+      "flags": 34
+     },
+     "triangle"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "bell",
+      "flags": 34
+     },
+     "bell"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "mallet",
+      "flags": 34
+     },
+     "mallet"
+    ]
+   }
+  ]
+ },
+ "curate_config.MALLET_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "xylo|marimba|(?<![a-z])arimba|vibraphone|(?<![a-z])vibes(?![a-z])|glock|kalimba|thumb ?piano|mbira|music ?box|toy ?piano|steel ?(?:drum|pan)|celest|gamelan|chimes?(?![a-z])|tubular|church ?bell|hand ?bell|singing ?bowl|tibetan|bell ?tree|handpan|hang ?drum",
+   "flags": 34
+  }
+ },
+ "curate_config.MIRROR_ROOT_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.MONO_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "KICKS",
+    "SUB"
+   ]
+  }
+ },
+ "curate_config.NAMEABLE_EXTRA": {
+  "type": "set",
+  "value": {
+   "$set": []
+  }
+ },
+ "curate_config.NAMEABLE_VENDORS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": []
+  }
+ },
+ "curate_config.NAMES": {
+  "type": "str",
+  "value": "canonical"
+ },
+ "curate_config.NAME_BOILERPLATE": {
+  "type": "list",
+  "value": [
+   "[ _-]*sample[ _-]?pack(?=[ _-]|$)"
+  ]
+ },
+ "curate_config.NAME_EXCLUDE_WORDS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "SYNTH",
+     {
+      "$set": [
+       "stab",
+       "stabs"
+      ]
+     }
+    ],
+    [
+     "DRUMLOOPS",
+     {
+      "$set": [
+       "fast"
+      ]
+     }
+    ],
+    [
+     "PHRASES",
+     {
+      "$set": [
+       "fast",
+       "slow"
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "curate_config.NAME_OVERRIDES": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "music box"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "thumb piano",
+       "mbira"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "kalimba"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "church bell"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "marimba"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "xylophone"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "vibraphone"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "glockenspiel"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "steel drum",
+       "steelpan",
+       "steel pan"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "celesta",
+       "celeste"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "gamelan"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "toy piano"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "cowbell",
+       "agogo"
+      ]
+     },
+     "PERC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "cello harmonics"
+      ]
+     },
+     "ACOUSTIC"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "clavinet",
+       "the clav"
+      ]
+     },
+     "PIANO"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$tuple": [
+       "ah vox"
+      ]
+     },
+     "VOX"
+    ]
+   }
+  ]
+ },
+ "curate_config.NAME_OVERRIDE_SKIP": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "synth"
+   ]
+  }
+ },
+ "curate_config.NAME_OVERRIDE_VETO": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])claves?(?![a-z])",
+   "flags": 32
+  }
+ },
+ "curate_config.NAME_PHRASES": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     [
+      "techno rumble kick",
+      "tight 909 kick",
+      "breakbeat kick",
+      "hardcore rave kick"
+     ]
+    ],
+    [
+     "SNARES",
+     [
+      "breakbeat snare",
+      "rave snare",
+      "garage snare"
+     ]
+    ],
+    [
+     "HATS",
+     [
+      "909 open hat",
+      "808 open hat",
+      "garage shuffle hat"
+     ]
+    ],
+    [
+     "CYMBALS",
+     [
+      "909 ride",
+      "909 crash"
+     ]
+    ],
+    [
+     "SUB",
+     [
+      "303 acid bass",
+      "jungle sub bass",
+      "rave bass stab"
+     ]
+    ],
+    [
+     "SYNTH",
+     [
+      "rave hoover lead",
+      "detroit techno lead",
+      "acid arp",
+      "rave piano key",
+      "m1 organ key",
+      "fm bell tone",
+      "fm marimba mallet",
+      "glassy digital bell"
+     ]
+    ],
+    [
+     "STABS",
+     [
+      "rave piano chord stab",
+      "m1 organ house stab",
+      "detroit techno chord stab",
+      "dub techno chord stab"
+     ]
+    ],
+    [
+     "PADS",
+     [
+      "dub techno pad",
+      "detroit strings pad",
+      "rave pad"
+     ]
+    ],
+    [
+     "FX",
+     [
+      "air horn",
+      "dub siren",
+      "rewind spinback",
+      "impact hit",
+      "turntable scratch",
+      "baby scratch",
+      "chirp scratch",
+      "transformer scratch",
+      "record stop",
+      "vinyl rewind",
+      "vinyl spinback",
+      "echo scratch",
+      "scribble scratch",
+      "hip hop scratch"
+     ]
+    ],
+    [
+     "VOX",
+     [
+      "diva vocal chop",
+      "ragga mc shout",
+      "rewind selector shout",
+      "rave vocal stab"
+     ]
+    ],
+    [
+     "DRUMLOOPS",
+     [
+      "rave breakbeat",
+      "hardcore breakbeat",
+      "garage shuffle loop",
+      "hi-hat loop",
+      "shaker loop",
+      "ride cymbal loop",
+      "conga and bongo loop",
+      "tambourine loop",
+      "percussion top loop",
+      "909 hi-hat loop",
+      "open hat groove"
+     ]
+    ],
+    [
+     "PIANO",
+     [
+      "grand piano chord",
+      "house piano chord",
+      "rhodes chord stab",
+      "electric piano chord",
+      "wurlitzer chord",
+      "clavinet chord stab",
+      "organ note",
+      "drawbar organ",
+      "organ chord"
+     ]
+    ]
+   ]
+  }
+ },
+ "curate_config.NAME_RESERVED": {
+  "type": "list",
+  "value": []
+ },
+ "curate_config.NAME_SUPPORT_FULL": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "FX"
+   ]
+  }
+ },
+ "curate_config.NAME_SUPPORT_MIN": {
+  "type": "float",
+  "value": 0.4
+ },
+ "curate_config.NAME_TAGS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "Drum Loop",
+     [
+      "drum loop",
+      "drumloop",
+      "drum_loop",
+      "break",
+      "breakbeat",
+      "beat",
+      "groove"
+     ]
+    ],
+    [
+     "Violin",
+     [
+      "violin",
+      "fiddle"
+     ]
+    ],
+    [
+     "Viola",
+     [
+      "viola"
+     ]
+    ],
+    [
+     "Cello",
+     [
+      "cello"
+     ]
+    ],
+    [
+     "Double Bass",
+     [
+      "contrabass",
+      "double bass",
+      "upright bass"
+     ]
+    ],
+    [
+     "String Ensemble",
+     [
+      "string ensemble",
+      "string section",
+      "string quartet"
+     ]
+    ]
+   ]
+  }
+ },
+ "curate_config.NAME_TOPK": {
+  "type": "int",
+  "value": 3
+ },
+ "curate_config.NEAR_MONO_SIDE_DB": {
+  "type": "float",
+  "value": -30.0
+ },
+ "curate_config.NOTE_LEAD_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "PIANO"
+   ]
+  }
+ },
+ "curate_config.NO_FOLD_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "hip ?-?hop|trip ?-?hop|down ?-?tempo|lo ?-?fi|boom ?-?bap|nu ?-?jazz|chill ?-?out|reggae|(?<![a-z])dub(?!step)",
+   "flags": 34
+  }
+ },
+ "curate_config.ONESHOT_RMS_CEIL_DB": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     -6.0
+    ],
+    [
+     "SNARES",
+     -10.5
+    ],
+    [
+     "CLAPS",
+     -12.0
+    ],
+    [
+     "HATS",
+     -12.0
+    ],
+    [
+     "CYMBALS",
+     -16.0
+    ],
+    [
+     "TOMS",
+     -9.5
+    ],
+    [
+     "PERC",
+     -11.0
+    ],
+    [
+     "FX",
+     -10.0
+    ],
+    [
+     "BLIPS",
+     -9.0
+    ],
+    [
+     "SUB",
+     -7.0
+    ],
+    [
+     "SYNTH",
+     -7.0
+    ],
+    [
+     "STABS",
+     -10.0
+    ],
+    [
+     "PADS",
+     -9.0
+    ],
+    [
+     "VOX",
+     -8.0
+    ],
+    [
+     "PIANO",
+     -12.5
+    ],
+    [
+     "ACOUSTIC",
+     -12.5
+    ]
+   ]
+  }
+ },
+ "curate_config.ONESHOT_TAIL_RMS": {
+  "type": "bool",
+  "value": true
+ },
+ "curate_config.ORCH_ABLETON_TAGS": {
+  "type": "list",
+  "value": [
+   "Violin",
+   "Viola",
+   "Cello",
+   "Double Bass",
+   "Upright Bass",
+   "Acoustic Bass",
+   "String Ensemble",
+   "Misc Strings",
+   "Harp",
+   "Sitar",
+   "Misc Plucked",
+   "Flute",
+   "Clarinet",
+   "Oboe",
+   "Bassoon",
+   "English Horn",
+   "Woodwind Ensemble",
+   "Sax",
+   "Misc Woodwind",
+   "Trumpet",
+   "Trombone",
+   "Tuba",
+   "French Horn",
+   "Brass Ensemble",
+   "Timpani",
+   "Gong",
+   "Classical Guitar",
+   "Acoustic Guitar",
+   "Electric Guitar"
+  ]
+ },
+ "curate_config.ORCH_PACKS": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.ORCH_PACK_EXCLUDE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.ORCH_PATH_INSTRUMENT_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "violin|viola|cello|contrabass|harp|horn|trombone|trumpet|tuba|bassoon|clarinet|flute|oboe|piccolo",
+   "flags": 34
+  }
+ },
+ "curate_config.ORCH_PATH_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.ORCH_ROOTS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": []
+  }
+ },
+ "curate_config.ORGAN_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])organs?(?![a-z])|hammond|drawbar|farfisa|(?<![a-z])leslie(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.OVERRIDE_MAX_SHARE": {
+  "type": "float",
+  "value": 0.1
+ },
+ "curate_config.PACK_HOME": {
+  "type": "dict",
+  "value": {
+   "$dict": []
+  }
+ },
+ "curate_config.PACK_SUFFIX_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.PAD_PHRASES": {
+  "type": "list",
+  "value": [
+   "warm analog pad",
+   "lush string pad",
+   "dark drone pad",
+   "evolving texture",
+   "glassy pad",
+   "choir pad",
+   "ambient synth pad",
+   "detuned pad",
+   "cinematic swell",
+   "vhs tape pad",
+   "granular texture",
+   "noise wash pad",
+   "bright shimmer pad",
+   "ominous drone",
+   "rhodes pad",
+   "brass pad",
+   "vocal pad",
+   "filtered sweep pad",
+   "fifths pad",
+   "warped texture",
+   "warm strings",
+   "cold digital pad",
+   "sci-fi atmosphere",
+   "organ pad",
+   "airy pad",
+   "sub drone",
+   "metallic texture",
+   "reverb wash",
+   "breathy pad",
+   "tape hiss texture"
+  ]
+ },
+ "curate_config.PERC_PHRASES": {
+  "type": "list",
+  "value": [
+   "conga hit",
+   "bongo hit",
+   "djembe hit",
+   "tabla hit",
+   "cowbell",
+   "woodblock",
+   "clave",
+   "rim click",
+   "shaker hit",
+   "guiro scrape",
+   "cabasa",
+   "agogo bell",
+   "tambourine hit",
+   "triangle ding",
+   "castanet",
+   "metal hit",
+   "anvil clang",
+   "bell percussion",
+   "udu drum",
+   "cajon hit",
+   "timbale",
+   "taiko drum",
+   "frame drum",
+   "wood knock",
+   "metallic perc",
+   "shaken perc",
+   "scraped perc",
+   "hand percussion",
+   "tribal percussion",
+   "glassy perc"
+  ]
+ },
+ "curate_config.PERC_SOURCE_NOT_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "synth",
+   "flags": 34
+  }
+ },
+ "curate_config.PERC_SOURCE_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "/(?:perc|percs|percussion|drums?|foley|metal)/",
+   "flags": 34
+  }
+ },
+ "curate_config.PHASE_FIX_CORR": {
+  "type": "float",
+  "value": -0.8
+ },
+ "curate_config.PHASE_FIX_LOSS_DB": {
+  "type": "float",
+  "value": 10.0
+ },
+ "curate_config.PHASE_WARN_CORR": {
+  "type": "float",
+  "value": -0.3
+ },
+ "curate_config.PHRASES_CATEGORY": {
+  "type": "str",
+  "value": "PHRASES"
+ },
+ "curate_config.PHRASE_ACID_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "303|(?<![A-Za-z])(?i:acid)|(?<=[a-z])Acid|(?<![A-Za-z])(?i:tb-?3)",
+   "flags": 32
+  }
+ },
+ "curate_config.PHRASE_BASS_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "bass|(?<![a-z])sub(?![a-z])|303|acid|(?<![a-z])reese|wobble",
+   "flags": 34
+  }
+ },
+ "curate_config.PHRASE_BASS_TAGS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "Synth Bass",
+    "808 Bass",
+    "Electric Bass",
+    "Upright Bass",
+    "Acoustic Bass",
+    "Double Bass"
+   ]
+  }
+ },
+ "curate_config.PHRASE_CHORDS_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "chords?|(?<![a-z])keys?(?![a-z])|piano|rhodes|organ|wurli|clav|e-?piano|(?<![a-z])pads?(?![a-z])|progressions?|(?<![a-z])prog(?![a-z])|stabs?|(?<![a-z])m1(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.PHRASE_CHORDS_TAGS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "Piano",
+    "Electric Piano",
+    "Organ",
+    "Clav",
+    "Synth Keys",
+    "Pad",
+    "Atmosphere",
+    "Synth Strings",
+    "Misc Keys"
+   ]
+  }
+ },
+ "curate_config.PHRASE_DIMS": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     "br",
+     {
+      "$tuple": [
+       "dark",
+       "bright"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "noi",
+     {
+      "$tuple": [
+       "clean",
+       "gritty"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "atk",
+     {
+      "$tuple": [
+       "plucky",
+       "swelling"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "curate_config.PHRASE_DIR_STRONG_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:progressions?|phrases?|riffs?|basslines?)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.PHRASE_DUR": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    1.0,
+    20.0
+   ]
+  }
+ },
+ "curate_config.PHRASE_GENRE_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "drum ?(?:&|and|n|'n'|\\u2019n\\u2019)? ?bass|(?<![a-z])d ?& ?b(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.PHRASE_INSTRUMENTS": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     {
+      "$re": "guitar|gtr|(?<![a-z])git(?![a-z])",
+      "flags": 34
+     },
+     "guitar"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "cello",
+      "flags": 34
+     },
+     "cello"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "pizz",
+      "flags": 34
+     },
+     "pizzicato"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "violin|viola|string",
+      "flags": 34
+     },
+     "strings"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "brass|horns?(?![a-z])|trumpet|trombone",
+      "flags": 34
+     },
+     "brass"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])sax",
+      "flags": 34
+     },
+     "sax"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "flute",
+      "flags": 34
+     },
+     "flute"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])harp(?!si)",
+      "flags": 34
+     },
+     "harp"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "sitar",
+      "flags": 34
+     },
+     "sitar"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "rhodes|e-?piano|electric piano|wurli",
+      "flags": 34
+     },
+     "rhodes"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "piano",
+      "flags": 34
+     },
+     "piano"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "organ",
+      "flags": 34
+     },
+     "organ"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])clav",
+      "flags": 34
+     },
+     "clav"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])pads?(?![a-z])",
+      "flags": 34
+     },
+     "pad"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "(?<![a-z])arp(?:eggio|s)?(?![a-z])|(?-i:Arp)|arpeggiat",
+      "flags": 34
+     },
+     "arp"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "acid|303",
+      "flags": 34
+     },
+     "acid"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "reese",
+      "flags": 34
+     },
+     "reese"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "slap",
+      "flags": 34
+     },
+     "slap-bass"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "pluck",
+      "flags": 34
+     },
+     "pluck"
+    ]
+   },
+   {
+    "$tuple": [
+     {
+      "$re": "bells?(?![a-z])",
+      "flags": 34
+     },
+     "bell"
+    ]
+   }
+  ]
+ },
+ "curate_config.PHRASE_LOOP_DIR_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:loops?|lps|phrases?|riffs?|basslines?|grooves?|patterns?|progressions?|sequences?)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.PHRASE_NOT_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "drum|perc(?:ussion|s)?(?![a-z])|(?<![a-z])(?:beats?|breaks?|breakbeats?|tops?|hats?|hi-?hats?|kicks?|snares?|claps?|rides?|shakers?|congas?|bongos?|toms?|cymbals?|fills?)(?![a-z])|(?<![a-z])(?:s?fx|risers?|uplifters?|downlifters?|sweeps?|impacts?|noises?|foley|whoosh\\w*|atmos\\w*|ambien\\w*|textures?|drones?|soundscapes?|crackle\\w*)(?![a-z])|(?<![a-z])(?:vox|vocals?|voices?|acapellas?|a ?cappella|chants?|choirs?|speech|spoken|rap|shouts?|adlibs?|sung|singing)(?![a-z])|combined|multi[ _-]?samples?|(?<![a-z])chains?(?![a-z])|velocity|round ?robin",
+   "flags": 34
+  }
+ },
+ "curate_config.PHRASE_ONESHOT_DIR_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "one[ _-]?shots?|(?<![a-z])(?:hits?|stabs?|chords?|notes?|single|multi[ _-]?samples?|kits?)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.PHRASE_PHRASES": {
+  "type": "list",
+  "value": [
+   "303 bassline",
+   "squelchy resonant riff",
+   "rolling sixteenth sequence",
+   "303 lead riff",
+   "reese bass riff",
+   "deep house bassline",
+   "funk bass groove",
+   "dub reggae bassline",
+   "wobble bass riff",
+   "rolling sub bassline",
+   "electro bassline",
+   "slap bass groove",
+   "techno bass sequence",
+   "deep house chords",
+   "dub techno chords",
+   "rave piano riff",
+   "rhodes chord progression",
+   "organ groove",
+   "jazzy keys loop",
+   "detroit chord progression",
+   "lush pad progression",
+   "soul piano loop",
+   "chord stab sequence",
+   "synth arpeggio",
+   "acid lead riff",
+   "rave hoover riff",
+   "melodic synth lead",
+   "plucked synth sequence",
+   "chiptune melody",
+   "detroit synth melody",
+   "trance lead riff",
+   "bleep sequence",
+   "modular sequence",
+   "funk guitar riff",
+   "string swell",
+   "pizzicato strings",
+   "brass section riff",
+   "flute melody",
+   "reggae guitar skank",
+   "blues guitar riff",
+   "orchestral string phrase",
+   "sitar melody",
+   "jazz horn riff"
+  ]
+ },
+ "curate_config.PHRASE_ROLES": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "acid",
+    "bass",
+    "chords",
+    "lead",
+    "live"
+   ]
+  }
+ },
+ "curate_config.PHRASE_ROLE_PHRASES": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "acid",
+     [
+      "303 bassline",
+      "squelchy resonant riff",
+      "rolling sixteenth sequence",
+      "303 lead riff"
+     ]
+    ],
+    [
+     "bass",
+     [
+      "reese bass riff",
+      "deep house bassline",
+      "funk bass groove",
+      "dub reggae bassline",
+      "wobble bass riff",
+      "rolling sub bassline",
+      "electro bassline",
+      "slap bass groove",
+      "techno bass sequence"
+     ]
+    ],
+    [
+     "chords",
+     [
+      "deep house chords",
+      "dub techno chords",
+      "rave piano riff",
+      "rhodes chord progression",
+      "organ groove",
+      "jazzy keys loop",
+      "detroit chord progression",
+      "lush pad progression",
+      "soul piano loop",
+      "chord stab sequence"
+     ]
+    ],
+    [
+     "lead",
+     [
+      "synth arpeggio",
+      "acid lead riff",
+      "rave hoover riff",
+      "melodic synth lead",
+      "plucked synth sequence",
+      "chiptune melody",
+      "detroit synth melody",
+      "trance lead riff",
+      "bleep sequence",
+      "modular sequence"
+     ]
+    ],
+    [
+     "live",
+     [
+      "funk guitar riff",
+      "string swell",
+      "pizzicato strings",
+      "brass section riff",
+      "flute melody",
+      "reggae guitar skank",
+      "blues guitar riff",
+      "orchestral string phrase",
+      "sitar melody",
+      "jazz horn riff"
+     ]
+    ]
+   ]
+  }
+ },
+ "curate_config.PHRASE_ROLE_SHARE": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "acid",
+     0.1
+    ],
+    [
+     "bass",
+     0.15
+    ],
+    [
+     "chords",
+     0.3
+    ],
+    [
+     "lead",
+     0.25
+    ],
+    [
+     "live",
+     0.2
+    ]
+   ]
+  }
+ },
+ "curate_config.PHRASE_TEMPO_BANDS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    60,
+    90,
+    120,
+    140,
+    201
+   ]
+  }
+ },
+ "curate_config.PIANO_ANCHOR": {
+  "type": "list",
+  "value": [
+   "grand piano note",
+   "bright grand piano",
+   "mellow grand piano",
+   "upright piano note",
+   "electric piano note",
+   "rhodes note",
+   "wurlitzer note",
+   "warm electric piano",
+   "clavinet note",
+   "tine electric piano"
+  ]
+ },
+ "curate_config.PIANO_ANTI": {
+  "type": "list",
+  "value": [
+   "drum hit",
+   "synth bass note",
+   "sawtooth synth lead",
+   "string section",
+   "brass section",
+   "pad texture",
+   "bell chime",
+   "vocal note",
+   "pluck synth",
+   "organ chord",
+   "acoustic guitar note",
+   "percussion hit"
+  ]
+ },
+ "curate_config.PIANO_PACKS": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.PIANO_POOL_LABELS": {
+  "type": "list",
+  "value": [
+   "lead",
+   "bass",
+   "blip",
+   "stab"
+  ]
+ },
+ "curate_config.PITCH_SPREAD_MAX": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate_config.PITCH_VOICED_MIN": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate_config.PLUCKED_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<!bass )(?<!bass)guitar|zither|(?<![a-z])lyre|(?<![a-z])harp(?!si)|banjo|sitar|koto|mandolin|ukulele|cigar ?box|bouzouki|(?<![a-z])oud(?![a-z])|balalaika|dulcimer|(?<![a-z])lute(?![a-z])|nylon[ _-]?(?:string|gtr)|(?:string|gtr)[ _-]?nylon|steel[ _-]?string",
+   "flags": 34
+  }
+ },
+ "curate_config.POOL_SURPLUS": {
+  "type": "bool",
+  "value": true
+ },
+ "curate_config.LIBRARY_SCALE": {
+  "type": "bool",
+  "value": true
+ },
+ "curate_config.LIBRARY_PER_MASTER": {
+  "type": "int",
+  "value": 8
+ },
+ "curate_config.SCALED_KEEP_ALL": {
+  "type": "int",
+  "value": 24
+ },
+ "curate_config.SCALED_MIN_FILES": {
+  "type": "int",
+  "value": 2
+ },
+ "curate_config.SCALED_FOLDER_FILES": {
+  "type": "int",
+  "value": 24
+ },
+ "curate_config.SCALED_FOLDER_MIN_FILES": {
+  "type": "int",
+  "value": 3
+ },
+ "curate_config.PREVIEW_PATH_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "ableton folder info/previews/|(?:^|/)\\[?previews?\\]?/|\\.(?:adg|adv|agr|alc|als|xpm|xpj)\\.(?:wav|aif|aiff|mp3|flac|ogg)$",
+   "flags": 34
+  }
+ },
+ "curate_config.QUIET_RMS_DB": {
+  "type": "float",
+  "value": -38.0
+ },
+ "curate_config.RENAMED_CATEGORIES": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "BELLS",
+     "ACOUSTIC"
+    ],
+    [
+     "ORCHESTRAL",
+     "ACOUSTIC"
+    ],
+    [
+     "MALLETS",
+     "ACOUSTIC"
+    ],
+    [
+     "SCRATCHES",
+     "FX"
+    ]
+   ]
+  }
+ },
+ "curate_config.RETUNE_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "ACOUSTIC",
+    "PADS",
+    "PIANO",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "VOX"
+   ]
+  }
+ },
+ "curate_config.RETUNE_DETECT_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "PIANO",
+    "SYNTH",
+    "VOX"
+   ]
+  }
+ },
+ "curate_config.RETUNE_MAX_SEMIS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "VOX",
+     3.0
+    ],
+    [
+     "PIANO",
+     3.0
+    ],
+    [
+     "ACOUSTIC",
+     3.0
+    ]
+   ]
+  }
+ },
+ "curate_config.ROTATE_AGREE": {
+  "type": "float",
+  "value": 0.75
+ },
+ "curate_config.ROTATE_MAX_MS": {
+  "type": "float",
+  "value": 45.0
+ },
+ "curate_config.ROTATE_MAX_SIXTEENTH": {
+  "type": "float",
+  "value": 0.3
+ },
+ "curate_config.ROTATE_MIN_MS": {
+  "type": "float",
+  "value": 12.0
+ },
+ "curate_config.ROTATE_ON_GRID_MAX": {
+  "type": "float",
+  "value": 0.25
+ },
+ "curate_config.ROTATE_PREROLL_MS": {
+  "type": "float",
+  "value": 1.0
+ },
+ "curate_config.ROTATE_QUIET_HEAD_DB": {
+  "type": "float",
+  "value": 24.0
+ },
+ "curate_config.ROTATE_SEAM_MS": {
+  "type": "float",
+  "value": 1.5
+ },
+ "curate_config.ROTATE_SKIP_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(fill|fills|roll|rolls|intro|outro|reverse|rev)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.ROTATE_TOL_MS": {
+  "type": "float",
+  "value": 8.0
+ },
+ "curate_config.ROUTED_MAX_SHARE": {
+  "type": "float",
+  "value": 0.35
+ },
+ "curate_config.SCRATCH_FROM": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "BLIPS",
+    "CLAPS",
+    "CYMBALS",
+    "FX",
+    "HATS",
+    "KICKS",
+    "PADS",
+    "PERC",
+    "SNARES",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "TOMS"
+   ]
+  }
+ },
+ "curate_config.SCRATCH_HOME": {
+  "type": "str",
+  "value": "FX"
+ },
+ "curate_config.SCRATCH_NAME_EXCLUDE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "piano|perc|kick|snare|(?<![a-z])(?:hh|hats?|hihat|toms?|claps?|cymbals?)(?![a-z])|noise|foley|texture|shaker|guiro|cabasa|washboard|scrape",
+   "flags": 34
+  }
+ },
+ "curate_config.SCRATCH_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:scratch(?:es|ed)?|scrtch|scr)(?![a-z])|transformer|turntabl|scribble|(?:chirp|crab|flare|baby|tear|stab|orbit|drag|forward|backward)[ _-]?scratch|record ?stop|spin ?back|back ?spin|(?<![a-z])rewind",
+   "flags": 34
+  }
+ },
+ "curate_config.SETS_SHARE": {
+  "type": "float",
+  "value": 0.12
+ },
+ "curate_config.SET_TOGETHER_SKIP": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "ACOUSTIC",
+    "DRUMLOOPS",
+    "PHRASES",
+    "PIANO",
+    "WAVES"
+   ]
+  }
+ },
+ "curate_config.SIBLING_CAP": {
+  "type": "int",
+  "value": 3
+ },
+ "curate_config.SIBLING_CAP_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "ACOUSTIC",
+    "BLIPS",
+    "PADS",
+    "PIANO",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "VOX"
+   ]
+  }
+ },
+ "curate_config.SNARE_PHRASES": {
+  "type": "list",
+  "value": [
+   "tight snare",
+   "fat snare",
+   "clap snare",
+   "rimshot snare",
+   "piccolo snare",
+   "deep snare",
+   "808 snare",
+   "909 snare",
+   "606 snare",
+   "trap snare",
+   "boom bap snare",
+   "acoustic snare",
+   "brushed snare",
+   "gated reverb snare",
+   "lo-fi dusty snare",
+   "crunchy snare",
+   "noisy snare",
+   "clean studio snare",
+   "snappy snare",
+   "wooden snare",
+   "metallic snare",
+   "vinyl crackle snare",
+   "layered snare",
+   "hip hop snare",
+   "drum and bass snare",
+   "jungle snare",
+   "house snare",
+   "techno snare",
+   "industrial snare",
+   "reggae snare",
+   "funk snare",
+   "ghost snare",
+   "cracky snare",
+   "bright snare",
+   "dark snare",
+   "short snare",
+   "long snare",
+   "reverb snare",
+   "dry snare",
+   "punchy snare"
+  ]
+ },
+ "curate_config.SOFT_LAYER_GAP_DB": {
+  "type": "float",
+  "value": 6.0
+ },
+ "curate_config.SOFT_LAYER_PEAK_DB": {
+  "type": "float",
+  "value": -19.0
+ },
+ "curate_config.STAB_CHORD_FROM": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "BLIPS",
+    "FX",
+    "PADS",
+    "PERC",
+    "SUB",
+    "SYNTH"
+   ]
+  }
+ },
+ "curate_config.STAB_CHORD_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])chords?(?![a-z])|(?<![a-z])(?:maj7|maj9|min7|min9|m7|m9|7th|sus[24]?|dim7?|aug|add9)(?![a-z])|(?-i:(?<![A-Za-z])[A-G](?:#|b)?(?:maj7|maj9|m7|m9|min7|dim|aug|sus[24]?|add9)(?![A-Za-z]))",
+   "flags": 34
+  }
+ },
+ "curate_config.STAB_MOVE_EXCLUDE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "bass|(?<![a-z])(?:vox|vocals?|voices?)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.STAB_NAME_EXCLUDE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "kick|snare|percussion|(?<![a-z])(?:hh|hats?|toms?|percs?|claps?|cymbals?|rims?|zaps?|bd|sd|cy)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.STAB_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:stabs?|stb)(?![a-z])|orch(?:estra(?:l)?)?[ _-]?hits?|orchhit|(?<![a-z])(?:brass|string|horn|organ|choir|synth|chord|rave)[ _-]?hits?(?![a-z])|hoover",
+   "flags": 34
+  }
+ },
+ "curate_config.STAB_PHRASES": {
+  "type": "list",
+  "value": [
+   "orchestra hit",
+   "house piano stab",
+   "organ stab",
+   "brass stab",
+   "string stab",
+   "rave stab",
+   "hoover stab",
+   "synth chord stab",
+   "reggae organ stab",
+   "choir stab",
+   "staccato strings",
+   "big band hit",
+   "jazz chord stab",
+   "guitar stab",
+   "funk clav stab",
+   "disco strings hit",
+   "bell stab",
+   "detuned stab",
+   "minor chord stab",
+   "major chord stab",
+   "horn section hit",
+   "vox stab",
+   "saw chord stab",
+   "trance stab",
+   "dub chord stab",
+   "gospel organ stab",
+   "orchestral swell hit",
+   "electric piano stab",
+   "pizzicato stab",
+   "acid stab"
+  ]
+ },
+ "curate_config.STEM_MAX": {
+  "type": "int",
+  "value": 46
+ },
+ "curate_config.STORAGE_SHARE": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate_config.STRING_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "violin|viola|cello|contrabass|double ?bass|upright ?bass|acoustic ?bass|string|pizz|bowed|(?<![a-z])arco(?![a-z])|erhu",
+   "flags": 34
+  }
+ },
+ "curate_config.SUB_PHRASES": {
+  "type": "list",
+  "value": [
+   "808 sub bass",
+   "reese bass",
+   "deep sub bass",
+   "fm bass",
+   "acid squelch bass",
+   "moog bass",
+   "wobble bass",
+   "growl bass",
+   "saw bass",
+   "square bass",
+   "pure sine sub",
+   "plucked bass",
+   "distorted bass",
+   "warm analog bass",
+   "hard reese bass",
+   "neuro bass",
+   "house bass stab",
+   "techno rumble bass",
+   "dub bass",
+   "detuned bass",
+   "gritty bass",
+   "clean sub bass",
+   "punchy bass",
+   "hoover bass",
+   "rubber bass",
+   "organ bass",
+   "upright acoustic bass",
+   "slap bass",
+   "electric finger bass",
+   "donk bass",
+   "brass sub",
+   "metallic bass",
+   "dark sub drone",
+   "bright pluck bass"
+  ]
+ },
+ "curate_config.SYNTH_EMULATION_PACKS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": []
+  }
+ },
+ "curate_config.SYNTH_MACHINES": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     "303",
+     "(?<![0-9])303(?![0-9])|(?<![a-z])tb-?3|(?<![a-z])td-?3|x0x"
+    ]
+   }
+  ]
+ },
+ "curate_config.SYNTH_MACHINE_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "SUB",
+    "SYNTH"
+   ]
+  }
+ },
+ "curate_config.SYNTH_PHRASES": {
+  "type": "list",
+  "value": [
+   "analog saw lead",
+   "square lead",
+   "supersaw stab",
+   "pluck synth",
+   "bell synth",
+   "fm electric piano",
+   "organ stab",
+   "rhodes key",
+   "grand piano note",
+   "brass stab",
+   "string stab",
+   "choir pad note",
+   "acid lead",
+   "hoover stab",
+   "chiptune lead",
+   "detuned lead",
+   "bright lead",
+   "dark hollow lead",
+   "glassy bell",
+   "metallic lead",
+   "vintage analog synth",
+   "digital fm synth",
+   "mono bass lead",
+   "poly chord stab",
+   "arp pluck",
+   "trance lead",
+   "reese lead",
+   "dusty lofi key",
+   "wavetable lead",
+   "vocal synth stab",
+   "noise sweep stab",
+   "warm pad note",
+   "sync lead"
+  ]
+ },
+ "curate_config.TEMPO_BANDS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    60,
+    70,
+    75,
+    80,
+    85,
+    90,
+    95,
+    100,
+    105,
+    110,
+    115,
+    120,
+    125,
+    130,
+    135,
+    140,
+    145,
+    150,
+    155,
+    160,
+    165,
+    170,
+    175,
+    180,
+    190,
+    201
+   ]
+  }
+ },
+ "curate_config.TEMPO_BAND_MIN": {
+  "type": "int",
+  "value": 40
+ },
+ "curate_config.TEMPO_FOLD": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    90.0,
+    180.0
+   ]
+  }
+ },
+ "curate_config.TOM_PHRASES": {
+  "type": "list",
+  "value": [
+   "808 tom",
+   "909 tom",
+   "acoustic tom",
+   "floor tom",
+   "rack tom",
+   "rototom",
+   "tuned tom",
+   "deep tom",
+   "high tom",
+   "electronic tom",
+   "analog tom",
+   "synth tom",
+   "descending tom",
+   "gated tom",
+   "reverb tom",
+   "dry tom",
+   "punchy tom",
+   "boomy tom",
+   "short tom",
+   "long tom",
+   "tribal tom",
+   "dark tom",
+   "bright tom",
+   "pitched tom",
+   "fm tom",
+   "lo-fi tom",
+   "vinyl tom",
+   "hand tom",
+   "dub tom",
+   "distorted tom"
+  ]
+ },
+ "curate_config.TOPS_PHRASES": {
+  "type": "list",
+  "value": [
+   "hi-hat loop",
+   "shaker loop",
+   "ride cymbal loop",
+   "conga and bongo loop",
+   "tambourine loop",
+   "percussion top loop",
+   "909 hi-hat loop",
+   "open hat groove"
+  ]
+ },
+ "curate_config.TOPS_TEMPO_BANDS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    60,
+    90,
+    120,
+    125,
+    130,
+    150,
+    201
+   ]
+  }
+ },
+ "curate_config.UMBRELLA_VENDORS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": []
+  }
+ },
+ "curate_config.VENDOR_MAX_SHARE": {
+  "type": "float",
+  "value": 0.4
+ },
+ "curate_config.VOX_CHOIR_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "choir|choral|(?<![a-z])(?:aah|ahh|ooh|oohs)(?![a-z])|vp-?330|(?:vox|voice|vocal) ?pad|vocoder ?choir",
+   "flags": 34
+  }
+ },
+ "curate_config.VOX_CHOIR_SHARE": {
+  "type": "float",
+  "value": 0.25
+ },
+ "curate_config.VOX_PHRASES": {
+  "type": "list",
+  "value": [
+   "vocal chop",
+   "sustained sung note",
+   "spoken word phrase",
+   "rap verse",
+   "vocal ad-lib",
+   "hey shout",
+   "yeah shout",
+   "crowd chant",
+   "choir chord hit",
+   "vocoder robotic vocal",
+   "talkbox vocal",
+   "pitched vocal stab",
+   "female vocal",
+   "male vocal",
+   "whisper",
+   "scream",
+   "gospel soul vocal",
+   "operatic vocal",
+   "baby coo",
+   "laughing",
+   "breath intake",
+   "reversed vocal",
+   "formant vowel",
+   "telephone radio vocal",
+   "lo-fi dusty vocal",
+   "harmonized stack",
+   "beatbox vocal",
+   "vocal riff run",
+   "humming",
+   "glitched vocal cut"
+  ]
+ },
+ "curate_config.WAVE_DIMS": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     "br",
+     {
+      "$tuple": [
+       "dark",
+       "bright"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "noi",
+     {
+      "$tuple": [
+       "smooth",
+       "gritty"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "har",
+     {
+      "$tuple": [
+       "inharmonic",
+       "pure"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "curate_config.WAVE_MAX_DUR": {
+  "type": "float",
+  "value": 1.0
+ },
+ "curate_config.WAVE_MIN_SAMPLES": {
+  "type": "int",
+  "value": 256
+ },
+ "curate_config.WAVE_NOT_PATH_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?:^|/)drum ?kits?(?:/|$)",
+   "flags": 34
+  }
+ },
+ "curate_config.WAVE_PATH_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "wave ?tables?|single[ _-]?cycles?",
+   "flags": 34
+  }
+ },
+ "curate_config.WAVE_PHRASES": {
+  "type": "list",
+  "value": [
+   "pure sine tone",
+   "bright sawtooth buzz",
+   "hollow square wave",
+   "thin pulse wave",
+   "soft triangle tone",
+   "metallic fm tone",
+   "vocal formant tone",
+   "noisy digital tone",
+   "organ drawbar tone",
+   "reedy nasal tone",
+   "bell-like tone",
+   "gritty bitcrushed tone"
+  ]
+ },
+ "curate_config.WAVE_SINGLE_MAX_SAMPLES": {
+  "type": "int",
+  "value": 4097
+ },
+ "curate_config.WIND_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "flute|clarinet|oboe|bassoon|(?<![a-z])sax|recorder|harmonica|accordion|kazoo|melodica|ocarina|pan ?pipe|trumpet|trombone|tuba|(?<![a-z])horns?(?![a-z])|brass|woodwind|whistle",
+   "flags": 34
+  }
+ },
+ "curate_config.WIND_RESERVE_NOT_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "synth|air ?horn|fog ?horn|car ?horn|whistle|siren|(?<![a-z])fx(?![a-z])|riser|sweep",
+   "flags": 34
+  }
+ },
+ "curate_config.WIND_RESERVE_NOT_TAGS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "Lead",
+    "Pad"
+   ]
+  }
+ },
+ "naming.BAND_DEFAULT": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "wave",
+     "cycle"
+    ],
+    [
+     "hat",
+     "closed"
+    ],
+    [
+     "fx",
+     "misc"
+    ],
+    [
+     "cymbal",
+     "cymbal"
+    ]
+   ]
+  }
+ },
+ "naming.CATEGORY_NOUN": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     "kick"
+    ],
+    [
+     "SNARES",
+     "snare"
+    ],
+    [
+     "HATS",
+     "hat"
+    ],
+    [
+     "SUB",
+     "bass"
+    ],
+    [
+     "SYNTH",
+     "synth"
+    ],
+    [
+     "CLAPS",
+     "clap"
+    ],
+    [
+     "TOMS",
+     "tom"
+    ],
+    [
+     "PERC",
+     "perc"
+    ],
+    [
+     "CYMBALS",
+     "cymbal"
+    ],
+    [
+     "FX",
+     "fx"
+    ],
+    [
+     "VOX",
+     "vox"
+    ],
+    [
+     "PADS",
+     "pad"
+    ],
+    [
+     "STABS",
+     "stab"
+    ],
+    [
+     "BLIPS",
+     "blip"
+    ],
+    [
+     "DRUMLOOPS",
+     "loop"
+    ],
+    [
+     "PHRASES",
+     "loop"
+    ],
+    [
+     "PIANO",
+     "piano"
+    ],
+    [
+     "WAVES",
+     "wave"
+    ],
+    [
+     "ACOUSTIC",
+     "acoustic"
+    ]
+   ]
+  }
+ },
+ "naming.CLAP_Z": {
+  "type": "float",
+  "value": 1.0
+ },
+ "naming.CLAP_Z_FALLBACK": {
+  "type": "float",
+  "value": 0.5
+ },
+ "naming.DIM_SIGNALS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "br",
+     {
+      "$set": [
+       "bright",
+       "dark",
+       "dull"
+      ]
+     }
+    ],
+    [
+     "noi",
+     {
+      "$set": [
+       "airy",
+       "bitcrush",
+       "clean",
+       "crunchy",
+       "dirty",
+       "distorted",
+       "dusty",
+       "gritty",
+       "lo",
+       "noise",
+       "noisy"
+      ]
+     }
+    ],
+    [
+     "har",
+     {
+      "$set": [
+       "chirp",
+       "chirpy",
+       "click",
+       "clicky",
+       "musical",
+       "noisy",
+       "percussive",
+       "pure",
+       "tonal"
+      ]
+     }
+    ],
+    [
+     "atk",
+     {
+      "$set": [
+       "pluck",
+       "plucked",
+       "plucky",
+       "reverse",
+       "reversed",
+       "snappy",
+       "soft",
+       "swell",
+       "swelling"
+      ]
+     }
+    ],
+    [
+     "dec",
+     {
+      "$set": [
+       "gated",
+       "long",
+       "short",
+       "staccato",
+       "sustained",
+       "tail"
+      ]
+     }
+    ],
+    [
+     "tune",
+     {
+      "$set": [
+       "deep",
+       "high",
+       "low",
+       "pitched",
+       "tuned"
+      ]
+     }
+    ],
+    [
+     "sub",
+     {
+      "$set": [
+       "boomy",
+       "fat",
+       "full",
+       "heavy",
+       "rumble",
+       "sub",
+       "thin"
+      ]
+     }
+    ],
+    [
+     "cr",
+     {
+      "$set": [
+       "punchy",
+       "squashed",
+       "tight"
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "naming.DIM_WEIGHT": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "cr",
+     0.4
+    ]
+   ]
+  }
+ },
+ "naming.LOOP_DIMS": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     "br",
+     {
+      "$tuple": [
+       "dark",
+       "bright"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "noi",
+     {
+      "$tuple": [
+       "clean",
+       "gritty"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "har",
+     {
+      "$tuple": [
+       null,
+       "musical"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "naming.MELODIC_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "ACOUSTIC",
+    "PADS",
+    "PIANO",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "VOX"
+   ]
+  }
+ },
+ "naming.NAME_CAP": {
+  "type": "int",
+  "value": 5
+ },
+ "naming.NAME_MAX_CHARS": {
+  "type": "int",
+  "value": 40
+ },
+ "naming.NOTE_LEAD_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "PIANO"
+   ]
+  }
+ },
+ "naming.NOUN_DROP": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     {
+      "$set": [
+       "kick",
+       "kicks"
+      ]
+     }
+    ],
+    [
+     "SNARES",
+     {
+      "$set": [
+       "snare",
+       "snares"
+      ]
+     }
+    ],
+    [
+     "CLAPS",
+     {
+      "$set": [
+       "clap",
+       "claps"
+      ]
+     }
+    ],
+    [
+     "HATS",
+     {
+      "$set": [
+       "hat",
+       "hats",
+       "hi",
+       "hihat",
+       "hihats"
+      ]
+     }
+    ],
+    [
+     "CYMBALS",
+     {
+      "$set": [
+       "cymbal",
+       "cymbals"
+      ]
+     }
+    ],
+    [
+     "TOMS",
+     {
+      "$set": [
+       "tom",
+       "toms"
+      ]
+     }
+    ],
+    [
+     "PERC",
+     {
+      "$set": [
+       "perc",
+       "percussion"
+      ]
+     }
+    ],
+    [
+     "SUB",
+     {
+      "$set": [
+       "bass"
+      ]
+     }
+    ],
+    [
+     "SYNTH",
+     {
+      "$set": [
+       "synth"
+      ]
+     }
+    ],
+    [
+     "STABS",
+     {
+      "$set": [
+       "stab",
+       "stabs"
+      ]
+     }
+    ],
+    [
+     "PADS",
+     {
+      "$set": [
+       "pad",
+       "pads"
+      ]
+     }
+    ],
+    [
+     "FX",
+     {
+      "$set": [
+       "fx"
+      ]
+     }
+    ],
+    [
+     "BLIPS",
+     {
+      "$set": [
+       "blip",
+       "blips"
+      ]
+     }
+    ],
+    [
+     "VOX",
+     {
+      "$set": [
+       "vox"
+      ]
+     }
+    ],
+    [
+     "DRUMLOOPS",
+     {
+      "$set": [
+       "loop",
+       "loops"
+      ]
+     }
+    ],
+    [
+     "PHRASES",
+     {
+      "$set": [
+       "loop",
+       "loops"
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "naming.NO_TUNE_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "CLAPS",
+    "CYMBALS",
+    "HATS"
+   ]
+  }
+ },
+ "naming.ONESHOT_DIMS": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     "tune",
+     {
+      "$tuple": [
+       "low-tuned",
+       "high-tuned"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "br",
+     {
+      "$tuple": [
+       "dark",
+       "bright"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "noi",
+     {
+      "$tuple": [
+       "clean",
+       "gritty"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "har",
+     {
+      "$tuple": [
+       "clicky",
+       "tonal"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "atk",
+     {
+      "$tuple": [
+       "snappy",
+       "soft"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "dec",
+     {
+      "$tuple": [
+       "gated",
+       "long-tail"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "sub",
+     {
+      "$tuple": [
+       "thin",
+       "sub-heavy"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "cr",
+     {
+      "$tuple": [
+       "squashed",
+       "punchy"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "naming.SAME_TEMPO_BPM": {
+  "type": "int",
+  "value": 2
+ },
+ "naming.SUB_WORD": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "KICKS",
+     "sub-heavy"
+    ],
+    [
+     "FX",
+     "sub-heavy"
+    ],
+    [
+     "SNARES",
+     "full"
+    ],
+    [
+     "TOMS",
+     "full"
+    ],
+    [
+     "PERC",
+     "full"
+    ],
+    [
+     "BLIPS",
+     "full"
+    ]
+   ]
+  }
+ },
+ "naming.TONAL_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "PADS",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "VOX"
+   ]
+  }
+ },
+ "naming.TONAL_DIMS": {
+  "type": "list",
+  "value": [
+   {
+    "$tuple": [
+     "br",
+     {
+      "$tuple": [
+       "dark",
+       "bright"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "noi",
+     {
+      "$tuple": [
+       "clean",
+       "gritty"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "atk",
+     {
+      "$tuple": [
+       "plucky",
+       "swelling"
+      ]
+     }
+    ]
+   },
+   {
+    "$tuple": [
+     "dec",
+     {
+      "$tuple": [
+       "short",
+       "sustained"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "naming.TRAIT_CONFLICTS": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "stab",
+     {
+      "$set": [
+       "swelling"
+      ]
+     }
+    ],
+    [
+     "hit",
+     {
+      "$set": [
+       "swelling"
+      ]
+     }
+    ],
+    [
+     "pluck",
+     {
+      "$set": [
+       "swelling"
+      ]
+     }
+    ],
+    [
+     "plucked",
+     {
+      "$set": [
+       "swelling"
+      ]
+     }
+    ],
+    [
+     "staccato",
+     {
+      "$set": [
+       "long-tail",
+       "sustained",
+       "swelling"
+      ]
+     }
+    ],
+    [
+     "shot",
+     {
+      "$set": [
+       "swelling"
+      ]
+     }
+    ],
+    [
+     "drone",
+     {
+      "$set": [
+       "gated",
+       "plucky",
+       "short"
+      ]
+     }
+    ],
+    [
+     "wash",
+     {
+      "$set": [
+       "plucky",
+       "snappy"
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "naming.TRAIT_GATES": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "soft",
+     {
+      "$tuple": [
+       "atk",
+       ">=",
+       30.0
+      ]
+     }
+    ],
+    [
+     "snappy",
+     {
+      "$tuple": [
+       "atk",
+       "<=",
+       15.0
+      ]
+     }
+    ],
+    [
+     "plucky",
+     {
+      "$tuple": [
+       "atk",
+       "<=",
+       50.0
+      ]
+     }
+    ],
+    [
+     "swelling",
+     {
+      "$tuple": [
+       "atk",
+       ">=",
+       100.0
+      ]
+     }
+    ],
+    [
+     "short",
+     {
+      "$tuple": [
+       "dur",
+       "<=",
+       1.5
+      ]
+     }
+    ],
+    [
+     "sustained",
+     {
+      "$tuple": [
+       "dur",
+       ">=",
+       1.0
+      ]
+     }
+    ],
+    [
+     "long-tail",
+     {
+      "$tuple": [
+       "dur",
+       ">=",
+       0.5
+      ]
+     }
+    ],
+    [
+     "gated",
+     {
+      "$tuple": [
+       "dur",
+       "<=",
+       1.0
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "naming.TRAIT_MIN_Z": {
+  "type": "float",
+  "value": 0.3
+ },
+ "sets.KIT_ACOUSTIC_MAX": {
+  "type": "int",
+  "value": 10
+ },
+ "sets.KIT_ACOUSTIC_PACKS": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "sets.KIT_COUNT": {
+  "type": "int",
+  "value": 24
+ },
+ "sets.KIT_GENERIC": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "drums",
+    "kits",
+    "one-shots",
+    "oneshots",
+    "presets",
+    "sample-pack",
+    "samples",
+    "wav"
+   ]
+  }
+ },
+ "sets.KIT_LEVEL_DB": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "kick",
+     -9.0
+    ],
+    [
+     "snare",
+     -13.0
+    ],
+    [
+     "clap",
+     -14.0
+    ],
+    [
+     "hat_closed",
+     -16.0
+    ],
+    [
+     "hat_open",
+     -15.0
+    ],
+    [
+     "cymbal",
+     -16.0
+    ],
+    [
+     "tom",
+     -11.0
+    ],
+    [
+     "perc",
+     -15.0
+    ]
+   ]
+  }
+ },
+ "sets.KIT_LEVEL_TOL_DB": {
+  "type": "float",
+  "value": 0.5
+ },
+ "sets.KIT_MACHINE_MAX": {
+  "type": "int",
+  "value": 10
+ },
+ "sets.KIT_NAME_DROP": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "by",
+    "kit",
+    "kits",
+    "pack",
+    "sample",
+    "samples",
+    "the"
+   ]
+  }
+ },
+ "sets.KIT_PER_ROLE": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "tom",
+     2
+    ],
+    [
+     "perc",
+     2
+    ]
+   ]
+  }
+ },
+ "sets.KIT_REQUIRED": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "kick",
+    "snare",
+    "hat_closed",
+    "hat_open"
+   ]
+  }
+ },
+ "sets.KIT_ROLES": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    "kick",
+    "snare",
+    "clap",
+    "hat_closed",
+    "hat_open",
+    "cymbal",
+    "tom",
+    "perc"
+   ]
+  }
+ },
+ "sets.ONSET_MIN_RISE_DB": {
+  "type": "float",
+  "value": 3.0
+ },
+ "sets.ROLE_NAME": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "kick",
+     {
+      "$tuple": [
+       {
+        "$re": "kick|(?<![a-z])bd|bass ?drum",
+        "flags": 34
+       },
+       {
+        "$re": "(?<![a-z])(lt|mt|ht|tom|toms)(?![a-z])|low ?tune",
+        "flags": 34
+       }
+      ]
+     }
+    ],
+    [
+     "snare",
+     {
+      "$tuple": [
+       {
+        "$re": "snare|(?<![a-z])sd(?![a-z])|(?<![a-z])sn",
+        "flags": 34
+       },
+       {
+        "$re": "rim|(?<![a-z])rs(?![a-z])|stick|perc",
+        "flags": 34
+       }
+      ]
+     }
+    ],
+    [
+     "clap",
+     {
+      "$tuple": [
+       {
+        "$re": "clap|(?<![a-z])cp(?![a-z])|handclap",
+        "flags": 34
+       },
+       null
+      ]
+     }
+    ],
+    [
+     "hat_closed",
+     {
+      "$tuple": [
+       {
+        "$re": "hat|(?<![a-z])(hh|ch|chh)(?![a-z])|closed",
+        "flags": 34
+       },
+       {
+        "$re": "tamb|shak|marac|cabasa|open|(?<![a-z])oh",
+        "flags": 34
+       }
+      ]
+     }
+    ],
+    [
+     "hat_open",
+     {
+      "$tuple": [
+       {
+        "$re": "hat|(?<![a-z])(oh|ohh)(?![a-z])|open",
+        "flags": 34
+       },
+       {
+        "$re": "tamb|shak|marac|cabasa",
+        "flags": 34
+       }
+      ]
+     }
+    ],
+    [
+     "cymbal",
+     {
+      "$tuple": [
+       {
+        "$re": "crash|ride|cym",
+        "flags": 34
+       },
+       {
+        "$re": "(?<![a-z])rev|reverse",
+        "flags": 34
+       }
+      ]
+     }
+    ],
+    [
+     "tom",
+     {
+      "$tuple": [
+       {
+        "$re": "tom",
+        "flags": 34
+       },
+       null
+      ]
+     }
+    ],
+    [
+     "perc",
+     {
+      "$tuple": [
+       null,
+       {
+        "$re": "fx|synth|flute|pad",
+        "flags": 34
+       }
+      ]
+     }
+    ]
+   ]
+  }
+ },
+ "sets.SLICE_BARS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    1,
+    2,
+    4
+   ]
+  }
+ },
+ "sets.SLICE_BAR_ERR": {
+  "type": "float",
+  "value": 0.1
+ },
+ "sets.SLICE_MAX": {
+  "type": "int",
+  "value": 64
+ },
+ "sets.SLICE_MIN_HITS": {
+  "type": "float",
+  "value": 0.125
+ },
+ "sets.SLICE_READY": {
+  "type": "float",
+  "value": 0.8
+ },
+ "sets.SLICE_STEP": {
+  "type": "int",
+  "value": 16
+ },
+ "sets.SLICE_TOL_S": {
+  "type": "float",
+  "value": 0.01
+ },
+ "sets.SWING_FLAG": {
+  "type": "float",
+  "value": 56.0
+ },
+ "curate_config.ACOUSTIC_MALLET_PACKS": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?!)",
+   "flags": 34
+  }
+ },
+ "curate_config.CLASSIC_BREAK_PROMPTS": {
+  "type": "list",
+  "value": []
+ },
+ "curate_config.WAVE_PATH_WORDS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": []
+  }
+ },
+ "curate_config.GENRE_WORDS_EXTRA": {
+  "type": "dict",
+  "value": {
+   "$dict": []
+  }
+ },
+ "curate_config.VOX_CHOIR_EXTRA": {
+  "type": "list",
+  "value": []
+ },
+ "curate_config.ADDED_CATEGORIES": {
+  "type": "dict",
+  "value": {
+   "$dict": []
+  }
+ },
+ "curate_config.FX_PROMPTS_EXTRA": {
+  "type": "list",
+  "value": []
+ },
+ "curate_config.VENDORS": {
+  "type": "str",
+  "value": "first-folder"
+ },
+ "curate_config.TEMPO_FOLD_RANGE": {
+  "type": "NoneType",
+  "value": null
+ },
+ "curate_config.TEMPO_FOLDING": {
+  "type": "bool",
+  "value": true
+ },
+ "curate_config.DRUMLOOP_DUR_MAX": {
+  "type": "float",
+  "value": 16.0
+ },
+ "curate_config.DRUMLOOP_BREAK_MIN": {
+  "type": "float",
+  "value": 0.3
+ },
+ "curate_config.PATH_WORDS": {
+  "type": "dict",
+  "value": {
+   "$dict": []
+  }
+ },
+ "curate.CLAP_FALLBACK_MIN": {
+  "type": "float",
+  "value": 0.3
+ },
+ "curate.CLAP_FALLBACK_MARGIN": {
+  "type": "float",
+  "value": 0.02
+ },
+ "sets.SETS_ON": {
+  "type": "bool",
+  "value": true
+ },
+ "curate_config.DRUMLOOP_HAR_MAX": {
+  "type": "float",
+  "value": 0.68
+ },
+ "curate.CLAP_FALLBACK_PREFER": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "HATS",
+     "CLAPS"
+    ]
+   ]
+  }
+ },
+ "curate.CLAP_FALLBACK_PREFER_MARGIN": {
+  "type": "float",
+  "value": 0.05
+ },
+ "curate.CLAP_REHOME_MARGIN": {
+  "type": "float",
+  "value": 0.1
+ },
+ "curate.DERIVED_BAR_COUNTS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": [
+    1,
+    2,
+    4,
+    8,
+    16
+   ]
+  }
+ },
+ "curate.TEMPO_DERIVE_TOL": {
+  "type": "float",
+  "value": 0.03
+ },
+ "naming.MUSICAL_HAR_MIN": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate.ANON_LOOP_HAR_MAX": {
+  "type": "float",
+  "value": 0.8
+ },
+ "curate.ANON_LOOP_ONSET_MIN_HZ": {
+  "type": "float",
+  "value": 2.0
+ },
+ "curate.SOUND_MODEL_MIN": {
+  "type": "float",
+  "value": 0.7
+ },
+ "curate.SOUND_MODEL_OVERRIDE_MIN": {
+  "type": "float",
+  "value": 0.9
+ },
+ "curate_config.INSTRUMENT_ROOTS": {
+  "type": "tuple",
+  "value": {
+   "$tuple": []
+  }
+ },
+ "curate_config.SOUND_TRAIN": {
+  "type": "bool",
+  "value": true
+ },
+ "curate_config.SOUND_TRAIN_MIN_LABELS": {
+  "type": "int",
+  "value": 1000
+ },
+ "curate_config.SOUND_TRAIN_MIN_PACKS": {
+  "type": "int",
+  "value": 8
+ },
+ "curate_config.SOUND_RETRAIN_GROWTH": {
+  "type": "float",
+  "value": 0.25
+ },
+ "curate_config.SOUND_KEEP_MIN_ACCURACY": {
+  "type": "float",
+  "value": 0.8
+ },
+ "curate_config.SOUND_KEEP_MIN_COVERAGE": {
+  "type": "float",
+  "value": 0.1
+ },
+ "curate_config.SOUND_KEEP_MIN_HELD": {
+  "type": "int",
+  "value": 200
+ }
+}

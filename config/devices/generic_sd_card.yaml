@@ -1,0 +1,25 @@
+id: generic_sd_card
+name: Generic SD-card sampler
+status: unverified
+description: >
+  A cautious start for a sampler that reads WAV files from an SD card and has no profile
+  yet: 44100 Hz / 16-bit WAV that keeps each file's channels, under /Fourier on the card
+  (`fourier sync` copies it there), CATEGORY/family folders of at most 128 files, and
+  plain-ASCII names. None of it was checked against a manual and it sets no path, name or
+  storage limit, so check your device's manual, or make a profile of your own with
+  `fourier devices new` (docs/device-profiles.md).
+load: card-sync
+sample_refs: path
+
+paths:
+  card_dir: {value: /Fourier, status: unverified}
+  folder_depth: {value: 2, status: unverified}
+  files_per_folder: {value: 128, status: unverified}
+  ascii_names: {value: true, status: unverified}       # NFC, then plain ASCII
+
+audio:
+  sample_rate: {value: 44100, status: unverified}
+  bit_depth: {value: 16, status: unverified}
+  channels: {value: stereo, status: unverified}
+  formats: {value: [wav], status: unverified}
+  dither: {value: true, status: unverified}

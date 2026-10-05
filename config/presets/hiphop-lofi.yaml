@@ -1,0 +1,29 @@
+description: hip hop, boom bap and lo-fi; drum loops at 70-100 BPM (8 bars welcome), keys, vocals and textures
+extends: breaks-acid    # its budgets are what the weights below scale
+# hiphop-lofi: drum loops banded 70-100 BPM and folded into that range (a 170 BPM read of a
+# boom-bap loop is filed at 85; a loop that would fold out of it keeps its tempo), loops and
+# phrases up to 28 s (8 bars at 70 BPM), no breaks-only exclusions, and a harmonicity gate that
+# takes lo-fi drum loops (filtered, or under a chord). More phrases, keys,
+# vocals and acoustic instruments; fewer synth blips and single-cycle waves.
+tempo: 70-100
+size: auto            # fit the devices' storage; a pool's surplus moves to the others
+loudness: standard
+retune: detect
+stereo: fold-near-mono
+categories:
+  DRUMLOOPS: 0.9
+  PHRASES: 1.4
+  SUB: 0.8
+  SYNTH: 0.7
+  STABS: 1.1
+  PADS: 1.1
+  PIANO: 1.5
+  ACOUSTIC: 1.3
+  VOX: 1.4
+  BLIPS: 0.6
+  WAVES: 0.5
+advanced:
+  DRUMLOOP_STYLE_EXCLUDE: '(?<![a-z])(?:fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])'
+  DRUMLOOP_DUR_MAX: 28.0
+  DRUMLOOP_HAR_MAX: 0.78      # lo-fi drums (filtered, under a chord) read more tonal
+  PHRASE_DUR: [1.0, 28.0]

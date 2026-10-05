@@ -1,0 +1,6851 @@
+{
+ "deps": {
+  "librosa": "0.11.0",
+  "libsndfile": "1.2.2",
+  "numpy": "2.4.2",
+  "scipy": "1.17.1",
+  "sklearn": "1.8.0",
+  "soundfile": "0.13.1",
+  "soxr": "1.0.0"
+ },
+ "manifest": {
+  "categories": {
+   "ACOUSTIC": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_01.wav",
+      "out_md5": "2340802be2a398c55c0404b213ccbd0c",
+      "retune": -2.01,
+      "root_midi": 62.01,
+      "root_src": "pyin",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings A/Violin/Violin Sustain 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_02.wav",
+      "out_md5": "31a5dda97ea63bcfb896e57c29459eff",
+      "retune": -3.01,
+      "root_midi": 63.01,
+      "root_src": "pyin",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings B/Violin/Violin Sustain 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_03.wav",
+      "out_md5": "661279a368af00d1133d0620449875f0",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings C/Violin/Violin Sustain 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_04.wav",
+      "out_md5": "2e0b875fbe2b43bafb31ecd4759d92a0",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings D/Violin/Violin Sustain 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_05.wav",
+      "out_md5": "ce526e633859d1b9e13e874fc9cb9c99",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings A/Violin/Violin Sustain 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_06.wav",
+      "out_md5": "79a16733b88911e6c9d91fd161c21139",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings B/Violin/Violin Sustain 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_07.wav",
+      "out_md5": "2dc5fd9f480f73c7281430d0500bb73a",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings C/Violin/Violin Sustain 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_08.wav",
+      "out_md5": "f8f1c26cf32be54e04757bffea9c2e4e",
+      "retune": 2.99,
+      "root_midi": 69.01,
+      "root_src": "pyin",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings D/Violin/Violin Sustain 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_09.wav",
+      "out_md5": "0476683d7c60a0eb61f1d51bc02a7f8d",
+      "retune": 1.99,
+      "root_midi": 70.01,
+      "root_src": "pyin",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings A/Violin/Violin Sustain 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_10.wav",
+      "out_md5": "a8fdaecdc8a2deb5f0c8299a2628fbb1",
+      "retune": 0.99,
+      "root_midi": 71.01,
+      "root_src": "pyin",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings B/Violin/Violin Sustain 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_11.wav",
+      "out_md5": "6f7529fdbfd5b0293b4c3b4696126f2e",
+      "retune": -0.01,
+      "root_midi": 72.01,
+      "root_src": "pyin",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings C/Violin/Violin Sustain 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Violin"
+      ],
+      "band": "string",
+      "family": "string-gs4-violin",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "string-gs4-violin/Violin_Sustain_12.wav",
+      "out_md5": "087d95dd726ea25da1ac36854b24156f",
+      "retune": -1.01,
+      "root_midi": 73.01,
+      "root_src": "pyin",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Strings D/Violin/Violin Sustain 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "BLIPS": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_01.wav",
+      "out_md5": "bdc851510aa7e459d9bbc5aa8c4af8d7",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Blips/Blip 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_05.wav",
+      "out_md5": "02afa3487d37462c8ab1f0716e9ca036",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Blips/Blip 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_09.wav",
+      "out_md5": "7fba1862ec7b081d3930e9101e27ea8a",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Blips/Blip 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_02.wav",
+      "out_md5": "a8b19e6fcc537a42d0d79e44be58b158",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Blips/Blip 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_06.wav",
+      "out_md5": "19157e5fed301f28f8d7c4bdce09c1d2",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Blips/Blip 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_10.wav",
+      "out_md5": "317f51ccdf7fc0e83ceac2b8fa95fd86",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Blips/Blip 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_03.wav",
+      "out_md5": "a490bd58308e2bc0fe43ca45840abe4a",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Blips/Blip 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_07.wav",
+      "out_md5": "df639f9aa31f081f78daaeda672e9c65",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Blips/Blip 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_11.wav",
+      "out_md5": "ede2582f760d49352cd1215f7002ea1b",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Blips/Blip 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_04.wav",
+      "out_md5": "e38dbc96f4b8bb36ad279967d2b361c3",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Blips/Blip 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_08.wav",
+      "out_md5": "19cd702f359eb63b1fb3638ee3fe1fe4",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Blips/Blip 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "blip",
+      "labels": [
+       "blip",
+       "class.oneshot"
+      ],
+      "out": "blip/Blip_12.wav",
+      "out_md5": "b0ad73214e2394810ef69a467127a0cd",
+      "son_cats": [
+       "BLIPS"
+      ],
+      "sononym": [
+       "Tone Blips & HighKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Blips/Blip 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "CLAPS": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_01.wav",
+      "out_md5": "e6636983739a29b394736c2e7a988077",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Claps/Clap 01.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_05.wav",
+      "out_md5": "cb2d8e67617ce9379efbdb0eece4bdc3",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Claps/Clap 05.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_09.wav",
+      "out_md5": "683fa0fd3f6dd3dacef723c5d5bdd388",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Claps/Clap 09.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_02.wav",
+      "out_md5": "6b7d1b26d22f438316ad2aee43a7039a",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Claps/Clap 02.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_06.wav",
+      "out_md5": "725725e30efd14d41dba079817fb349c",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Claps/Clap 06.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_10.wav",
+      "out_md5": "23e5f03b5444f8ad57942fff6a857b3b",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Claps/Clap 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_03.wav",
+      "out_md5": "22c2cbe60c82a5f224d25804567e7a16",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Claps/Clap 03.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_07.wav",
+      "out_md5": "e9b07ef0467a8d4b540d2a7f7a1ba931",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Claps/Clap 07.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_11.wav",
+      "out_md5": "dce65301dc5431ff84128a85df7a2323",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Claps/Clap 11.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_04.wav",
+      "out_md5": "e119fe5f96eea0a3869c22d526a1cd11",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Claps/Clap 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_08.wav",
+      "out_md5": "1db16bdcc7d12f77a1126a829afc712f",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Claps/Clap 08.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CLAPS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "clap",
+      "labels": [
+       "clap",
+       "class.oneshot"
+      ],
+      "out": "clap/Clap_12.wav",
+      "out_md5": "fee1a52c6ad7fd126472a4b8fd517016",
+      "son_cats": [
+       "CLAPS"
+      ],
+      "sononym": [
+       "Perc Claps"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Claps/Clap 12.wav",
+      "support": 2
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "CYMBALS": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_01.wav",
+      "out_md5": "29db1d7cb3d0623e9b0032b9aa02411f",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Cymbals/Ride 01.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_05.wav",
+      "out_md5": "37d143ad15e244bea3169604419a9906",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Cymbals/Ride 05.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_09.wav",
+      "out_md5": "3cdc49a088cd116a93ba433c530770e2",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Cymbals/Ride 09.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_02.wav",
+      "out_md5": "cde079062b3c1ec96a340f3ee5c31142",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Cymbals/Ride 02.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_06.wav",
+      "out_md5": "81c5a37f13677cbaf510fe821abd56a9",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Cymbals/Ride 06.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_10.wav",
+      "out_md5": "c11cf6f42e67d2cc57d712808b0a36e2",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Cymbals/Ride 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_03.wav",
+      "out_md5": "67a9a3b12124e5010ed2be62fa9fe3f5",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Cymbals/Ride 03.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_07.wav",
+      "out_md5": "5a8a2a8544c3900c924f4929ebbe8e87",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Cymbals/Ride 07.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_11.wav",
+      "out_md5": "bf652e3fd93986a248bc09699b2dee2f",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Cymbals/Ride 11.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_04.wav",
+      "out_md5": "b4631b0041ff060b118a17669d2d12dc",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Cymbals/Ride 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_08.wav",
+      "out_md5": "a20204de25aa720637a6c636bba7a58f",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Cymbals/Ride 08.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "ride",
+      "family": "ride-dark",
+      "labels": [
+       "class.oneshot",
+       "cymbal.ride"
+      ],
+      "out": "ride-dark/Ride_12.wav",
+      "out_md5": "3d00f27c213175f715e82855d169393a",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Rides"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Cymbals/Ride 12.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_01.wav",
+      "out_md5": "5fb990b52d5a7d8ce331c7b99d236ab0",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Cymbals/Crash 01.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_05.wav",
+      "out_md5": "d6ed68e06839af58f1e6f9f2a6485134",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Cymbals/Crash 05.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_09.wav",
+      "out_md5": "24738a9ab5170556f2f5dfa3daa83ce8",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Cymbals/Crash 09.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_02.wav",
+      "out_md5": "519c0ad7a9bd25574d47b3c7ff396941",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Cymbals/Crash 02.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_06.wav",
+      "out_md5": "161f5e3d926ce32df5f02e64869348bf",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Cymbals/Crash 06.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_10.wav",
+      "out_md5": "3062d8f9be1fe529ecab7df885da7189",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Cymbals/Crash 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_03.wav",
+      "out_md5": "15582c6231765a88c97e2e7ddff05df7",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Cymbals/Crash 03.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_07.wav",
+      "out_md5": "d4941b1fc41a120c75658cf9bc12d7a3",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Cymbals/Crash 07.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_11.wav",
+      "out_md5": "57fe5513a4c73303574f40372162e4fd",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Cymbals/Crash 11.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_04.wav",
+      "out_md5": "c69bdcb3ecc132c2fb6fc156f3d68b41",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Cymbals/Crash 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_08.wav",
+      "out_md5": "39adff1fa7546487d45fe551a36795a1",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Cymbals/Crash 08.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "CYMBALS"
+      ],
+      "ableton": [],
+      "band": "crash",
+      "family": "crash-electronic-bright",
+      "labels": [
+       "class.oneshot",
+       "cymbal.crash"
+      ],
+      "out": "crash-electronic-bright/Crash_12.wav",
+      "out_md5": "ac4c5381d68db41508c3dfe7ba424c33",
+      "son_cats": [
+       "CYMBALS"
+      ],
+      "sononym": [
+       "Perc Cymbal Crashes"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Cymbals/Crash 12.wav",
+      "support": 2
+     }
+    ],
+    "families": 2,
+    "files": 24,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 24
+   },
+   "DRUMLOOPS": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.075,
+      "bars": 2.0,
+      "bpm": 90.0,
+      "bpm_bars": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_90_01.wav",
+      "out_md5": "68427aabf53f531dcafdec7e6a6e541d",
+      "slice_clean": 0.625,
+      "slice_hits": 0.125,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Drum Loops/Break 90 01.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 90.0,
+      "bpm_bars": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_90_05.wav",
+      "out_md5": "960892194435a600588915241cf747e4",
+      "slice_clean": 0.875,
+      "slice_hits": 0.375,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Drum Loops/Break 90 05.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 90.0,
+      "bpm_bars": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_90_02.wav",
+      "out_md5": "2ad7b4d5cb9cb285edd409a2c9d8b8df",
+      "slice_clean": 0.75,
+      "slice_hits": 0.375,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 90 02.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 90.0,
+      "bpm_bars": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_90_06.wav",
+      "out_md5": "06ff0c1ddf746d6f14d460ae27ec9c86",
+      "slice_clean": 0.75,
+      "slice_hits": 0.375,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 90 06.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 90.0,
+      "bpm_bars": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_90_03.wav",
+      "out_md5": "8594890ac0100e53503bd4aefd7dce33",
+      "slice_clean": 0.625,
+      "slice_hits": 0.312,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops C/Drum Loops/Break 90 03.wav",
+      "support": 2,
+      "swing": 60.5
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 90.0,
+      "bpm_bars": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_90_07.wav",
+      "out_md5": "56d5ce627c868347a45160cd03f1fe70",
+      "slice_clean": 0.625,
+      "slice_hits": 0.312,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops C/Drum Loops/Break 90 07.wav",
+      "support": 2,
+      "swing": 53.8
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 90.0,
+      "bpm_bars": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_90_04.wav",
+      "out_md5": "ef6738a7854bedcd52e2129ae7c3e1e4",
+      "slice_clean": 0.781,
+      "slice_hits": 0.312,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 90 04.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 90.0,
+      "bpm_bars": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_90_08.wav",
+      "out_md5": "5f29c780c4bbdf5ccd76dc409716f70b",
+      "slice_clean": 0.781,
+      "slice_hits": 0.312,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 90 08.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.107,
+      "bars": 2.0,
+      "bpm": 128.0,
+      "bpm_bars": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_128_01.wav",
+      "out_md5": "85c3c88ee8f67ec8fe79fe07e33082d8",
+      "slice_clean": 0.531,
+      "slice_hits": 0.156,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Drum Loops/Break 128 01.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 128.0,
+      "bpm_bars": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_128_05.wav",
+      "out_md5": "936e8d9b5a784c650ab11a621d08db05",
+      "slice_clean": 1.0,
+      "slice_hits": 0.5,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Drum Loops/Break 128 05.wav",
+      "support": 2,
+      "swing": 48.0
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 128.0,
+      "bpm_bars": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_128_02.wav",
+      "out_md5": "867917ff3f4a64dd8462d14506666ff7",
+      "slice_clean": 0.875,
+      "slice_hits": 0.375,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 128 02.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 128.0,
+      "bpm_bars": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_128_06.wav",
+      "out_md5": "8e8bf17303cf4748b7f431bced888fc0",
+      "slice_clean": 0.875,
+      "slice_hits": 0.375,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 128 06.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 128.0,
+      "bpm_bars": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_128_03.wav",
+      "out_md5": "e5167ed1562614f7577fabde6757bbbe",
+      "slice_clean": 0.875,
+      "slice_hits": 0.281,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops C/Drum Loops/Break 128 03.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 128.0,
+      "bpm_bars": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_128_07.wav",
+      "out_md5": "b0c69e207f578a1bcd5cadf01a237f47",
+      "slice_clean": 0.875,
+      "slice_hits": 0.281,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops C/Drum Loops/Break 128 07.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 128.0,
+      "bpm_bars": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_128_04.wav",
+      "out_md5": "218f7fccf1b35a9c779d17c178214de2",
+      "slice_clean": 0.938,
+      "slice_hits": 0.375,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 128 04.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 128.0,
+      "bpm_bars": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_128_08.wav",
+      "out_md5": "395ea6f46aba409869bcecf97dc93a13",
+      "slice_clean": 0.875,
+      "slice_hits": 0.312,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 128 08.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.145,
+      "bars": 2.0,
+      "bpm": 174.0,
+      "bpm_bars": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_174_01.wav",
+      "out_md5": "e8e394ff7d05141363df2d31b95f562f",
+      "slice_clean": 0.688,
+      "slice_hits": 0.062,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Drum Loops/Break 174 01.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 174.0,
+      "bpm_bars": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_174_05.wav",
+      "out_md5": "fac4dedab69a666d984fe5090f68b3e7",
+      "slice_clean": 0.875,
+      "slice_hits": 0.25,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Drum Loops/Break 174 05.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 174.0,
+      "bpm_bars": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_174_02.wav",
+      "out_md5": "9dce14dc68e79b9525013cbf550d1e6f",
+      "slice_clean": 0.875,
+      "slice_hits": 0.25,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 174 02.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 174.0,
+      "bpm_bars": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_174_06.wav",
+      "out_md5": "405c9cc4aef3216af71e0bfd22483764",
+      "slice_clean": 0.875,
+      "slice_hits": 0.25,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 174 06.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 174.0,
+      "bpm_bars": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_174_03.wav",
+      "out_md5": "a5430f447af51f34832486eea9458650",
+      "slice_clean": 0.812,
+      "slice_hits": 0.219,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops C/Drum Loops/Break 174 03.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 174.0,
+      "bpm_bars": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_174_07.wav",
+      "out_md5": "8c9d0c69c6b52f2b45c9a47b35b841f6",
+      "slice_clean": 0.781,
+      "slice_hits": 0.188,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops C/Drum Loops/Break 174 07.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 174.0,
+      "bpm_bars": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_174_04.wav",
+      "out_md5": "5e6202e895bdf8a2f7c0a141621f89ff",
+      "slice_clean": 1.0,
+      "slice_hits": 0.375,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 174 04.wav",
+      "support": 2,
+      "swing": null
+     },
+     {
+      "ab_cats": [
+       "DRUMLOOPS"
+      ],
+      "ableton": [
+       "Drum Loop"
+      ],
+      "band": "full",
+      "bar_err": 0.0,
+      "bars": 2.0,
+      "bpm": 174.0,
+      "bpm_bars": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "090-175bpm",
+      "labels": [
+       "class.loop",
+       "kick"
+      ],
+      "loop_row": true,
+      "out": "090-175bpm/Break_174_08.wav",
+      "out_md5": "4563b1d2261b4113732729e475ce5714",
+      "slice_clean": 0.969,
+      "slice_hits": 0.344,
+      "son_cats": [
+       "DRUMLOOPS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 174 08.wav",
+      "support": 2,
+      "swing": null
+     }
+    ],
+    "families": 1,
+    "files": 24,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 24
+   },
+   "FX": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_01.wav",
+      "out_md5": "6db2d23e973b6aeeea325d06f8644fc4",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX A/Risers/Riser 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_05.wav",
+      "out_md5": "1ed26b617bd4b3354d24d41b0baca66e",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX A/Risers/Riser 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_09.wav",
+      "out_md5": "735c7a58373bc333be37a4a55338d5e6",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX A/Risers/Riser 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_02.wav",
+      "out_md5": "858dd38dbe611d8203765e8f81e0e8a8",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX B/Risers/Riser 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_06.wav",
+      "out_md5": "3232da311ee102b504b12f05c2ef8b3d",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX B/Risers/Riser 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_10.wav",
+      "out_md5": "af5d19de63ec1fe04dc2b78ca0477cb8",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX B/Risers/Riser 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_03.wav",
+      "out_md5": "9e047b68b4738ef22858bb411d5af859",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX C/Risers/Riser 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_07.wav",
+      "out_md5": "a1a29e16f05f9fb9f626b51966cf08ee",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX C/Risers/Riser 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_11.wav",
+      "out_md5": "0b8b293f0985051cb934ff3630c10baf",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX C/Risers/Riser 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_04.wav",
+      "out_md5": "3f66dc3b82d2598698a0e9259d0bd912",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX D/Risers/Riser 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_08.wav",
+      "out_md5": "2c65ae6524c6caced6c730517122664d",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX D/Risers/Riser 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "riser",
+      "family": "riser",
+      "labels": [
+       "class.oneshot",
+       "fx.sweep"
+      ],
+      "out": "riser/Riser_12.wav",
+      "out_md5": "1217810655bc6ce5f7af198529d3d886",
+      "son_cats": [
+       "FX"
+      ],
+      "sononym": [
+       "XFX Sweeps & Lasers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth FX D/Risers/Riser 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "HATS": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_01.wav",
+      "out_md5": "28f5c1cb75f7aa89ead5abc1c3e48dd0",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Hats/Closed Hat 01.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_05.wav",
+      "out_md5": "1734b560df4f6ed0f64798b705067ef7",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Hats/Closed Hat 05.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_09.wav",
+      "out_md5": "474f3c59afcbb7204c858e45153c8bc7",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Hats/Closed Hat 09.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_02.wav",
+      "out_md5": "bc15c725b82d3f2740936abab9cc32cc",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Closed Hat 02.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_03.wav",
+      "out_md5": "d9808f32bed179650f7ca481da328e39",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Closed Hat 03.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_04.wav",
+      "out_md5": "f2250f0226a5e442cbe03540ce26427f",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Closed Hat 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_06.wav",
+      "out_md5": "7cbef5de8e87dff9f282ed0c4658b99c",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Closed Hat 06.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_10.wav",
+      "out_md5": "bafe552f590930d7fe9b6f006fc3dde6",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Closed Hat 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_07.wav",
+      "out_md5": "f0389aa3bde1874f7d669f41e00945d6",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Closed Hat 07.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_11.wav",
+      "out_md5": "c9f243e72ba31a9922f87f5f781ca0af",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Closed Hat 11.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_08.wav",
+      "out_md5": "c3036d03dd20f7d339d3af0eb46a5a3f",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Closed Hat 08.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_12.wav",
+      "out_md5": "90b6b28cd51764ce968e7922eca7659b",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Closed Hat 12.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_01.wav",
+      "out_md5": "1086cc6ba357db61e51e2c1ee7ff5b39",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Hats/Open Hat 01.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_05.wav",
+      "out_md5": "209edd11b55321944e100f8f4ba38cd1",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Hats/Open Hat 05.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_09.wav",
+      "out_md5": "887cd786241e197efbd150342c4ba752",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Hats/Open Hat 09.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_06.wav",
+      "out_md5": "ea6d9ed0725eb96025ebc0e90208b641",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Open Hat 06.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_10.wav",
+      "out_md5": "fb097c8fa95a903eba058769b943c501",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Open Hat 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_03.wav",
+      "out_md5": "a484a664d39782a7159b6a368670508a",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Open Hat 03.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_04.wav",
+      "out_md5": "561e80b67abe29770fdfad18ca72eac7",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Open Hat 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_08.wav",
+      "out_md5": "a9182c0cbae572a9a9dd22a1568f7c16",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Open Hat 08.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_02.wav",
+      "out_md5": "0bf32bd01e4295887279f78f03f0aea7",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Open Hat 02.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_07.wav",
+      "out_md5": "2c7612e75cbd1104cf1a3a8fd2ff4363",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Open Hat 07.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_11.wav",
+      "out_md5": "5f9ff626078102c79aa13ec3322aace0",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Open Hat 11.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_12.wav",
+      "out_md5": "6b4e1a363a5e707e18ee4665a1b46508",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Open Hat 12.wav",
+      "support": 2
+     }
+    ],
+    "families": 2,
+    "files": 24,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 24
+   },
+   "KICKS": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_01.wav",
+      "out_md5": "c5a86ac5689dc40204d634c7543cee98",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Kicks/Kick 01.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_05.wav",
+      "out_md5": "c6be9956066f04d4aae2ead8182afdf4",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Kicks/Kick 05.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_09.wav",
+      "out_md5": "37db4d52a3b0c59253af0eefa4833f2a",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Kicks/Kick 09.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Hot_Start_Kick.wav",
+      "out_md5": "bf086c29a3eb0d87c3ef455b618d601f",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Kicks/Hot Start Kick.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_02.wav",
+      "out_md5": "dd616455d4893ebf3a6e846d08746711",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Kicks/Kick 02.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_06.wav",
+      "out_md5": "2ecfdc49d0de6d2624f0c12f7446540e",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Kicks/Kick 06.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_10.wav",
+      "out_md5": "06a6a5387c0b14ae3445fe94cbf286fa",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Kicks/Kick 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_03.wav",
+      "out_md5": "aac323d3dfee060aace847571bf28c5a",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Kicks/Kick 03.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_07.wav",
+      "out_md5": "43e1b1a0c6ed7434448bc7fd8e98bb7a",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Kicks/Kick 07.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_11.wav",
+      "out_md5": "3c4de1c1ff93594e8ea3fa51ea72531a",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Kicks/Kick 11.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_04.wav",
+      "out_md5": "6cb7a96ded5602945ff966d2aa86f093",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Kicks/Kick 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_08.wav",
+      "out_md5": "44b83305190848067b14d5f2884dea8c",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Kicks/Kick 08.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "KICKS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "kick",
+      "labels": [
+       "class.oneshot",
+       "kick"
+      ],
+      "out": "kick/Kick_12.wav",
+      "out_md5": "178597acf46e71400e7f25f958aad6d8",
+      "son_cats": [
+       "KICKS"
+      ],
+      "sononym": [
+       "Perc Kicks"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Kicks/Kick 12.wav",
+      "support": 2
+     }
+    ],
+    "families": 1,
+    "files": 13,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 13
+   },
+   "PADS": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_01.wav",
+      "out_md5": "f134b8575029fdca5356953af477044c",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Pads/Warm Pad 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_05.wav",
+      "out_md5": "ec2ca7feef6e43af040eedb8d9654bc0",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Pads/Warm Pad 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_09.wav",
+      "out_md5": "b8f0cfc260b349d5712243b3fa8e62bc",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Pads/Warm Pad 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Long_Tail_Pad.wav",
+      "out_md5": "6d173b0d8fb2947eb351b898b0cd4d05",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Pads/Long Tail Pad.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Phase_Flipped_Pad.wav",
+      "out_md5": "75cc38d4cbc100f978f1596cfa312c3c",
+      "phase_fix": "left",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Pads/Phase Flipped Pad.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_02.wav",
+      "out_md5": "eafd3a45eca134fed5493a0322660c82",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Pads/Warm Pad 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_06.wav",
+      "out_md5": "76a908e3c3fb138f6c342bf8f83fd282",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Pads/Warm Pad 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_10.wav",
+      "out_md5": "69d56abf09f03963ca079d24b78d0ee3",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Pads/Warm Pad 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_03.wav",
+      "out_md5": "75cc38d4cbc100f978f1596cfa312c3c",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Pads/Warm Pad 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_07.wav",
+      "out_md5": "eb239e95aba70503a019d75b82f6296c",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Pads/Warm Pad 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_11.wav",
+      "out_md5": "de806679cf0662d0cf4e10803017dc94",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Pads/Warm Pad 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_04.wav",
+      "out_md5": "3cac7bda6f9b6f787c8ee8e25961b181",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Pads/Warm Pad 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_08.wav",
+      "out_md5": "7b198613f99b217ce59ff538f03828b2",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Pads/Warm Pad 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "pad",
+      "labels": [
+       "class.oneshot",
+       "pad"
+      ],
+      "out": "pad/Warm_Pad_12.wav",
+      "out_md5": "fd6890588c9e8b352dcdf97abf36eae5",
+      "son_cats": [
+       "PADS"
+      ],
+      "sononym": [
+       "Tone Pads & Textures"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Pads/Warm Pad 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 14,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 14
+   },
+   "PERC": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_01.wav",
+      "out_md5": "2895e1980e40b3752675cf9f168e69e3",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Percussion/Wood Hit 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_05.wav",
+      "out_md5": "50ee4ed20aa230c6498a5dd00ed9213c",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Percussion/Wood Hit 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_09.wav",
+      "out_md5": "490eb9820e1bf79c77c8e87d9c620fe0",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Percussion/Wood Hit 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_02.wav",
+      "out_md5": "36afee13edb87cacf818c49b5877d538",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Percussion/Wood Hit 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_06.wav",
+      "out_md5": "049b05acba0db23a33d85d6b0d8e7ef1",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Percussion/Wood Hit 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_10.wav",
+      "out_md5": "895cfee8977cbdc0b9d16c816a424ce9",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Percussion/Wood Hit 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_03.wav",
+      "out_md5": "6f17707e7ecd600a1cd93944d3761665",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Percussion/Wood Hit 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_07.wav",
+      "out_md5": "64223c952fc955407d77ab10b6cbed20",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Percussion/Wood Hit 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_11.wav",
+      "out_md5": "09167ade0e88eb6f6a6aadff4b81b1e5",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Percussion/Wood Hit 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_04.wav",
+      "out_md5": "265940e140e6571c519364a85cb20e83",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Percussion/Wood Hit 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_08.wav",
+      "out_md5": "9da70593b02978234f060ee86887c599",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Percussion/Wood Hit 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "perc",
+      "labels": [
+       "class.oneshot",
+       "perc.wood"
+      ],
+      "out": "perc/Wood_Hit_12.wav",
+      "out_md5": "b3c72a875fa3228c13b2ce303fdcb2b1",
+      "son_cats": [
+       "PERC"
+      ],
+      "sononym": [
+       "Perc Wood Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Percussion/Wood Hit 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "PHRASES": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_90_01_C.wav",
+      "out_md5": "7e59f9584a3a5c95de09b421016e3728",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Bass Loops/Bassline 90 01 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_90_05_C.wav",
+      "out_md5": "410261d4f32594d538c2939e8df38d53",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Bass Loops/Bassline 90 05 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_90_02_C.wav",
+      "out_md5": "fede930c16e2005948a2f837e55676b1",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops B/Bass Loops/Bassline 90 02 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_90_03_C.wav",
+      "out_md5": "8e2730355cc347f56fc61e20a8a679df",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops C/Bass Loops/Bassline 90 03 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 90.0,
+      "bpm_fold": 90.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_90_04_C.wav",
+      "out_md5": "337bbb787e3d1c91e264e6fca33b6ebc",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops D/Bass Loops/Bassline 90 04 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_128_01_C.wav",
+      "out_md5": "fda94ca4ef79b748637883d46d7f7b99",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Bass Loops/Bassline 128 01 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_128_05_C.wav",
+      "out_md5": "21b6806a85cf9c4c841cb16cf4f3fa97",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Bass Loops/Bassline 128 05 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_128_02_C.wav",
+      "out_md5": "0a3d355feea93c0454fb40a362f8c4b2",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops B/Bass Loops/Bassline 128 02 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_128_03_C.wav",
+      "out_md5": "830b41b17b65766ae289b5706ddf5ddf",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops C/Bass Loops/Bassline 128 03 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 128.0,
+      "bpm_fold": 128.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_128_04_C.wav",
+      "out_md5": "c76e2c6d110933afd700dfb3007ddb62",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops D/Bass Loops/Bassline 128 04 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_174_01_C.wav",
+      "out_md5": "fe441fa2dbb1082e6b506d0f085c7071",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Bass Loops/Bassline 174 01 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_174_05_C.wav",
+      "out_md5": "065f7cc441c522c4dea1f95637e32e06",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops A/Bass Loops/Bassline 174 05 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_174_02_C.wav",
+      "out_md5": "80b3d18ba99e0a6a69e96b5189435abb",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops B/Bass Loops/Bassline 174 02 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_174_03_C.wav",
+      "out_md5": "d9d67aa4bc48d7860064f60c6e478ee0",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops C/Bass Loops/Bassline 174 03 C.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "PHRASES"
+      ],
+      "ableton": [],
+      "band": "bass",
+      "bpm": 174.0,
+      "bpm_fold": 174.0,
+      "bpm_src": "name",
+      "family": "bass-090-175bpm",
+      "labels": [
+       "bass",
+       "class.loop"
+      ],
+      "loop_row": true,
+      "out": "bass-090-175bpm/Bassline_174_04_C.wav",
+      "out_md5": "6438fea267b3e147a3389ddc25efb8d8",
+      "son_cats": [
+       "PHRASES"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Loops D/Bass Loops/Bassline 174 04 C.wav",
+      "support": 2
+     }
+    ],
+    "families": 1,
+    "files": 15,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 15
+   },
+   "PIANO": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_01.wav",
+      "out_md5": "ab04fdddb2b6f0fbff3b4ce90ca09909",
+      "retune": -2.0,
+      "root_midi": 50.0,
+      "root_src": "detect",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys A/Grand Piano/Piano 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_02.wav",
+      "out_md5": "f1b74d61464b6e24427b94e26de06b14",
+      "retune": -3.0,
+      "root_midi": 51.0,
+      "root_src": "detect",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys B/Grand Piano/Piano 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_03.wav",
+      "out_md5": "93ae08cb5bcc8fb3a959ea38856e9ada",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys C/Grand Piano/Piano 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_04.wav",
+      "out_md5": "8050fcd484257659b190df493d1368aa",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys D/Grand Piano/Piano 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_05.wav",
+      "out_md5": "01b54c791ad4e7e5875ce7bb4a57b007",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys A/Grand Piano/Piano 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_06.wav",
+      "out_md5": "4cdf5669a6e66de7e932590efc208654",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys B/Grand Piano/Piano 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_07.wav",
+      "out_md5": "5cf411dc55d043aff06644231a2b1fc5",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys C/Grand Piano/Piano 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_08.wav",
+      "out_md5": "9c684bfbe1a836b36e50794e654e75bd",
+      "retune": 3.0,
+      "root_midi": 57.0,
+      "root_src": "detect",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys D/Grand Piano/Piano 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_09.wav",
+      "out_md5": "934c16de0c68ad11a197267d9025f605",
+      "retune": 2.0,
+      "root_midi": 58.0,
+      "root_src": "detect",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys A/Grand Piano/Piano 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_10.wav",
+      "out_md5": "01a18382945b1bd644a5b7762aa721d9",
+      "retune": 1.0,
+      "root_midi": 59.0,
+      "root_src": "detect",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys B/Grand Piano/Piano 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_11.wav",
+      "out_md5": "ba90a5126588757ac9397688e5b3d062",
+      "retune": 0.0,
+      "root_midi": 60.0,
+      "root_src": "detect",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys C/Grand Piano/Piano 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [
+       "Piano"
+      ],
+      "band": "note",
+      "family": "c4-piano",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "c4-piano/Piano_12.wav",
+      "out_md5": "4d750bc90efb62cda1fc7991f1be2584",
+      "retune": -1.0,
+      "root_midi": 61.0,
+      "root_src": "detect",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Keys D/Grand Piano/Piano 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "SNARES": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_01.wav",
+      "out_md5": "8bb269e4c9acd760710e5fc72b2c827a",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Snares/Snare 01.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_05.wav",
+      "out_md5": "3da9bda5709518044fb3b2b43766dcc3",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Snares/Snare 05.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_09.wav",
+      "out_md5": "402fe20e74de55393739cf4a45ce3555",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Snares/Snare 09.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_02.wav",
+      "out_md5": "c0dd848037b6ae8382caba1744cd44ee",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Snares/Snare 02.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_06.wav",
+      "out_md5": "2c7557a6c29002a0fc11ddc34f098f8e",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Snares/Snare 06.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_10.wav",
+      "out_md5": "01ce6de7b923c23cc4f9ec9b1212543b",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Snares/Snare 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_03.wav",
+      "out_md5": "54afc50cccaf35bdb2185085c8970009",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Snares/Snare 03.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_07.wav",
+      "out_md5": "5b03172d082cb48c3c00c33afd8ee279",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Snares/Snare 07.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_11.wav",
+      "out_md5": "73a4b20325e0f01ac6bea7991a56a167",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Snares/Snare 11.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_04.wav",
+      "out_md5": "7af50f6178961ebdd49267e221928477",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Snares/Snare 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_08.wav",
+      "out_md5": "d4853088a3dda410d2af8c3afff477a0",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Snares/Snare 08.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "SNARES"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "snare",
+      "labels": [
+       "class.oneshot",
+       "snare"
+      ],
+      "out": "snare/Snare_12.wav",
+      "out_md5": "3bf63fd7346af75fe71a833e44bfb554",
+      "son_cats": [
+       "SNARES"
+      ],
+      "sononym": [
+       "Perc Snares"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Snares/Snare 12.wav",
+      "support": 2
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "STABS": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_01.wav",
+      "out_md5": "7c9a3f9159ba009a9f5eb8074460ac03",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Stabs/Chord Stab 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_05.wav",
+      "out_md5": "0796c662e7deba41c79a3c583e6542fe",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Stabs/Chord Stab 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_09.wav",
+      "out_md5": "bb1f572542d83b3a3331910884ebabff",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Stabs/Chord Stab 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_02.wav",
+      "out_md5": "63c56aae736b025e856135c59ad97126",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Stabs/Chord Stab 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_06.wav",
+      "out_md5": "4502cdf1beebc47663593c7c2e0d0d19",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Stabs/Chord Stab 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_10.wav",
+      "out_md5": "8c8c511a3f5c34cf56138dba22c5b8e6",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Stabs/Chord Stab 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_03.wav",
+      "out_md5": "4c8875b1e709149985adf4b186bdbf0b",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Stabs/Chord Stab 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_07.wav",
+      "out_md5": "4cdb840d0387aee23a44de8caea2fe52",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Stabs/Chord Stab 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_11.wav",
+      "out_md5": "1d8f9e70d81beefb46cb3cf4fde994dc",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Stabs/Chord Stab 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_04.wav",
+      "out_md5": "cdc72f619f6626c16f95ba01859a9c10",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Stabs/Chord Stab 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_08.wav",
+      "out_md5": "6da8806e12b76e6a888cb79e66924971",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Stabs/Chord Stab 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "stab",
+      "labels": [
+       "class.oneshot",
+       "stab"
+      ],
+      "out": "stab/Chord_Stab_12.wav",
+      "out_md5": "3df52db043c516c3968ff5ce3dda8fb0",
+      "son_cats": [
+       "STABS"
+      ],
+      "sononym": [
+       "Tone Stabs & Orch. Hits"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Stabs/Chord Stab 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "SUB": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_01_C.wav",
+      "out_md5": "48533406f61a7991e61d40e7add45afa",
+      "retune": -0.06,
+      "root_midi": 36.06,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Bass/Sub Bass 01 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_05_C.wav",
+      "out_md5": "1864d93801c9ef37294469cd0f90b1de",
+      "retune": 3.99,
+      "root_midi": 44.01,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Bass/Sub Bass 05 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_09_C.wav",
+      "out_md5": "bc9f6a503867d7b2a728ec63416733c8",
+      "retune": -4.11,
+      "root_midi": 40.11,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Bass/Sub Bass 09 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_02_C.wav",
+      "out_md5": "787c1fdafe87204666046282b2ccf1f2",
+      "retune": -5.01,
+      "root_midi": 41.01,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Bass/Sub Bass 02 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_06_C.wav",
+      "out_md5": "c063c632eb80fd79596d5ab298b92d49",
+      "retune": -1.11,
+      "root_midi": 37.11,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Bass/Sub Bass 06 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_10_C.wav",
+      "out_md5": "b990bbdc2781032818b56de4d100caf7",
+      "retune": 2.99,
+      "root_midi": 45.01,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Bass/Sub Bass 10 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_03_C.wav",
+      "out_md5": "2299de5bf923815f10d4d693cd7ee787",
+      "retune": 1.99,
+      "root_midi": 46.01,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Bass/Sub Bass 03 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_07_C.wav",
+      "out_md5": "4c4194a710517cd1c5a9266a603f6433",
+      "retune": 5.99,
+      "root_midi": 42.01,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Bass/Sub Bass 07 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_11_C.wav",
+      "out_md5": "97dfef1df186b4d7d8c5bbff93ca0eb7",
+      "retune": -2.11,
+      "root_midi": 38.11,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Bass/Sub Bass 11 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_04_C.wav",
+      "out_md5": "344f2f356941564504b41d67b82a9f34",
+      "retune": -3.11,
+      "root_midi": 39.11,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Bass/Sub Bass 04 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_08_C.wav",
+      "out_md5": "a816d35032b577ff86096d770c289945",
+      "retune": 0.99,
+      "root_midi": 47.01,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Bass/Sub Bass 08 C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "bass",
+      "labels": [
+       "bass",
+       "class.oneshot"
+      ],
+      "out": "bass/Sub_Bass_12_C.wav",
+      "out_md5": "1352b7cb656f58c37fae05b3af6a8ef5",
+      "retune": 4.99,
+      "root_midi": 43.01,
+      "root_src": "pyin",
+      "son_cats": [
+       "SUB"
+      ],
+      "sononym": [
+       "Tone Bass & LowKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Bass/Sub Bass 12 C.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "SYNTH": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_01.wav",
+      "out_md5": "9aa8db363169f3571bc10d8a1a7987ec",
+      "retune": 0.0,
+      "root_midi": 60.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Leads/Saw Lead 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_05.wav",
+      "out_md5": "0202221b7c1abc796de92f781c72db91",
+      "retune": -4.0,
+      "root_midi": 64.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Leads/Saw Lead 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_09.wav",
+      "out_md5": "44cf78fd84741bcd06f5dc9f90bae8c3",
+      "retune": 4.0,
+      "root_midi": 68.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Leads/Saw Lead 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Flat_Lead_C.wav",
+      "out_md5": "90011a7f8d09f89524f6dbcf920da834",
+      "retune": 0.4,
+      "root_midi": 59.6,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Leads/Flat Lead C.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_02.wav",
+      "out_md5": "997d235962ae6b3681f129379de496eb",
+      "retune": 5.0,
+      "root_midi": 67.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Leads/Saw Lead 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_06.wav",
+      "out_md5": "cb34b6aab63a813ac8cbc92ef166f128",
+      "retune": 1.0,
+      "root_midi": 71.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Leads/Saw Lead 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_10.wav",
+      "out_md5": "34a604b95802e73d12cd435ef468d393",
+      "retune": -3.0,
+      "root_midi": 63.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Leads/Saw Lead 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_03.wav",
+      "out_md5": "5c152861fe6b1c48052115af0c7fc3d4",
+      "retune": -2.0,
+      "root_midi": 62.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Leads/Saw Lead 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_07.wav",
+      "out_md5": "d1f80a0513a670f364b2db0c18e1032e",
+      "retune": 6.0,
+      "root_midi": 66.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Leads/Saw Lead 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_11.wav",
+      "out_md5": "a2d4db1ae01defac89abd43d51aae3fb",
+      "retune": 2.0,
+      "root_midi": 70.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Leads/Saw Lead 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_04.wav",
+      "out_md5": "d820bfcf37acf59c999fb5f9566619ef",
+      "retune": 3.0,
+      "root_midi": 69.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Leads/Saw Lead 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_08.wav",
+      "out_md5": "3f28322c84484648a1bedd5b757ea623",
+      "retune": -1.0,
+      "root_midi": 61.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Leads/Saw Lead 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "synth",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "synth/Saw_Lead_12.wav",
+      "out_md5": "c9e7048efa56eed67bcba81988b876ae",
+      "retune": -5.0,
+      "root_midi": 65.0,
+      "root_src": "detect",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Leads/Saw Lead 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 13,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 13
+   },
+   "TOMS": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_01.wav",
+      "out_md5": "d2b5eb010c630d14fe7cf6c079b4a7d6",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Toms/Tom 01.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_05.wav",
+      "out_md5": "13af27edd17c27cdd793d6af3fe77c1e",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Toms/Tom 05.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_09.wav",
+      "out_md5": "a99160bacdc22809e1b5faba19694192",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Toms/Tom 09.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_02.wav",
+      "out_md5": "2cc0672436eb7ea1a3398afbc7fb038e",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Toms/Tom 02.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_06.wav",
+      "out_md5": "56cb047758487766a2dee71abc4a15e2",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Toms/Tom 06.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_10.wav",
+      "out_md5": "a43020c759a2c3887c8fd65c244c6556",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Toms/Tom 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_03.wav",
+      "out_md5": "cf7090553acf8eceeffeb5f4a52d8b0b",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Toms/Tom 03.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_07.wav",
+      "out_md5": "dc1208d9e383d16d35dca5c16709a74b",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Toms/Tom 07.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_11.wav",
+      "out_md5": "8e4b0f22b2189416a395eceef313ef06",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Toms/Tom 11.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_04.wav",
+      "out_md5": "e8a633b745e6d3120738d218dab3efd4",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Toms/Tom 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_08.wav",
+      "out_md5": "35165c04d5a64f4982af8dc051f6d3e3",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Toms/Tom 08.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "TOMS"
+      ],
+      "ableton": [],
+      "band": null,
+      "family": "tom",
+      "labels": [
+       "class.oneshot",
+       "tom"
+      ],
+      "out": "tom/Tom_12.wav",
+      "out_md5": "a4d847b4137991f009b678b950e2113d",
+      "son_cats": [
+       "TOMS"
+      ],
+      "sononym": [
+       "Perc Toms"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Toms/Tom 12.wav",
+      "support": 2
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "VOX": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_01.wav",
+      "out_md5": "af21f00cb21207c83bef24ce3ddc5a3a",
+      "retune": 0.0,
+      "root_midi": 48.0,
+      "root_src": "detect",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Vocals/Vowel 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_05.wav",
+      "out_md5": "392c655db68b3dcd5afb3c3e2a449607",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Vocals/Vowel 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_09.wav",
+      "out_md5": "94600d20b8edd6c5070f1c9dfdb7df8e",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Vocals/Vowel 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_02.wav",
+      "out_md5": "5534f5835d5253171b9c67da335d9bf0",
+      "retune": -1.0,
+      "root_midi": 49.0,
+      "root_src": "detect",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Vocals/Vowel 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_06.wav",
+      "out_md5": "941265f3cf9381330607c31f41f7d2fe",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Vocals/Vowel 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_10.wav",
+      "out_md5": "df5d317b0b005981d4e689221d0a02db",
+      "retune": 3.0,
+      "root_midi": 57.0,
+      "root_src": "detect",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Vocals/Vowel 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_03.wav",
+      "out_md5": "d384f8c59a24081c682222f93f60c5b8",
+      "retune": -2.0,
+      "root_midi": 50.0,
+      "root_src": "detect",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Vocals/Vowel 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_07.wav",
+      "out_md5": "daa49150b5fd75988fe964a0353efd7f",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Vocals/Vowel 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_11.wav",
+      "out_md5": "af68811989bb1168547026544bd4d834",
+      "retune": 2.0,
+      "root_midi": 58.0,
+      "root_src": "detect",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Vocals/Vowel 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_04.wav",
+      "out_md5": "201463faf8c502888c8a774d11fceb6d",
+      "retune": -3.0,
+      "root_midi": 51.0,
+      "root_src": "detect",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Vocals/Vowel 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_08.wav",
+      "out_md5": "0089952f23fbae9528bc2173d5c84d74",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Vocals/Vowel 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": null,
+      "family": "vox",
+      "labels": [
+       "class.oneshot",
+       "vocal"
+      ],
+      "out": "vox/Vowel_12.wav",
+      "out_md5": "95eadf42ce9a2a549767315cbdb9fa46",
+      "retune": 1.0,
+      "root_midi": 59.0,
+      "root_src": "detect",
+      "son_cats": [
+       "VOX"
+      ],
+      "sononym": [
+       "Tone Voice & Acapella"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Vocals/Vowel 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   },
+   "WAVES": {
+    "built": "2000-01-01T00:00:00Z",
+    "chain_gated": 0,
+    "entries": [
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_01.wav",
+      "out_md5": "a277c163efb21083c03bcf64b24e24b1",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Wavetables/Single Cycle 01.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_05.wav",
+      "out_md5": "80896505a9c631d46bda76215c4c5e34",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Wavetables/Single Cycle 05.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_09.wav",
+      "out_md5": "e6fdf67d67f931a51393b823175b4563",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Tones A/Wavetables/Single Cycle 09.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_02.wav",
+      "out_md5": "32804542b77dadacc31ca638a028feb8",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Wavetables/Single Cycle 02.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_06.wav",
+      "out_md5": "62b7f556011e3057e5cedea0a6bbadb6",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Wavetables/Single Cycle 06.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_10.wav",
+      "out_md5": "90836e5c636a59cfed9f6305dc6d5a6e",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Tones B/Wavetables/Single Cycle 10.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_03.wav",
+      "out_md5": "c8c2b95c280b86acc0c5690004f9b51f",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Wavetables/Single Cycle 03.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_07.wav",
+      "out_md5": "9697006aa4ec198a60e3314f5f339ce3",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Wavetables/Single Cycle 07.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_11.wav",
+      "out_md5": "132907f33ca87a58e3a19a5343093d5c",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones C/Wavetables/Single Cycle 11.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_04.wav",
+      "out_md5": "52a98a3877f8e3e11102f1c1f091f991",
+      "son_cats": [],
+      "sononym": [],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Wavetables/Single Cycle 04.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_08.wav",
+      "out_md5": "9999f428d1deec2b5a034254dac1bad3",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Wavetables/Single Cycle 08.wav",
+      "support": 1
+     },
+     {
+      "ab_cats": [],
+      "ableton": [],
+      "band": "cycle",
+      "family": "cycle-synth-tones",
+      "labels": [
+       "class.oneshot",
+       "lead"
+      ],
+      "out": "cycle-synth-tones/Single_Cycle_12.wav",
+      "out_md5": "9f81721f4cc44927218e870aa2f6ceea",
+      "son_cats": [
+       "SYNTH"
+      ],
+      "sononym": [
+       "Tone Leads & MidHiKeys"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Tones D/Wavetables/Single Cycle 12.wav",
+      "support": 1
+     }
+    ],
+    "families": 1,
+    "files": 12,
+    "loop_gated": 0,
+    "note_gated": 0,
+    "source_samples": 12
+   }
+  },
+  "clap_model": "laion/clap-htsat-unfused",
+  "code_hash": "32e9212c6e5e0a9e",
+  "config_hash": "2ecf60f00cd715b0",
+  "fourier_manifest": 2,
+  "generated": "2000-01-01T00:00:00Z",
+  "git_sha": "",
+  "overrides": {
+   "curate_config.BUDGETS": {
+    "$dict": [
+     [
+      "DRUMLOOPS",
+      24
+     ],
+     [
+      "PHRASES",
+      24
+     ],
+     [
+      "KICKS",
+      24
+     ],
+     [
+      "SNARES",
+      24
+     ],
+     [
+      "HATS",
+      24
+     ],
+     [
+      "PERC",
+      24
+     ],
+     [
+      "SUB",
+      24
+     ],
+     [
+      "TOMS",
+      24
+     ],
+     [
+      "CLAPS",
+      24
+     ],
+     [
+      "CYMBALS",
+      24
+     ],
+     [
+      "FX",
+      24
+     ],
+     [
+      "SYNTH",
+      24
+     ],
+     [
+      "PADS",
+      24
+     ],
+     [
+      "STABS",
+      24
+     ],
+     [
+      "BLIPS",
+      24
+     ],
+     [
+      "VOX",
+      24
+     ],
+     [
+      "PIANO",
+      24
+     ],
+     [
+      "WAVES",
+      24
+     ],
+     [
+      "ACOUSTIC",
+      24
+     ]
+    ]
+   }
+  },
+  "providers": [
+   "sononym",
+   "ableton"
+  ],
+  "ratings_hash": "0650385da6032c7c",
+  "seed": 0,
+  "sets": {
+   "KITS": {
+    "entries": [
+     {
+      "came_from": "KICKS/kick/Kick_05.wav",
+      "family": "kit-synth-drums-a",
+      "gain_db": -2.96,
+      "out": "kit-synth-drums-a/Kick_05.wav",
+      "out_md5": "f337610b604ff2939615f979a3458b11",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Kicks/Kick 05.wav"
+     },
+     {
+      "came_from": "SNARES/snare/Snare_05.wav",
+      "family": "kit-synth-drums-a",
+      "out": "kit-synth-drums-a/Snare_05.wav",
+      "out_md5": "3da9bda5709518044fb3b2b43766dcc3",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Snares/Snare 05.wav"
+     },
+     {
+      "came_from": "CLAPS/clap/Clap_05.wav",
+      "family": "kit-synth-drums-a",
+      "gain_db": -1.08,
+      "out": "kit-synth-drums-a/Clap_05.wav",
+      "out_md5": "6a5aba5b34b10220edc4ef98de87cf27",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Claps/Clap 05.wav"
+     },
+     {
+      "came_from": "HATS/closed/Closed_Hat_05.wav",
+      "family": "kit-synth-drums-a",
+      "out": "kit-synth-drums-a/Closed_Hat_05.wav",
+      "out_md5": "1734b560df4f6ed0f64798b705067ef7",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Hats/Closed Hat 05.wav"
+     },
+     {
+      "came_from": "HATS/open/Open_Hat_05.wav",
+      "family": "kit-synth-drums-a",
+      "gain_db": -0.17,
+      "out": "kit-synth-drums-a/Open_Hat_05.wav",
+      "out_md5": "59aea3975425f3cbd1cebd23c109ae88",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Hats/Open Hat 05.wav"
+     },
+     {
+      "came_from": "CYMBALS/ride-dark/Ride_01.wav",
+      "family": "kit-synth-drums-a",
+      "gain_db": -3.0,
+      "out": "kit-synth-drums-a/Ride_01.wav",
+      "out_md5": "ec5e4d5b0e2e5aa009f30a37e3dcbf52",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Cymbals/Ride 01.wav"
+     },
+     {
+      "came_from": "TOMS/tom/Tom_05.wav",
+      "family": "kit-synth-drums-a",
+      "gain_db": -5.1,
+      "out": "kit-synth-drums-a/Tom_05.wav",
+      "out_md5": "364ab8d7fe983c5067534093b135b5ae",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Toms/Tom 05.wav"
+     },
+     {
+      "came_from": "TOMS/tom/Tom_09.wav",
+      "family": "kit-synth-drums-a",
+      "gain_db": -5.03,
+      "out": "kit-synth-drums-a/Tom_09.wav",
+      "out_md5": "69154cdcab302675538c149d8b9dc6d8",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Toms/Tom 09.wav"
+     },
+     {
+      "came_from": "PERC/perc/Wood_Hit_05.wav",
+      "family": "kit-synth-drums-a",
+      "gain_db": -2.54,
+      "out": "kit-synth-drums-a/Wood_Hit_05.wav",
+      "out_md5": "c523e11d36ddf745790099acc6173dff",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Percussion/Wood Hit 05.wav"
+     },
+     {
+      "came_from": "PERC/perc/Wood_Hit_09.wav",
+      "family": "kit-synth-drums-a",
+      "gain_db": -2.82,
+      "out": "kit-synth-drums-a/Wood_Hit_09.wav",
+      "out_md5": "c1172cbd892e40d8139db9b41af2c88b",
+      "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Percussion/Wood Hit 09.wav"
+     },
+     {
+      "came_from": "KICKS/kick/Kick_06.wav",
+      "family": "kit-synth-drums-b",
+      "gain_db": -3.5,
+      "out": "kit-synth-drums-b/Kick_06.wav",
+      "out_md5": "ad98adc8e988ad6a46f7840dbda87900",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Kicks/Kick 06.wav"
+     },
+     {
+      "came_from": "SNARES/snare/Snare_06.wav",
+      "family": "kit-synth-drums-b",
+      "gain_db": -0.43,
+      "out": "kit-synth-drums-b/Snare_06.wav",
+      "out_md5": "ee5f7820b11a647e20e0baddfb79e908",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Snares/Snare 06.wav"
+     },
+     {
+      "came_from": "CLAPS/clap/Clap_06.wav",
+      "family": "kit-synth-drums-b",
+      "gain_db": -0.69,
+      "out": "kit-synth-drums-b/Clap_06.wav",
+      "out_md5": "21ad62962693911c764913037091e2de",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Claps/Clap 06.wav"
+     },
+     {
+      "came_from": "HATS/closed/Closed_Hat_06.wav",
+      "family": "kit-synth-drums-b",
+      "out": "kit-synth-drums-b/Closed_Hat_06.wav",
+      "out_md5": "7cbef5de8e87dff9f282ed0c4658b99c",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Closed Hat 06.wav"
+     },
+     {
+      "came_from": "HATS/open/Open_Hat_06.wav",
+      "family": "kit-synth-drums-b",
+      "gain_db": -1.56,
+      "out": "kit-synth-drums-b/Open_Hat_06.wav",
+      "out_md5": "a68d3c3b3875d52e0996ee179c6cf51d",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Open Hat 06.wav"
+     },
+     {
+      "came_from": "CYMBALS/ride-dark/Ride_02.wav",
+      "family": "kit-synth-drums-b",
+      "gain_db": -3.34,
+      "out": "kit-synth-drums-b/Ride_02.wav",
+      "out_md5": "2711ea3cbfd453a17d1fda4999dce6bc",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Cymbals/Ride 02.wav"
+     },
+     {
+      "came_from": "TOMS/tom/Tom_06.wav",
+      "family": "kit-synth-drums-b",
+      "gain_db": -5.09,
+      "out": "kit-synth-drums-b/Tom_06.wav",
+      "out_md5": "7772314805dd2686a68bb96d7c43626d",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Toms/Tom 06.wav"
+     },
+     {
+      "came_from": "TOMS/tom/Tom_10.wav",
+      "family": "kit-synth-drums-b",
+      "gain_db": -5.02,
+      "out": "kit-synth-drums-b/Tom_10.wav",
+      "out_md5": "ca20b7002ba7ddf7b753ccd4cdaa4957",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Toms/Tom 10.wav"
+     },
+     {
+      "came_from": "PERC/perc/Wood_Hit_06.wav",
+      "family": "kit-synth-drums-b",
+      "gain_db": -2.64,
+      "out": "kit-synth-drums-b/Wood_Hit_06.wav",
+      "out_md5": "2b0411e7c762b798f7920e5eb22ff1d6",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Percussion/Wood Hit 06.wav"
+     },
+     {
+      "came_from": "PERC/perc/Wood_Hit_10.wav",
+      "family": "kit-synth-drums-b",
+      "gain_db": -2.54,
+      "out": "kit-synth-drums-b/Wood_Hit_10.wav",
+      "out_md5": "6c0c24bf355ae4eb3eefe6cc42202a5e",
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Percussion/Wood Hit 10.wav"
+     },
+     {
+      "came_from": "KICKS/kick/Kick_07.wav",
+      "family": "kit-synth-drums-c",
+      "gain_db": -3.64,
+      "out": "kit-synth-drums-c/Kick_07.wav",
+      "out_md5": "307841c9b003059ac7798f520e526b3f",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Kicks/Kick 07.wav"
+     },
+     {
+      "came_from": "SNARES/snare/Snare_07.wav",
+      "family": "kit-synth-drums-c",
+      "out": "kit-synth-drums-c/Snare_07.wav",
+      "out_md5": "5b03172d082cb48c3c00c33afd8ee279",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Snares/Snare 07.wav"
+     },
+     {
+      "came_from": "CLAPS/clap/Clap_07.wav",
+      "family": "kit-synth-drums-c",
+      "gain_db": -0.8,
+      "out": "kit-synth-drums-c/Clap_07.wav",
+      "out_md5": "11b0c65d845ca232f1f8e501329b5066",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Claps/Clap 07.wav"
+     },
+     {
+      "came_from": "HATS/closed/Closed_Hat_07.wav",
+      "family": "kit-synth-drums-c",
+      "out": "kit-synth-drums-c/Closed_Hat_07.wav",
+      "out_md5": "f0389aa3bde1874f7d669f41e00945d6",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Closed Hat 07.wav"
+     },
+     {
+      "came_from": "HATS/open/Open_Hat_07.wav",
+      "family": "kit-synth-drums-c",
+      "gain_db": -2.32,
+      "out": "kit-synth-drums-c/Open_Hat_07.wav",
+      "out_md5": "07f2f8c6cbd0893472409b688cf49b5b",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Open Hat 07.wav"
+     },
+     {
+      "came_from": "CYMBALS/ride-dark/Ride_03.wav",
+      "family": "kit-synth-drums-c",
+      "gain_db": -4.4,
+      "out": "kit-synth-drums-c/Ride_03.wav",
+      "out_md5": "97bc408822323200d4d52d4c73330c74",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Cymbals/Ride 03.wav"
+     },
+     {
+      "came_from": "TOMS/tom/Tom_07.wav",
+      "family": "kit-synth-drums-c",
+      "gain_db": -5.07,
+      "out": "kit-synth-drums-c/Tom_07.wav",
+      "out_md5": "ac0d938a8c4017f8acbd25fa2388945b",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Toms/Tom 07.wav"
+     },
+     {
+      "came_from": "TOMS/tom/Tom_11.wav",
+      "family": "kit-synth-drums-c",
+      "gain_db": -5.02,
+      "out": "kit-synth-drums-c/Tom_11.wav",
+      "out_md5": "4aa4d59c83a54cdcd4239bb5874f380f",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Toms/Tom 11.wav"
+     },
+     {
+      "came_from": "PERC/perc/Wood_Hit_07.wav",
+      "family": "kit-synth-drums-c",
+      "gain_db": -2.52,
+      "out": "kit-synth-drums-c/Wood_Hit_07.wav",
+      "out_md5": "e11d9dbd5e7221cfbf85eb2e843ea2be",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Percussion/Wood Hit 07.wav"
+     },
+     {
+      "came_from": "PERC/perc/Wood_Hit_11.wav",
+      "family": "kit-synth-drums-c",
+      "gain_db": -2.18,
+      "out": "kit-synth-drums-c/Wood_Hit_11.wav",
+      "out_md5": "9187084eb0e57fc8151233f716455142",
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Percussion/Wood Hit 11.wav"
+     },
+     {
+      "came_from": "KICKS/kick/Kick_08.wav",
+      "family": "kit-synth-drums-d",
+      "gain_db": -3.7,
+      "out": "kit-synth-drums-d/Kick_08.wav",
+      "out_md5": "fbbd694a6fb8d19a58f82b423d8c117d",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Kicks/Kick 08.wav"
+     },
+     {
+      "came_from": "SNARES/snare/Snare_08.wav",
+      "family": "kit-synth-drums-d",
+      "out": "kit-synth-drums-d/Snare_08.wav",
+      "out_md5": "d4853088a3dda410d2af8c3afff477a0",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Snares/Snare 08.wav"
+     },
+     {
+      "came_from": "CLAPS/clap/Clap_08.wav",
+      "family": "kit-synth-drums-d",
+      "gain_db": -1.3,
+      "out": "kit-synth-drums-d/Clap_08.wav",
+      "out_md5": "ebe42250d8cfa9c29cd17045f79235ef",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Claps/Clap 08.wav"
+     },
+     {
+      "came_from": "HATS/closed/Closed_Hat_08.wav",
+      "family": "kit-synth-drums-d",
+      "out": "kit-synth-drums-d/Closed_Hat_08.wav",
+      "out_md5": "c3036d03dd20f7d339d3af0eb46a5a3f",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Closed Hat 08.wav"
+     },
+     {
+      "came_from": "HATS/open/Open_Hat_08.wav",
+      "family": "kit-synth-drums-d",
+      "gain_db": -3.08,
+      "out": "kit-synth-drums-d/Open_Hat_08.wav",
+      "out_md5": "f53947d9f6682aebcce7d668350ec68a",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Open Hat 08.wav"
+     },
+     {
+      "came_from": "CYMBALS/ride-dark/Ride_04.wav",
+      "family": "kit-synth-drums-d",
+      "gain_db": -2.0,
+      "out": "kit-synth-drums-d/Ride_04.wav",
+      "out_md5": "71da3c6d3746faf8e12455ae8d4a3e65",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Cymbals/Ride 04.wav"
+     },
+     {
+      "came_from": "TOMS/tom/Tom_08.wav",
+      "family": "kit-synth-drums-d",
+      "gain_db": -5.04,
+      "out": "kit-synth-drums-d/Tom_08.wav",
+      "out_md5": "fac47e1cae1054270614b79866853ab6",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Toms/Tom 08.wav"
+     },
+     {
+      "came_from": "TOMS/tom/Tom_12.wav",
+      "family": "kit-synth-drums-d",
+      "gain_db": -5.02,
+      "out": "kit-synth-drums-d/Tom_12.wav",
+      "out_md5": "72566d9106a0db5fd058ee6d863d89e7",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Toms/Tom 12.wav"
+     },
+     {
+      "came_from": "PERC/perc/Wood_Hit_08.wav",
+      "family": "kit-synth-drums-d",
+      "gain_db": -2.6,
+      "out": "kit-synth-drums-d/Wood_Hit_08.wav",
+      "out_md5": "4de951c064e978c58c4f65b9ab089628",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Percussion/Wood Hit 08.wav"
+     },
+     {
+      "came_from": "PERC/perc/Wood_Hit_12.wav",
+      "family": "kit-synth-drums-d",
+      "gain_db": -2.14,
+      "out": "kit-synth-drums-d/Wood_Hit_12.wav",
+      "out_md5": "f03b5ea352d726a9d8874d3e68593b87",
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Percussion/Wood Hit 12.wav"
+     }
+    ]
+   },
+   "SLICE": {
+    "entries": [
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_90_05.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_90_05.wav",
+      "out_md5": "960892194435a600588915241cf747e4",
+      "src": "<lib>/SampleLibrary/Synth Loops A/Drum Loops/Break 90 05.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_128_05.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_128_05.wav",
+      "out_md5": "936e8d9b5a784c650ab11a621d08db05",
+      "src": "<lib>/SampleLibrary/Synth Loops A/Drum Loops/Break 128 05.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_128_02.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_128_02.wav",
+      "out_md5": "867917ff3f4a64dd8462d14506666ff7",
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 128 02.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_128_06.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_128_06.wav",
+      "out_md5": "8e8bf17303cf4748b7f431bced888fc0",
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 128 06.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_128_03.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_128_03.wav",
+      "out_md5": "e5167ed1562614f7577fabde6757bbbe",
+      "src": "<lib>/SampleLibrary/Synth Loops C/Drum Loops/Break 128 03.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_128_07.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_128_07.wav",
+      "out_md5": "b0c69e207f578a1bcd5cadf01a237f47",
+      "src": "<lib>/SampleLibrary/Synth Loops C/Drum Loops/Break 128 07.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_128_04.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_128_04.wav",
+      "out_md5": "218f7fccf1b35a9c779d17c178214de2",
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 128 04.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_128_08.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_128_08.wav",
+      "out_md5": "395ea6f46aba409869bcecf97dc93a13",
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 128 08.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_174_05.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_174_05.wav",
+      "out_md5": "fac4dedab69a666d984fe5090f68b3e7",
+      "src": "<lib>/SampleLibrary/Synth Loops A/Drum Loops/Break 174 05.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_174_02.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_174_02.wav",
+      "out_md5": "9dce14dc68e79b9525013cbf550d1e6f",
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 174 02.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_174_06.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_174_06.wav",
+      "out_md5": "405c9cc4aef3216af71e0bfd22483764",
+      "src": "<lib>/SampleLibrary/Synth Loops B/Drum Loops/Break 174 06.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_174_03.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_174_03.wav",
+      "out_md5": "a5430f447af51f34832486eea9458650",
+      "src": "<lib>/SampleLibrary/Synth Loops C/Drum Loops/Break 174 03.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_174_04.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_174_04.wav",
+      "out_md5": "5e6202e895bdf8a2f7c0a141621f89ff",
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 174 04.wav"
+     },
+     {
+      "came_from": "DRUMLOOPS/090-175bpm/Break_174_08.wav",
+      "family": "090-175bpm",
+      "out": "090-175bpm/Break_174_08.wav",
+      "out_md5": "4563b1d2261b4113732729e475ce5714",
+      "src": "<lib>/SampleLibrary/Synth Loops D/Drum Loops/Break 174 08.wav"
+     }
+    ]
+   }
+  },
+  "tunables_hash": "320163706054fa80"
+ }
+}

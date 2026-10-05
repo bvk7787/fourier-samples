@@ -1,0 +1,60 @@
+# The path provider (src/fourier/metadata/shadow.py): canonical labels from folder and file
+# names. Each label lists regexes matched, case-insensitively, against the sample's
+# library-relative path with separators turned into spaces; the file's name and folder
+# speak first, the folders above only when those give no category; class.oneshot and class.loop
+# count only in the file's name and its folder (shadow.shape_labels). With Sononym these
+# labels are only scored against its own; without it they classify (metadata/providers.py).
+# Generic words only: never a vendor, pack or person. Sections below the labels:
+#   weak       words that describe as often as they name ("Noise Clap", "Metal Lead",
+#              "Voice 3" of a synth): their label counts only when no other word gives one
+#   near_only  weak words that count in the file's name and folder, not in the folders
+#              above (where "Synths" or "Synth Drums" is a pack name)
+#   not_words  case-sensitive words dropped before matching: a name that isn't the thing
+#              it spells
+class.loop: ['\bloops?\b', '\b(?:drum)loops?\b', '\bbreaks?\b', '\bbreakbeats?\b', '\d{2,3} ?bpm\b', '\bgrooves?\b', '\bbeats?\b', '\bfills?\b']
+class.oneshot: ['\bone ?-?shots?\b', '\bhits?\b', '\bsingle\b', '\bshots?\b']
+kick: ['\bkicks?\b', '\bkiks?\b', '\bkcks?\b', '\bbd\b', '\bbass ?drums?\b']
+snare: ['\bsnares?\b', '\bsnr\b', '\bsd\b', '\brims?(?:shots?)?\b', '\bside ?sticks?\b']
+clap: ['\bclaps?\b', '\bhand ?claps?\b']
+snap: ['\bsnaps?\b', '\bfinger ?snaps?\b']
+hat: ['\bhi-?hats?\b', '\bhihats?\b', '\bhh\b', '\bhats?\b']
+tom: ['\btoms?\b']
+cymbal.crash: ['\bcrash(?:es)?\b', '\bsplash\b', '\bchina\b', '\bcymbals?\b', '\bcyms?\b']
+cymbal.ride: ['\brides?\b']
+perc.hand: ['\bcongas?\b', '\bbongos?\b', '\bdjembe\b', '\btablas?\b', '\bcuica\b', '\btimbales?\b', '\bshakers?\b', '\btambourines?\b', '\bcabasas?\b', '\bmaracas?\b']   # shaken: percussion (a name rule still files a shaker named alone with the hats, DRUM_NAME_RULES)
+perc.wood: ['\bwood ?blocks?\b', '\bclaves?\b', '\bwood\b', '\blog drum\b']
+perc.metal: ['\bcowbells?\b', '\bagogo\b', '\btriangles?\b', '\banvil\b']
+perc.scrape: ['\bguiros?\b', '\bvibraslap\b', '\bscrape\b']
+scratch: ['\bscratch(?:es)?\b', '\bvinyl scratch\b']
+zap: ['\bzaps?\b']
+bass: ['\bbass\b', '\bsub ?bass\b', '\breese\b']      # not a bare 808: a TR-808 hat is a hat
+lead: ['\bleads?\b', '\barps?\b', '\bplucks?\b']      # "synth": near_only, below
+keys: ['\bpianos?\b', '\be-?pianos?\b', '\brhodes\b', '\borgans?\b', '\bwurli(?:tzer)?\b', '\bclavs?\b', '\bclavinet\b', '\belectric piano\b', '\bharpsichords?\b']   # PIANO's
+blip: ['\bblips?\b', '\bbleeps?\b']
+pad: ['\bpads?\b', '\btextures?\b', '\bdrones?\b', '\batmospheres?\b']
+stab: ['\bstabs?\b', '\borch(?:estra)? hits?\b', '\bchords?\b']
+bell: ['\bbells?\b', '\bchimes?\b']
+vocal: ['\bvox\b', '\bvocals?\b', '\bacapellas?\b', '\bchants?\b']
+fx.smash: ['\bsmash(?:es)?\b', '\bglass\b']
+fx.rustle: ['\brustle\b', '\bcrackles?\b', '\bfoley\b']
+fx.impact: ['\bimpacts?\b', '\bexplosions?\b', '\bbooms?\b', '\bgun ?shots?\b']
+fx.nature: ['\bnature\b', '\brain\b', '\bwind\b', '\bfield ?recordings?\b']
+fx.noise: ['\bstatic\b', '\bhiss\b']
+fx.sweep: ['\bsweeps?\b', '\brisers?\b', '\bup ?lifters?\b', '\bdown ?lifters?\b', '\blasers?\b']
+fx.whoosh: ['\bwhoosh(?:es)?\b', '\bswoosh(?:es)?\b', '\bwhips?\b']
+weak:
+  fx.noise: ['\bnoise\b', '\bdistortion\b', '\bs?fx\b', '\b(?:sound ?)?effects?\b']   # a bare "FX": FX
+  perc.metal: ['\bmetal\b']
+  perc.hand: ['\bpercs?\b', '\bpercussions?\b']    # a bare "Perc": PERC, unless a drum is named too
+  vocal: ['\bvoices?\b']
+  fx.nature: ['\bambien(?:ce|t)\b']
+  bass: ['\b808s\b', '\bsubs?\b']   # a folder of 808s; a bare 808 isn't one ("808/Hat 01")
+  pad: ['\bstrings?\b', '\bviolins?\b', '\bviolas?\b', '\bcellos?\b']   # a named violin or cello is ACOUSTIC's by its name first
+  lead: ['\bbrass\b', '\btrumpets?\b', '\bsax(?:ophone)?s?\b', '\bhorns?\b']   # a named one is ACOUSTIC's by its name first
+  keys: ['\bkeys\b', '\bkeyboards?\b']   # "Synth Keys" says lead too
+near_only:
+  lead: ['\bsynths?\b']        # not saw / square: waveform names bass and lead alike
+  hat: ['\bch\b', '\boh\b']   # closed / open hat abbreviations ("CH_01"), in the file's own name or folder
+  clap: ['\bcp\b']
+  keys: ['\bep\b']           # an electric piano ("EP_C3"), in the file's own name or folder (not a record's EP)
+not_words: ['\bTOM\b']

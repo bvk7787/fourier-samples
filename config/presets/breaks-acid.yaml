@@ -1,0 +1,16 @@
+description: breaks, jungle, drum and bass and acid first, house after; the biggest budget goes to drum loops (85-180 BPM, half time folded up), then synths and basses
+# breaks-acid: breaks, jungle / dnb and acid first, house after: drum loops get the biggest
+# budget (1,900), then SYNTH and SUB; 5-BPM loop bands from 85 to 180 BPM, half and double
+# time folded into 90-180; loops limited up to 3 dB; tonal one-shots retuned to C. The drum
+# loops leave out trap, dubstep and future bass folders, take loops up to 16 s and hold them
+# to the break prompts' CLAP gate. The other genre styles extend it.
+tempo: 85-180
+loudness: standard
+retune: detect
+stereo: fold-near-mono
+advanced:
+  BUDGETS: {DRUMLOOPS: 1900, PHRASES: 600, KICKS: 825, SNARES: 750, HATS: 750, PERC: 600,
+    SUB: 900, TOMS: 340, CLAPS: 360, CYMBALS: 300, FX: 660, SYNTH: 1000, PADS: 600,
+    STABS: 325, BLIPS: 225, VOX: 375, PIANO: 350, WAVES: 350, ACOUSTIC: 350}
+  POOL_SURPLUS: false
+  DRUMLOOP_STYLE_EXCLUDE: '(?<![a-z])(?:dubstep|brostep|trap|future ?bass|fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])'

@@ -1,0 +1,63 @@
+name: Bug report
+description: Something Fourier Samples did wrong, or a crash
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please leave out personal details (names, paths with your user
+        name, your library's pack names) and don't attach audio you don't have the rights to
+        share. A security problem goes to the private form instead: Security tab, "Report a
+        vulnerability".
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The command you ran and what it did. Paste the error or traceback if there was one.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: If it happens with `fourier demo` too, say so; that's the easiest case to reproduce.
+  - type: input
+    id: version
+    attributes:
+      label: fourier --version
+      placeholder: fourier (Fourier Samples) 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and version
+      placeholder: macOS 15.3 (Apple silicon), Ubuntu 24.04, ...
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.12.8"
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: fourier doctor output
+      description: The output of `fourier doctor` (edit out paths you'd rather not share).
+      render: text
+  - type: input
+    id: device
+    attributes:
+      label: Device and firmware
+      description: If it's about a render or sync.
+      placeholder: The device and its OS or firmware version

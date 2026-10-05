@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.python-version
+.DS_Store
+# device manual PDFs kept beside the checkout (makers' copyright; never committed)
+docs/manuals/
+# a local configuration
+fourier.toml
+# local overrides
+/local/
+/CLAUDE.local.md
