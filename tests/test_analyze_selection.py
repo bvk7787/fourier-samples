@@ -68,3 +68,23 @@ def test_nothing_scanned_is_one_line(db):
     r = CliRunner().invoke(main, ["--db", str(db), "tools", "analyze", "--only", "derived"])
     assert r.exit_code == 1 and "nothing scanned yet: run `fourier tools scan`" in r.output
     assert "Traceback" not in r.output
+
+
+def test_librosa_timestamp_is_naive_utc_without_deprecation(db):
+    import warnings
+    from datetime import datetime, timezone
+
+    from fourier.cli.enrich import _upsert_librosa_batch
+
+    with S.session_scope() as s:
+        _add(s, 1, sononym=False)
+    before = datetime.now(timezone.utc).replace(tzinfo=None)
+    with S.session_scope() as s, warnings.catch_warnings():
+        warnings.filterwarnings("error", message=r".*utcnow.*", category=DeprecationWarning)
+        _upsert_librosa_batch(s, [(1, {"tempo_bpm": 120.0})])
+    after = datetime.now(timezone.utc).replace(tzinfo=None)
+    with S.session_scope() as s:
+        feat = s.query(SampleFeatures).filter_by(sample_id=1).one()
+        assert feat.computed_at.tzinfo is None
+        assert before <= feat.computed_at <= after
+        assert feat.tempo_bpm == 120.0
