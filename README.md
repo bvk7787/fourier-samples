@@ -19,7 +19,7 @@ stay put, so the projects you make with it keep working.
 **New to Terminal?** [Getting started on a Mac](https://github.com/bvk7787/fourier-samples/blob/main/docs/start.md) takes you from nothing to
 sounds on your sampler, one step at a time, with what you should see after each.
 
-![fourier demo builds and renders a master from a generated library, then fourier why explains where one loop landed](https://github.com/bvk7787/fourier-samples/raw/main/docs/images/demo.svg)
+![fourier demo builds, verifies and renders a master from a generated library](https://github.com/bvk7787/fourier-samples/raw/main/docs/images/demo.svg)
 
 ## What a build makes
 
@@ -59,7 +59,7 @@ library (a sample browser does that), editing samples, or finding new ones. It s
 ## Try it in a minute
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh     # uv, which brings its own Python (macOS, Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh     # installs uv (it brings its own Python)
 ```
 
 Then quit Terminal and open it again so it finds uv, and run:
@@ -147,11 +147,18 @@ itself. That's a preview to try, and its paths can change with the next build. `
 --dry-run` says what a new release would change, and `fourier render <device> --dry-run` says
 what a render would change on the device.
 
-```
-          fourier build: scan, analyze what's new, curate, verify
-library ---------------------------------------------------> master --publish--> releases/vN
-(read-only)                                                    |                     |
-                                                               +------ render -------+--> device folders
+```mermaid
+flowchart LR
+    lib[("Your library<br/>read only")]
+    build["fourier build<br/>scan, analyze, curate, verify"]
+    master["Master<br/>CATEGORY/family/file.wav"]
+    rel["Release vN<br/>never changes"]
+    dt["Digitakt 2<br/>via Transfer"]
+    m8["M8<br/>SD card"]
+    lib --> build --> master -- "fourier publish" --> rel
+    rel -- "render, sync" --> dt
+    rel -- "render, sync" --> m8
+    master -. "render without --release: a preview" .-> dt
 ```
 
 [The guide](https://github.com/bvk7787/fourier-samples/blob/main/docs/guide.md) covers what

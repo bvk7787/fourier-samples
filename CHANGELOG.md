@@ -11,6 +11,9 @@ change the CLI or the config).
 
 - Documentation rewritten to be shorter and plainer, with consistent numbers and American
   spelling.
+- Diagrams in the README (library to device), the guide (releases and path locks) and
+  docs/curation.md (the build pipeline), drawn by GitHub from Mermaid text. The README's
+  terminal capture shows the demo alone.
 - CI runs on Python 3.11 to 3.14 (3.14 on Linux and macOS), measures test coverage on one job,
   and type-checks the source with mypy (lenient settings for now, in pyproject.toml; the lines
   it first flagged are marked in the code).
