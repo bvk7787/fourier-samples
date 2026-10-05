@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: The tag matches the version
@@ -41,7 +41,7 @@ jobs:
           "$RUNNER_TEMP/v/bin/pip" install dist/*.whl
           "$RUNNER_TEMP/v/bin/fourier" --version
           "$RUNNER_TEMP/v/bin/fourier" demo --dir "$RUNNER_TEMP/demo"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -57,7 +57,7 @@ jobs:
     permissions:
       id-token: write            # Trusted Publishing: PyPI checks this workflow's identity
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
