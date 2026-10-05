@@ -399,7 +399,7 @@ class SoundModel:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp.npz")
-        np.savez_compressed(tmp, **arrays)
+        np.savez_compressed(tmp, **arrays)  # type: ignore[arg-type]
         os.replace(tmp, path)
         return load(path)
 

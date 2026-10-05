@@ -92,7 +92,7 @@ run `fourier setup` again: it asks, then pins the new version. With pipx: `pipx 
 fourier-samples`; in a virtual environment, `pip install -U` the same address you installed
 from. A `uv tool install --reinstall` drops PyTorch and Transformers: run `fourier setup`
 afterwards to put CLAP back (`fourier doctor` says so). uv picks a Python 3.11 or later for the
-tool (downloading one if there's none); the suite runs on 3.11 to 3.13. Your config, home,
+tool (downloading one if there's none); the suite runs on 3.11 to 3.14. Your config, home,
 master and releases are untouched by an upgrade.
 
 ## Rating files

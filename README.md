@@ -3,9 +3,10 @@
 Turn a big, messy sample library into small, well-organized folders for your hardware sampler.
 
 [![CI](https://github.com/bvk7787/fourier-samples/actions/workflows/ci.yml/badge.svg)](https://github.com/bvk7787/fourier-samples/actions/workflows/ci.yml)
-![Python 3.11 | 3.12 | 3.13](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
+![Python 3.11 | 3.12 | 3.13 | 3.14](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/bvk7787/fourier-samples/blob/main/LICENSE)
 ![Status: alpha](https://img.shields.io/badge/status-alpha-orange)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bvk7787/fourier-samples/badge)](https://scorecard.dev/viewer/?uri=github.com/bvk7787/fourier-samples)
 
 Years of sample packs add up to more files than anyone can browse, and a sampler's screen shows
 about ten names at a time. Fourier Samples (the `fourier` command) picks the best of them, sorts
@@ -55,8 +56,8 @@ M8, or anything that loads WAV folders) who wants several thousand good, consist
 sounds on it, and can paste a few commands into Terminal ([the getting-started
 page](https://github.com/bvk7787/fourier-samples/blob/main/docs/start.md) shows how). **Not for** browsing or tagging a library (a sample
 browser does that), editing samples, or finding new ones; it ships no audio. Tested on macOS
-with Apple Silicon; Linux is supported; Windows is experimental (for people at home with Python
-on Windows).
+with Apple Silicon; Linux is supported; Windows doesn't work yet
+([#9](https://github.com/bvk7787/fourier-samples/issues/9)).
 
 ## Try it in a minute
 
@@ -81,7 +82,7 @@ in a minute or two. Everything stays in that folder, and it ends by saying what 
 ## Requirements
 
 - **macOS (tested on Apple Silicon) or Linux**, with Python 3.11 or later (uv brings one).
-  Intel Macs are untested. Windows is experimental.
+  Intel Macs are untested. Windows doesn't work yet ([#9](https://github.com/bvk7787/fourier-samples/issues/9)).
 - **For a real build, the CLAP model.** `fourier setup` installs PyTorch and Transformers (about
   750 MB with the CPU build of PyTorch, what macOS and Linux without an NVIDIA GPU get; several
   GB for the CUDA build) and downloads the model once (about 600 MB). The demo needs neither.
@@ -227,7 +228,8 @@ update can break the reading). The only command that writes into a library folde
   build logs and `fourier doctor` output name your folders and packs; check before posting
   them. The CLAP model was trained on public audio datasets whose terms are summarized in
   [THIRD_PARTY_NOTICES.md](https://github.com/bvk7787/fourier-samples/blob/main/THIRD_PARTY_NOTICES.md).
-- **How it's tested.** The test suite runs in CI on Linux and macOS (Windows experimentally),
+- **How it's tested.** The test suite runs in CI on Linux and macOS, Python 3.11 to 3.14, with
+  coverage measured and mypy checking the source,
   including a first run end to end without Sononym or Live and a synthetic library built and
   compared against a stored result; each checks the library is unchanged afterwards
   ([CONTRIBUTING.md](https://github.com/bvk7787/fourier-samples/blob/main/CONTRIBUTING.md)).

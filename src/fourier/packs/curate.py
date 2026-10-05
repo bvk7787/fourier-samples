@@ -1971,7 +1971,7 @@ def _fallback_tempos(r) -> list:
         add(m.group(1), "name", False)
     rel = getattr(r, "rel_path", None) or library_rel(getattr(r, "path", None) or "")
     for seg in reversed([x for x in rel.split("/")[:-1] if x]):
-        m = _FOLDER_BPM.match(seg)
+        m = _FOLDER_BPM.match(seg)  # type: ignore[assignment]
         if m:
             add(m.group(1), "folder", False)
     got = _length_tempo(dur, getattr(r, "tempo_bpm", None) or getattr(r, "bpm", None))
@@ -2440,7 +2440,7 @@ def _moved_paths() -> dict:
     try:
         from ..db.session import session_scope
         with session_scope() as s:
-            pairs = dict(s.execute(text(
+            pairs = dict(s.execute(text(  # type: ignore[arg-type]
                 "SELECT path, moved_to FROM missing_files WHERE moved_to IS NOT NULL")).all())
     except Exception:
         return {}
@@ -4513,7 +4513,7 @@ def _clap_doc(ids, rehomed=(), sound=None) -> dict:
     if rehomed:
         out["clap_rehomed"] = sorted(int(i) for i in rehomed)
     if sound:
-        out["sound_homed"] = {str(int(i)): float(p) for i, p in sorted(sound.items())}
+        out["sound_homed"] = {str(int(i)): float(p) for i, p in sorted(sound.items())}  # type: ignore[assignment]
     return out
 
 

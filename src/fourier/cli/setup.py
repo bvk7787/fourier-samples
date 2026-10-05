@@ -573,7 +573,7 @@ def offer_uv_update(w, tool: str | None, cpu: bool | None = None) -> bool:
         console.print("Kept this uv: installing PyTorch from its CPU index instead.", highlight=False)
         return False
     console.print("$ uv self update", markup=False, highlight=False)
-    if _run([shutil.which("uv"), "self", "update"]) != 0 or uv_too_old(tool, cpu) is not None:
+    if _run([shutil.which("uv"), "self", "update"]) != 0 or uv_too_old(tool, cpu) is not None:  # type: ignore[list-item]
         console.print("uv didn't update itself (a uv from a package manager updates there): "
                       "installing PyTorch from its CPU index instead.", style="yellow", highlight=False)
         return False
@@ -604,7 +604,7 @@ def _run(cmd: list[str], keep: list | None = None, quiet: bool = False) -> int:
         if keep is not None:
             keep.append(f"error: {e}")
         return 127
-    for line in p.stdout:
+    for line in p.stdout:  # type: ignore[union-attr]
         if _UV_NOISE.search(line):
             continue
         if not quiet:
@@ -773,7 +773,7 @@ def torch_has_cuda() -> bool:
         return False
     if "+cpu" in v:
         return False
-    return "+cu" in v or any((d.metadata.get("Name") or "").lower().startswith("nvidia-")
+    return "+cu" in v or any((d.metadata.get("Name") or "").lower().startswith("nvidia-")  # type: ignore[attr-defined]
                              for d in importlib.metadata.distributions())
 
 
@@ -1190,7 +1190,7 @@ def _config_steps(w: _Wizard, target: Path, library, devices, preset, outputs: d
         if w.yes:
             raise SystemExit(1)
         devs, bad = [], []
-    names = presets()
+    names = presets()  # type: ignore[assignment]
     console.print("What do you make? Each style decides how much of each kind of sound the "
                   "master holds and the drum loops' tempos:", highlight=False)
     width = max(len(p) for p in names) + 2
@@ -1201,7 +1201,7 @@ def _config_steps(w: _Wizard, target: Path, library, devices, preset, outputs: d
             preset = w.ask("What do you make? (a number or a style's name)", default="balanced")
         preset = (preset or "").strip() or "balanced"
         if preset.isdigit() and 1 <= int(preset) <= len(names):
-            preset = names[int(preset) - 1]
+            preset = names[int(preset) - 1]  # type: ignore[index]
         if preset in names or Path(preset).expanduser().is_file():
             break
         console.print(f"unknown preset {preset!r} (known: {', '.join(names)})", style="red",
@@ -1597,23 +1597,23 @@ def check_library(session) -> list[tuple]:
     if not roots and not names:
         return [(FAIL, "library", "no library in fourier.toml (fourier setup)")]
     out = []
-    roots = library_roots()
+    roots = library_roots()  # type: ignore[assignment]
     for r in roots:
-        if not r.is_dir():
+        if not r.is_dir():  # type: ignore[attr-defined]
             out.append((FAIL, "library folder", f"{r}: missing"))
         elif not os.access(r, os.R_OK | os.X_OK):
             out.append((FAIL, "library folder", f"{r}: can't be read (its permissions)"))
         else:
             out.append((OK, "library folder", str(r)))
     from ..ingest.importer import unavailable_links
-    for link, target in unavailable_links([r for r in roots if r.is_dir()], session):
+    for link, target in unavailable_links([r for r in roots if r.is_dir()], session):  # type: ignore[attr-defined]
         # what the scan says, and why a build stops (cli/ingest.scan_report, cli/build.py)
         out.append((FAIL, "linked folder",
                     f"A linked folder is unavailable: {link} -> {target} (a drive that isn't plugged "
                     f"in?). A build without it would leave out every sample there, so it stops until "
                     f"it's back, or builds without it with --allow-missing."))
     has_audio = survey(roots, 1)[0] > 0
-    if not has_audio and any(r.is_dir() for r in roots):
+    if not has_audio and any(r.is_dir() for r in roots):  # type: ignore[attr-defined]
         from ..ingest.formats import readable_exts
         out.append((FAIL, "audio files", f"none in the library folders ({', '.join(readable_exts())})"))
     elif has_audio:

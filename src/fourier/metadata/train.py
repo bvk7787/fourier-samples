@@ -170,7 +170,7 @@ def labels(ids, rels, durs, paths, ratings_path=None) -> tuple:
             how = "rating" if c else None
         if c is None or s is None:
             pc, ps = S.training_label(rel, dur)
-            if c is None and pc is not None and pc != S.rating_excludes(r):
+            if c is None and pc is not None and pc != S.rating_excludes(r):  # type: ignore[arg-type]
                 c, how = pc, "names"
             if s is None:
                 s = ps

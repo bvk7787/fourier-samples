@@ -194,7 +194,7 @@ def own_shape(rel_path, duration_s, n_events, onset_rate_hz=None, hpr=None) -> s
     """Fourier's own one-shot / loop: the audio provider's (metadata/shadow.audio_label)."""
     from .shadow import audio_label
     lab = audio_label(rel_path or "", duration_s, n_events, onset_rate_hz, hpr)
-    return {"class.loop": "loop", "class.oneshot": "oneshot"}.get(lab)
+    return {"class.loop": "loop", "class.oneshot": "oneshot"}.get(lab)  # type: ignore[arg-type]
 
 
 def own_tempo_confidence(duration_s, tempo_bpm) -> float | None:

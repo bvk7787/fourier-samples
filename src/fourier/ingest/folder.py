@@ -115,7 +115,7 @@ def import_file(src: Path, out_base: Path, rel: Path, st: dict, *, preps=(), con
     out.parent.mkdir(parents=True, exist_ok=True)
     try:
         if prep is not None:
-            sig, sr, subtype = prep.load(str(src))
+            sig, sr, subtype = prep.load(str(src))  # type: ignore[attr-defined]
             sf.write(str(out), sig, sr, subtype=subtype)
             st["prepared"] += 1
         elif ext in CONVERT_EXTS and convert_ogg:

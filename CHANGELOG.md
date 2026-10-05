@@ -5,6 +5,19 @@ All notable changes to Fourier Samples are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (before 1.0, a minor version may
 change the CLI or the config).
 
+## [Unreleased]
+
+### Changed
+
+- CI runs on Python 3.11 to 3.14 (3.14 on Linux and macOS), measures test coverage on one
+  job, and type-checks the source with mypy (a lenient start: the settings and the lines it
+  first found are in pyproject.toml and marked in the code).
+- The workflows pin each action to a commit, check out without keeping credentials, and an
+  OpenSSF Scorecard workflow scores the repository's security practices weekly.
+- Windows left the CI matrix: it doesn't work yet (fourier.toml paths, rsync, SQLite file
+  locks; [#9](https://github.com/bvk7787/fourier-samples/issues/9)). The `Windows` workflow
+  runs the suite there by hand.
+
 ## [0.1.0] - 2026-10-04
 
 The first public release.
@@ -122,4 +135,5 @@ The first public release.
 - `fourier --version`, and `python -m fourier`.
 - Python 3.11 to 3.13 on macOS and Linux; Windows is experimental.
 
+[Unreleased]: https://github.com/bvk7787/fourier-samples/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/bvk7787/fourier-samples/releases/tag/v0.1.0

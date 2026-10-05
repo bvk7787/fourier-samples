@@ -278,7 +278,7 @@ def _explain_knob(name, detail=False) -> None:
         console.print(f"  `fourier config explain {name} --detail`: the exact rule and the advanced "
                       "settings behind it.", style="dim", markup=False, highlight=False)
         return
-    console.print("  " + " ".join(inspect.getdoc(KNOBS[name]).split()), markup=False, highlight=False)
+    console.print("  " + " ".join(inspect.getdoc(KNOBS[name]).split()), markup=False, highlight=False)  # type: ignore[union-attr]
     known = layers.defaults()
     for k, (cls, knob) in sorted(_tunable_meta().items()):
         if knob == name and k in known:

@@ -383,7 +383,7 @@ def headline(w: Why) -> str:
         fam = os.path.dirname(o)
         where = f"{c}/{fam}" if fam else c
         rule = w.decided[0] if w.decided else None
-        reason = PLAIN.get(rule)
+        reason = PLAIN.get(rule)  # type: ignore[arg-type]
         if w.rating and w.rating.get("verdict") in ("keep", "Keep") and rule != "pin":
             reason = reason or "you rated it Keep"
         more = f" (and {len(w.in_master) - 1} more place{'s' if len(w.in_master) > 2 else ''})" \

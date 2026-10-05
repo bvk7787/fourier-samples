@@ -83,7 +83,7 @@ TOP_KEYS = {"id", "name", "description", "manual", "load", "sample_refs", "statu
             "audio", "storage_mb", "citations", "override", "extends"}
 MANUAL_KEYS = ("title", "version", "url", "sha256")
 # section -> {key: (DeviceProfile field, default)}
-FACTS = {
+FACTS: dict[str | None, dict[str, tuple[str, Any]]] = {
     "paths": {"root": ("root", ""), "card_dir": ("card_dir", ""),
               "folder_depth": ("folder_depth", 2), "files_per_folder": ("files_per_folder", 128),
               "max_path_length": ("max_path_length", None),

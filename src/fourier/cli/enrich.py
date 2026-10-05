@@ -1516,7 +1516,7 @@ def run_analysis(ctx, only=(), workers=None, force=False, download=False) -> Non
         after = pending_analysis().get(step)
         if before is not None and after is not None and not force:
             used = kw.get("workers") or next((p.default for p in cmd.params if p.name == "workers"), 1)
-            record_analyze(step, time.perf_counter() - t0, before - after, used or 1)
+            record_analyze(step, time.perf_counter() - t0, before - after, used or 1)  # type: ignore[arg-type]
 
 
 @tools.command("analyze", short_help="Analyze the library's audio (incremental).")

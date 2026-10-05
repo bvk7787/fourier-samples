@@ -684,9 +684,9 @@ def scan_filesystem(
                             error(f.path, "can't be read")
                             continue
                     if no_rel:                                  # an earlier walk's row: fill it in
-                        _fill_scanned(session.get(Sample, sid), Path(f.path), f.rel, info)
+                        _fill_scanned(session.get(Sample, sid), Path(f.path), f.rel, info)  # type: ignore[arg-type]
                         counts["filled"] = counts.get("filled", 0) + 1
-                    elif sid in unchunked and _fill_chunks(session.get(Sample, sid), f.path):
+                    elif sid in unchunked and _fill_chunks(session.get(Sample, sid), f.path):  # type: ignore[arg-type]
                         counts["chunks"] = counts.get("chunks", 0) + 1
                     seen_ids.add(sid)
                     continue

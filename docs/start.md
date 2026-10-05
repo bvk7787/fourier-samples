@@ -14,7 +14,7 @@ Fourier only reads them and writes its own folders next to your music.
 
 | | |
 |---|---|
-| **A Mac with Apple Silicon** (M1 or later) | That's what it's tested on; Intel Macs are untested. Linux works too (this page is written for the Mac); Windows is experimental and not covered here. |
+| **A Mac with Apple Silicon** (M1 or later) | That's what it's tested on; Intel Macs are untested. Linux works too (this page is written for the Mac); Windows doesn't work yet. |
 | **Free disk space** | About 25 GB for the full set from a large library (the curated set, a copy for your device, a saved release, and the downloads); about 5 GB for the starter set. |
 | **An internet connection** for setup | It downloads about 800 MB once (the listening model and the software it runs on). After that it works offline. |
 | **Time** | 10 to 20 minutes to install and set up. The first build listens to every sample: about an hour for each 100,000 files, and you can leave it running. Later builds take minutes. |

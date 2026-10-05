@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict, namedtuple
-from typing import Protocol
+from typing import Any, Protocol
 
 from sqlalchemy import Select, and_, func, literal, select, text
 from sqlalchemy.orm import aliased
@@ -170,7 +170,8 @@ def sample_select(*fields: str, session=None) -> Select:
         raise KeyError(f"unknown sample fields: {', '.join(unknown)}")
     act = _active(session)
     marker = _descriptor(ANALYSED)
-    cols, joins = [], []
+    cols: list[Any] = []
+    joins: list[Any] = []
     for f in fields:
         if f in _SAMPLE:
             cols.append(_SAMPLE[f].label(f))
@@ -391,7 +392,7 @@ def fetch(session, query: Select) -> list:
             prov, kind = LABEL_FIELDS[k]
             if prov == CLASSIFIER and act.fallback:
                 d[k] = (canon if kind == CANONICAL_KIND
-                        else [_SHAPE[c] for c in canon if c in _SHAPE] if kind == "class" else [])
+                        else [_SHAPE[c] for c in canon if c in _SHAPE] if kind == "class" else [])  # type: ignore[union-attr]
             elif prov == CLASSIFIER:
                 d[k] = list(mine.get((SONONYM, kind), ()))
             elif prov not in act.names:

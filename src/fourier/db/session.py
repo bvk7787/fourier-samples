@@ -126,7 +126,7 @@ def get_engine() -> Engine:
     """Return the current engine, initializing with defaults if needed."""
     if _engine is None:
         init_db(_PATH)
-    return _engine
+    return _engine  # type: ignore[return-value]
 
 
 def _open(path: Path, read_only: bool) -> Engine:
@@ -285,7 +285,7 @@ def delete_samples(session: Session, ids) -> int:
     if not ids:
         return 0
     bind = session.get_bind()
-    have = {t for t in _SAMPLE_TABLES if table_columns(bind, t) is not None}
+    have = {t for t in _SAMPLE_TABLES if table_columns(bind, t) is not None}  # type: ignore[arg-type]
     duck = bind.dialect.name == "duckdb"
 
     def chunks():

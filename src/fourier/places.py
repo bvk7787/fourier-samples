@@ -45,7 +45,7 @@ def _expand(p: str) -> str:
     return os.path.normpath(os.path.expanduser(str(p)))
 
 
-def _entries(where: str, value, key: str) -> list[str]:
+def _entries(where: str | None, value, key: str) -> list[str]:
     if isinstance(value, str):
         value = [value]
     if not isinstance(value, list) or not all(isinstance(v, str) and v for v in value):

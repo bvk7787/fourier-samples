@@ -375,14 +375,14 @@ def additive_build(session, base_version, out_dir, per_family=25, transcode=True
         os.makedirs(dstcat, exist_ok=True)
         # existing folders: where a close new group goes
         by_fam = defaultdict(list)
-        for e in sup_cats.get(cat, []):
+        for e in sup_cats.get(cat, []):  # type: ignore[misc]
             by_fam[e["family"]].append(e)
         try:
             base_c = _centroids(session, by_fam)
         except Exception:
             base_c = {}
         new_groups = defaultdict(list)
-        for k, e in tmp_entries.items():
+        for k, e in tmp_entries.items():  # type: ignore[misc]
             if k.startswith(cat + "/"):
                 new_groups[e["family"]].append(e)
         new_c = _centroids(session, new_groups) if base_c else {}
@@ -410,7 +410,7 @@ def additive_build(session, base_version, out_dir, per_family=25, transcode=True
                         dst = f"{st[:_curate.STEM_MAX - len(str(k)) - 1]}_{k}{ext}"
                         k += 1
                     shutil.move(os.path.join(sp, f), os.path.join(dstcat, name, dst))
-                    e = tmp_entries.get(f"{cat}/{fam}/{f}", {})
+                    e = tmp_entries.get(f"{cat}/{fam}/{f}", {})  # type: ignore[misc]
                     ent = dict(e, family=name, out=f"{name}/{dst}", added_over=base_version)
                     sup_cats[cat].append(ent)
                     by_fam[name].append(ent)
@@ -424,7 +424,7 @@ def additive_build(session, base_version, out_dir, per_family=25, transcode=True
                     name = f"{fam}-n{k}"; k += 1
                 shutil.move(sp, os.path.join(dstcat, name))
                 for f in files:
-                    e = tmp_entries.get(f"{cat}/{fam}/{f}", {})
+                    e = tmp_entries.get(f"{cat}/{fam}/{f}", {})  # type: ignore[misc]
                     sup_cats[cat].append(dict(e, family=name, out=f"{name}/{f}", added_over=base_version))
                 meta = dict(tmp_meta.get(fam) or {"family": fam, "copied": len(files)})
                 meta["family"] = name
