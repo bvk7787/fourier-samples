@@ -24,6 +24,7 @@ uv run pytest -q -n auto tests                                   # the suite, in
 uv run pytest -q -n auto -m "not slow" tests                     # ...without the end-to-end runs (a quick pass)
 uv run python tests/golden/synthetic_build.py /tmp/syn --check   # the synthetic golden build
 uv run ruff check src tests                                      # lint
+uv run mypy                                                       # types (settings in pyproject.toml)
 ```
 
 The golden build generates 280 samples, builds them end to end with a stand-in CLAP (no model,

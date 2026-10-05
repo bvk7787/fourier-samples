@@ -7,6 +7,10 @@ build/
 dist/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
 .python-version
 .DS_Store
 # device manual PDFs kept beside the checkout (makers' copyright; never committed)

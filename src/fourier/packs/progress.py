@@ -32,7 +32,7 @@ def _code_hash() -> str:
 
 def _db_state(session) -> list:
     from sqlalchemy import text
-    out = []
+    out: list[list[int | None] | None] = []
     for sql in ("SELECT COUNT(*), MAX(id) FROM samples",
                 "SELECT COUNT(*) FROM sample_features",
                 "SELECT COUNT(*) FROM labels", "SELECT COUNT(*) FROM descriptors",

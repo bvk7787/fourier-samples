@@ -36,7 +36,7 @@ def _correct_bpm_octave(
     return best_bpm
 
 
-def _timestretch(audio: "np.ndarray", sr: int, rate: float) -> "np.ndarray":
+def _timestretch(audio: "np.ndarray", sr: float, rate: float) -> "np.ndarray":
     """Time-stretch by `rate` (>1 = faster). Tries pyrubberband first, falls back to librosa."""
     try:
         import pyrubberband as pyrb

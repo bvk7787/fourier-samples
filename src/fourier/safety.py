@@ -390,7 +390,7 @@ def _load_cards(device_id: str) -> dict:
     return cards if isinstance(cards, dict) else {}     # the old one-card format isn't trusted
 
 
-def synced_files(device_id: str, dest=None, volume=None) -> set[str]:
+def synced_files(device_id: str | None, dest=None, volume=None) -> set[str]:
     """The files earlier syncs copied into this card folder: trusted only for the same card
     (its id) and the same card folder."""
     if not device_id or dest is None or volume is None:

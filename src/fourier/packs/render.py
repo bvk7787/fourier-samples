@@ -278,7 +278,7 @@ def _convert_opts(device, cat: str) -> dict:
     opts = dict(target_sr=device.sample_rate, target_bit_depth=device.bit_depth,
                 convert_to_mono=device.mono, dither=device.dither,
                 collapse_dual_mono=not device.mono, preserve_length=cat in CYCLE_CATEGORIES)
-    extra = {}
+    extra: dict[str, object] = {}
     if _out_format(device) != "wav":
         extra["out_format"] = _out_format(device)
     if device.max_duration_s and cat not in CYCLE_CATEGORIES:
@@ -336,7 +336,7 @@ def _lock_mismatch(lock, device) -> str | None:
 FIT_MIN = 8          # the fewest characters a folder or file name is cut to for a path limit
 
 
-def _cuts(names: list[str], over: int) -> list[int]:
+def _cuts(names: list[str], over: int) -> list[int] | None:
     """How many characters to cut from each name (to FIT_MIN at least) to take `over` off
     their total, the longer name first and the rest in proportion to what each can spare;
     None when they can't spare that many."""

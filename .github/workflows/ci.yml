@@ -21,23 +21,24 @@ jobs:
     if: ${{ !github.event.repository.private }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}   # Windows: best effort for now
+    # Windows isn't supported yet (paths in fourier.toml, rsync, SQLite file locks): its run
+    # is by hand, in windows.yml, until it passes
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11", "3.12"]
-        exclude:
-          - os: macos-latest
-            python-version: "3.11"
-          - os: windows-latest
-            python-version: "3.11"
         include:
-          - os: ubuntu-latest
-            python-version: "3.13"
+          # full: the build variants too; coverage: measured on one job
+          - {os: ubuntu-latest, python-version: "3.11", full: true}
+          - {os: ubuntu-latest, python-version: "3.12", full: true, coverage: true}
+          - {os: ubuntu-latest, python-version: "3.13"}
+          - {os: ubuntu-latest, python-version: "3.14"}
+          - {os: macos-latest, python-version: "3.12", full: true}
+          - {os: macos-latest, python-version: "3.14"}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -53,32 +54,63 @@ jobs:
       - name: Lint
         run: ruff check src tests
       - name: Tests
+        if: ${{ !matrix.coverage }}
         run: pytest -q -n auto tests      # one worker per CPU (pytest-xdist; conftest.py isolates each)
+      - name: Tests, with coverage
+        if: ${{ matrix.coverage }}
+        shell: bash
+        run: |
+          # 87% when this began (2026-10-04): the floor stops a drop, raise it as it climbs
+          pytest -q -n auto --cov --cov-report=term --cov-report=xml --cov-fail-under=85 tests
+          coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
       - name: Synthetic golden build
         shell: bash
         run: python tests/golden/synthetic_build.py "$RUNNER_TEMP/synthetic" --check
-      # the variants below test the pipeline, not the Python version: 3.13 runs the golden only
+      # the variants below test the pipeline, not the Python version: the rest run the golden only
       - name: Without Sononym, without Live, without both
-        if: matrix.python-version != '3.13'
+        if: ${{ matrix.full }}
         shell: bash
         run: |
           python tests/golden/synthetic_build.py "$RUNNER_TEMP/no-sononym" --without sononym
           python tests/golden/synthetic_build.py "$RUNNER_TEMP/no-live" --without ableton
           python tests/golden/synthetic_build.py "$RUNNER_TEMP/neither" --without sononym,ableton
       - name: Each preset builds and passes verify
-        if: matrix.python-version != '3.13'
+        if: ${{ matrix.full }}
         shell: bash
         run: |
           python tests/golden/synthetic_build.py "$RUNNER_TEMP/breaks-acid" --preset breaks-acid
           python tests/golden/synthetic_build.py "$RUNNER_TEMP/balanced" --preset balanced
       - name: A small library's master scales to it
-        if: matrix.python-version != '3.13'
+        if: ${{ matrix.full }}
         shell: bash
         run: python tests/golden/synthetic_build.py "$RUNNER_TEMP/scaled" --scale --preset balanced
       - name: An interrupted build resumes to the same result
-        if: matrix.python-version != '3.13'
+        if: ${{ matrix.full }}
         shell: bash
         run: python tests/golden/synthetic_build.py "$RUNNER_TEMP/resume" --check --interrupt KICKS,PADS,VOX
+
+  typecheck:
+    name: typecheck (mypy)
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install (locked versions; core + dev)
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip uv
+          uv export --frozen --no-hashes --extra dev --no-emit-project > "$RUNNER_TEMP/requirements.lock.txt"
+          pip install -r "$RUNNER_TEMP/requirements.lock.txt"
+          pip install -e . --no-deps
+      - name: mypy (settings in pyproject.toml)
+        run: mypy
 
   package:
     # what `pip install` gives a user: the sdist and wheel build, their metadata passes twine,
@@ -88,8 +120,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
           cache: pip

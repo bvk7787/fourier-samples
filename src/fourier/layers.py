@@ -317,7 +317,7 @@ def resolve(config: str | None = None, sets: tuple = (), known: dict | None = No
     r = Resolved()
     presets_in_use: set = set()     # the names in the preset chain (an added category's `presets`)
 
-    def apply(table: dict, label: str):
+    def apply(table: dict | None, label: str):
         for key, value in (table or {}).items():
             k = qualify(key, known)
             r.values[k] = from_plain(k, value, known[k])

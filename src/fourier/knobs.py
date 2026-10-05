@@ -30,6 +30,7 @@ its default value sets nothing. `fourier config show` names the knob behind each
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from .settings import ConfigError
 
@@ -78,7 +79,7 @@ def devices(value, known) -> dict:
             names.append(p.max_name_length)
         if p.max_slices:
             slices.append(p.max_slices)
-    out = {}
+    out: dict[str, Any] = {}
     if room:
         family, stem = split_room(min(room))
         if stem < known["curate_config.STEM_MAX"]:
@@ -215,7 +216,7 @@ def categories(value, known) -> dict:
                 budgets[c] = int(round(budgets[c] * float(v)))
         else:
             raise ConfigError(f"categories: {cat} = {v!r}: off, on or a weight (0 or more)")
-    out = {}
+    out: dict[str, Any] = {}
     if off != was:
         out["curate_config.CATEGORIES_OFF"] = off
     if budgets != known["curate_config.BUDGETS"]:
@@ -260,7 +261,7 @@ def tempo(value, known) -> dict:
     lo, hi = int(m.group(1)), int(m.group(2))
     if not (TEMPO_FLOOR < lo < hi < TEMPO_CEIL - 10):
         raise ConfigError(f"tempo = {value!r}: {TEMPO_FLOOR} < low < high < {TEMPO_CEIL - 10}")
-    out = {}
+    out: dict[str, Any] = {}
     bands = tempo_bands(lo, hi)
     if bands != tuple(known["curate_config.TEMPO_BANDS"]):
         out["curate_config.TEMPO_BANDS"] = bands
@@ -315,7 +316,7 @@ def files(value, known) -> dict:
         raise ConfigError(f"files = {value!r}: a file count, at least 100")
     live = _live_budgets(known)
     new = {**known["curate_config.BUDGETS"], **_scaled(live, value)}
-    out = {} if new == known["curate_config.BUDGETS"] else {"curate_config.BUDGETS": new}
+    out: dict[str, Any] = {} if new == known["curate_config.BUDGETS"] else {"curate_config.BUDGETS": new}
     if known["curate_config.LIBRARY_SCALE"]:
         out["curate_config.LIBRARY_SCALE"] = False
     return out
@@ -362,7 +363,7 @@ def size(value, known) -> dict:
         return {"curate_config.POOL_SURPLUS": False} if known["curate_config.POOL_SURPLUS"] else {}
     live = _live_budgets(known)
     if value == "auto":
-        out = {} if known["curate_config.POOL_SURPLUS"] else {"curate_config.POOL_SURPLUS": True}
+        out: dict[str, Any] = {} if known["curate_config.POOL_SURPLUS"] else {"curate_config.POOL_SURPLUS": True}
         cap = storage_limit_mb(known)
         if cap and master_mb(live, known) > cap[0]:
             total = max(100, int(sum(live.values()) * cap[0] / master_mb(live, known)))
@@ -479,7 +480,7 @@ def sources(value, known) -> dict:
     extra = set(value) - {"favor", "home", "vendor_max"}
     if extra:
         raise ConfigError(f"sources: unknown keys {sorted(extra)} (favor, home, vendor_max)")
-    out = {}
+    out: dict[str, Any] = {}
     if value.get("favor"):
         pats = [value["favor"]] if isinstance(value["favor"], str) else list(value["favor"])
         for p in pats:

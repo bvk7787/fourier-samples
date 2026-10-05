@@ -202,7 +202,7 @@ def _stats() -> None:
     table = Table(title="Sononym's categories")
     for col, justify in (("Category", "left"), ("Count", "right"), ("Avg length", "right"),
                          ("Avg bright", "right"), ("Avg noise", "right"), ("Use for", "left")):
-        table.add_column(col, justify=justify, style="cyan" if col == "Category" else None)
+        table.add_column(col, justify=justify, style="cyan" if col == "Category" else None)  # type: ignore[arg-type]
     for cat, a in sorted(agg.items(), key=lambda x: -x[1]["count"]):
         table.add_row(cat, f"{a['count']:,}", mean(a["dur"], "{:.2f}s"), mean(a["bright"], "{:.2f}"),
                       mean(a["noise"], "{:.2f}"), SONONYM_HINTS.get(cat, ""))
@@ -228,7 +228,7 @@ def _missing(prune) -> None:
         gone = [s for s in samples if not os.path.exists(s.path)]
         elapsed = time.monotonic() - t0
         try:
-            moved_to = dict(session.execute(_text(
+            moved_to = dict(session.execute(_text(  # type: ignore[arg-type]
                 "SELECT sample_id, moved_to FROM missing_files WHERE moved_to IS NOT NULL")).all())
         except Exception:           # a database from before the column
             moved_to = {}
@@ -299,7 +299,7 @@ def _metadata(do_rebuild, examples, shadow) -> bool:
                 console.print(f"shadow {_sh.format_agreement(a)}")
                 for (ref, mine), n in a["confused"]:
                     console.print(f"  {n:>7,}  sononym {ref}  ->  {prov} {mine}")
-        counts = dict(session.execute(_text(
+        counts = dict(session.execute(_text(  # type: ignore[arg-type]
             "SELECT provider, count(*) FROM labels GROUP BY provider")).all())
     console.print(f"labels by provider: {counts or 'none'}")
     return ok

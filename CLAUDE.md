@@ -278,6 +278,7 @@ python tests/golden/synthetic_build.py /tmp/syn4 --check --interrupt KICKS,PADS 
 python tests/golden/synthetic_build.py /tmp/syn6 --check --schema-v1 --own [--duckdb]  # an older database migrates, then Fourier's own analysis: the golden each time
 python tests/golden/synthetic_build.py /tmp/syn7 --check --sound            # a sound model trained and labelled first: the golden still (it routes nothing with Sononym)
 ruff check src tests
+mypy                                                     # types: a lenient start (pyproject.toml); new code passes it
 ```
 
 The synthetic golden compares every manifest entry field, category summary and set; `--update`

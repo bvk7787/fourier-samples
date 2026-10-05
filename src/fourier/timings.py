@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from typing import Any
 
 from .paths import home_path
 
@@ -17,7 +18,7 @@ from .paths import home_path
 # each category, and the rest of a --all build beyond its longest category or its share of
 # the work (homes, sets, ratings, verify). The processed-audio cache barely changes a
 # build's time. Analysis: seconds per sample per worker.
-DEFAULTS = {
+DEFAULTS: dict[str, Any] = {
     "build_s_per_file": {
         "ACOUSTIC": 0.064,
         "BLIPS": 0.024,

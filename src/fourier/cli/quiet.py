@@ -57,7 +57,7 @@ class Quiet:
         self.out_dir = ""
         self.total = 0
         self.started = False
-        self._spin = None
+        self._spin: threading.Thread | None = None
 
     # -- capturing ------------------------------------------------------------------------
     def start(self, out_dir: str, total: int) -> None:
@@ -136,7 +136,7 @@ class Quiet:
     # -- what the user reads --------------------------------------------------------------
     def lines(self) -> list[str]:
         try:
-            return [_ANSI.sub("", ln.rstrip("\n")) for ln in open(self.path, encoding="utf-8",
+            return [_ANSI.sub("", ln.rstrip("\n")) for ln in open(self.path, encoding="utf-8",  # type: ignore[arg-type]
                                                                    errors="replace")]
         except OSError:
             return []

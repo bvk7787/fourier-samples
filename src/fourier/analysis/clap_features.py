@@ -312,17 +312,17 @@ def build_index(session) -> Path:
 
     path = _index_path()
     if _same_index(path, ids_arr, emb_arr):
-        build_index.wrote = False            # nothing changed: the files stay as they are
+        build_index.wrote = False            # type: ignore[attr-defined] # nothing changed: the files stay as they are
         logger.info("CLAP index unchanged: %s (%d embeddings)", path, len(ids))
         return path
     np.savez_compressed(path, ids=ids_arr, embeddings=emb_arr)
     _write_fast_index(path, ids_arr, emb_arr)
-    build_index.wrote = True
+    build_index.wrote = True  # type: ignore[attr-defined]
     logger.info("CLAP index written: %s (%d embeddings)", path, len(ids))
     return path
 
 
-build_index.wrote = None     # whether the last build_index() wrote the files (False: identical)
+build_index.wrote = None     # type: ignore[attr-defined] # whether the last build_index() wrote the files (False: identical)
 
 
 def _same_index(path: Path, ids_arr, emb_arr) -> bool:

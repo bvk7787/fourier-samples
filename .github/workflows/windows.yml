@@ -1,0 +1,35 @@
+name: Windows
+
+# Windows isn't supported yet: the suite fails there on paths written into fourier.toml,
+# on rsync, and on SQLite files still open when a test removes them. This runs the suite on
+# Windows by hand (Actions > Windows > Run workflow), to see what's left, until it passes
+# and the job moves into ci.yml.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (windows-latest, 3.12)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install (locked versions; core + dev)
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip uv
+          uv export --frozen --no-hashes --extra dev --no-emit-project > "$RUNNER_TEMP/requirements.lock.txt"
+          pip install -r "$RUNNER_TEMP/requirements.lock.txt"
+          pip install -e . --no-deps
+      - name: Tests
+        run: pytest -q -n auto tests

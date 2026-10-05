@@ -32,6 +32,7 @@ import time
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from .formats import AUDIO_EXTS
 
@@ -89,7 +90,7 @@ def _list(here: str, walk: Walk) -> dict | None:
     """What a folder holds: sub folders ("d"), folder symlinks ("l"), audio files ("f"),
     audio file symlinks ("s"), the other files' extensions ("x"), symlinks whose target is
     gone ("u": named like a folder, without an audio extension; "b": the rest, counted)."""
-    out = {"d": [], "l": [], "f": [], "s": [], "u": [], "x": {}, "b": 0}
+    out: dict[str, Any] = {"d": [], "l": [], "f": [], "s": [], "u": [], "x": {}, "b": 0}
     try:
         with os.scandir(here) as it:
             entries = list(it)
