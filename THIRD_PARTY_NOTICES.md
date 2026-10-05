@@ -15,12 +15,12 @@ several sources. The dataset's README says the audio may be used for research pu
 unless the owners of a source give permission for other uses
 (https://github.com/LAION-AI/audio-dataset/blob/main/laion-audio-630k/README.md). The
 dataset's terms are its own; Fourier Samples does not download or ship the dataset, its audio
-or the model's weights (the model is downloaded from Hugging Face on first use).
+or the model's weights.
 
 Fourier Samples ships no sound-model weights. Its sound model (`src/fourier/metadata/sound.py`)
 is trained on each user's own machine, from their own library (`fourier tools train`, or a
 build without Sononym), and its weights stay in their Fourier home: they are learned from that
-library's samples, whose licences are the user's.
+library's samples, whose licenses are the user's.
 
 ## Rubber Band (the `[stretch]` extra)
 
@@ -39,8 +39,9 @@ neither downloads nor includes them.
 
 ## Folder descriptions (optional)
 
-With folder descriptions on (`fourier setup --llm`, which sets `DESCRIBE`), Fourier Samples asks a local model through Ollama's HTTP API (default
-`qwen3.5:9b`, Apache-2.0). You install Ollama and pull the model yourself.
+With folder descriptions on (`fourier setup --llm`, which sets `DESCRIBE`), Fourier Samples asks
+a local model through Ollama's HTTP API (default `qwen3.5:9b`, Apache-2.0). You install Ollama
+and pull the model yourself.
 
 ## Libraries
 

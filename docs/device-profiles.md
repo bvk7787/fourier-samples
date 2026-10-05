@@ -2,60 +2,65 @@
 
 Fourier Samples renders for a device from its profile. A profile is only as good as its facts,
 so every value either cites a page of the device's manual or says it's a convention or
-unverified. Part 1 makes a profile for your own device in a minute, with your answers marked
-unverified; part 2 checks one against the manual, which is how a profile joins
-`config/devices/` in the package. Until a device has a profile, `generic_44k`, `generic_48k`,
-`generic_sd_card` or `generic_folder` renders a usable library with no limits claimed.
+unverified. Part 1 makes a profile for your own device in a minute, marked unverified. Part 2
+checks one against the manual, which is how a profile joins `config/devices/` in the package.
+Until a device has a profile, `generic_44k`, `generic_48k`, `generic_sd_card` or
+`generic_folder` renders a usable library with no limits claimed.
 
 ## Part 1: making your own device
 
-```bash
-fourier devices new
-```
+`fourier devices new` asks for:
 
-asks for the device's name, how samples get on it (`card`: an SD card or drive `fourier sync`
-copies to; `transfer`: its maker's app, which never overwrites a file; `folder`: you copy the
-render yourself), its sample rate (44.1 or 48 kHz), bit depth (16, 24, or 8 if it takes 8-bit
-files), mono or stereo, WAV or AIFF, the folder on the card, folder levels (2: `CATEGORY/family`;
-1: `CATEGORY` with the family in the file name), the most files in one folder, the longest file
-path, file or folder name and file length it takes (0: no limit), its storage, and whether its
-screen shows only plain-ASCII names. Each question has an option (`fourier devices new --help`),
-and `--yes` takes the default for anything not given:
+- the device's name;
+- how samples get on it: `card` (an SD card or drive that `fourier sync` copies to), `transfer`
+  (its maker's app, which never overwrites a file) or `folder` (you copy the render yourself).
+  The profile file stores these as `load: card-sync`, `transfer` and `copy`;
+- its sample rate (44.1 or 48 kHz) and bit depth (16, 24, or 8 if it takes 8-bit files);
+- mono or stereo, and WAV or AIFF;
+- the folder on the card;
+- folder levels: 2 for `CATEGORY/family`, or 1 for `CATEGORY` with the family in the file name;
+- the most files in one folder;
+- the longest file path, file or folder name, and file length it takes (0 for no limit);
+- its storage;
+- whether its screen shows only plain-ASCII names.
+
+Each question has an option (`fourier devices new --help`), and `--yes` takes the default for
+anything not given:
 
 ```bash
 fourier devices new --name "My Sampler" --load card --card-dir /SAMPLES \
     --sample-rate 48000 --bit-depth 16 --files-per-folder 64 --max-path 255 --yes
 ```
 
-It writes `~/.config/fourier/devices/<id>.yaml` (the first folder in `$FOURIER_DEVICES` when
-that's set), every value `status: unverified`, with a comment block on how to cite the manual,
-and loads it to check it. Then:
+It writes `~/.config/fourier/devices/<id>.yaml` (or into the first folder in `$FOURIER_DEVICES`)
+with every value `status: unverified` and a comment on citing the manual, then loads it to check
+it. Next:
 
 ```bash
 fourier devices show my_sampler     # each value and where it comes from
 fourier render my_sampler           # the master, converted for it
 ```
 
-and add it to `devices = [...]` in `fourier.toml` so builds size the master's names for its
-path limit. Use the manual's numbers when you have them; leave a limit at 0 when you don't
-know it rather than guessing. A path limit must leave the master's family folder and file
-name at least 12 characters each past the card folder, the longest category folder
-(`08_DRUMLOOPS/`), ".wav" and a "_2": `devices new` refuses a smaller one and says the least
-that works (a shorter card folder leaves more room), and a name limit under 14. A profile
-with a limit that leaves too little room is a `fourier doctor` FAIL naming it, and a build
-stops on it; every other command runs.
+Add it to `devices = [...]` in `fourier.toml` so builds size the master's names for its path
+limit. Use the manual's numbers when you have them, and leave a limit you don't know at 0 rather
+than guess.
+
+**Path limits.** Take the card folder, the longest category folder (`08_DRUMLOOPS/`), ".wav" and
+a "_2" off the path limit. What's left must give the family folder and the file name at least 12
+characters each. `devices new` refuses a smaller limit and says the least that works; a shorter
+card folder leaves more room. It also refuses a name limit under 14. `fourier doctor` FAILs a
+profile whose limit is too tight and names it. A build stops on it; every other command runs.
 
 ### Where profiles come from
 
-- The package's `config/devices/*.yaml`, then your own: each folder in `$FOURIER_DEVICES`
-  (separated like `PATH`), then `~/.config/fourier/devices`. Your own survive an update of
-  Fourier Samples. `FOURIER_DEVICES=none` turns your own off (the test suite does).
-- A profile of your own never takes a package id by accident: one with the id of a package
-  profile is skipped (`fourier devices list` says so) unless it has `override: true` at the
-  top, and then it replaces that profile. Among your own folders, the first to define an id
-  wins.
-- `extends: <id>` starts a profile from another one, its manual, citations and values, and
-  changes only what it sets (`paths`, `audio` and `citations` key by key):
+- The package's `config/devices/*.yaml` load first. Then your own: each folder in
+  `$FOURIER_DEVICES` (separated like `PATH`), then `~/.config/fourier/devices`. Your own survive
+  an update of Fourier Samples. `FOURIER_DEVICES=none` turns them off, as the test suite does.
+- A profile of your own never takes a package id by accident. One with a package profile's id is
+  skipped, and `fourier devices list` says so. With `override: true` at the top, it replaces
+  that profile instead. Among your own folders, the first to define an id wins.
+- `extends: <id>` starts a profile from another one, with its manual, citations and values, and
+  changes only what it sets. `paths`, `audio` and `citations` merge key by key:
 
 ```yaml
 id: my_card_device
@@ -76,34 +81,41 @@ paths:
 | `paths.card_dir`, `root` | puts the render there on the card (`fourier sync`) |
 | `paths.folder_depth` | 2: `CATEGORY/family/file`; 1: `CATEGORY/family__file` |
 | `paths.files_per_folder` | continues a full folder in numbered siblings (`punchy`, `punchy-2`, ...); `null`: no limit |
-| `paths.max_path_length` | the build sizes names for it when the device is in `devices`; rendered for a device that isn't, a family folder holding a longer path gets one shorter name and each file is cut as much as it still needs (`render --check` shows the same names), and a render stops, writing nothing, on a path that can't fit |
+| `paths.max_path_length` | the build sizes the master's names for it when the device is in `devices`; otherwise the render shortens what doesn't fit (below) |
 | `paths.max_name_length` | cuts a longer file or folder name in the middle (a cut that makes two names equal adds `_2`) |
-| `paths.ascii_names` | set: names NFC-normalized; `true`: also plain ASCII (accents dropped, `ß` as `ss`, anything else `_`) |
+| `paths.ascii_names` | when set, names are NFC-normalized. `true` also makes them plain ASCII (accents dropped, `ß` as `ss`, anything else `_`) |
 | `storage_mb` | warns when a render is bigger; `size = "auto"` fits the master to it |
 
-Once a release is rendered for a device, its paths are locked: a later change to a name rule
-or the folder limit applies to new files only, and a change to the audio format stops the
-render until you restore the profile or start a new lock.
+**A device not in `devices`.** Rendered for it, a family folder holding a path over the limit
+gets one shorter name, cut in the middle and sized from its longest path. Each file is then cut
+as much as it still needs. `render --check` shows the same names, and both say how many were
+cut. A render stops, writing nothing, if a path can't fit.
+
+**Locked paths.** Once a release is rendered for a device, its paths are locked. A later change
+to a name rule or the folder limit applies to new files only. A change to the audio format stops
+the render until you restore the profile or start a new lock.
 
 ## Part 2: checking a profile against the manual
 
-This part is for coding agents (and people) adding a device to `config/devices/` in the
-package, or checking a profile of their own. An agent can draft one from the manual; a person
-checks it on the hardware.
+This part is for coding agents and people adding a device to `config/devices/` in the package,
+or checking a profile of their own. An agent can draft one from the manual, and a person checks
+it on the hardware.
 
 ### 1. Get the manual
 
-Download the maker's manual PDF for the device's current firmware into a folder of your own
-(it isn't committed: the manual is the maker's copyright), and note its title, version, URL and
-sha256 (`sha256sum manual.pdf`, or `shasum -a 256` on macOS). Don't state a device fact from
-memory: devices change between firmware versions, and the manual is what the profile will be
-checked against.
+Download the maker's manual PDF for the device's current firmware into a folder of your own.
+Don't commit it: the manual is the maker's copyright. Note its title, version, URL and sha256
+(`sha256sum manual.pdf`, or `shasum -a 256` on macOS). Don't state a device fact from memory.
+Devices change between firmware versions, and the profile is checked against the manual.
 
 ### 2. Answer the questions a profile asks
 
-Look each up in the manual, and note the PDF page (the page index in a PDF viewer, counting the
-first page as 1; not the printed page number) and a short verbatim quote (at least a dozen
-characters, exactly as printed) for every answer:
+Look each one up in the manual. For every answer, note:
+
+- the PDF page: the page index in a PDF viewer, counting the first page as 1, not the printed
+  page number;
+- a short verbatim quote, at least a dozen characters, exactly as printed.
+
 
 | Key | Question |
 |-----|----------|
@@ -116,15 +128,16 @@ characters, exactly as printed) for every answer:
 | `paths.ascii_names` | Does its screen or file system show only plain-ASCII names? |
 | `paths.folder_depth`, `files_per_folder` | How deep can folders go; how many files does the browser handle? |
 | `storage_mb` | How much storage does it have for samples? |
-| `load` | How do samples get onto it: an SD card (`card-sync`), a transfer app that never overwrites (`transfer`), or copying into a project (`copy`)? (`fourier devices new --load` calls these `card`, `transfer` and `folder`.) |
+| `load` | How do samples get onto it: an SD card (`card-sync`), a transfer app that never overwrites (`transfer`), or copying into a project (`copy`)? `devices new --load` calls these `card`, `transfer` and `folder`. |
 
-When the manual doesn't say, the value is a Fourier Samples choice: mark it `status: convention`
-and say why in a comment. When nobody has checked it, `status: unverified`.
+When the manual doesn't say, the value is a Fourier Samples choice. Mark it `status: convention`
+and say why in a comment. Mark a value nobody has checked `status: unverified`.
 
 ### 3. Write the profile
 
-Start from the file `fourier devices new` wrote, `config/devices/m8_tracker.yaml` (an SD-card
-device with a path limit) or `digitakt_2.yaml` (a transfer-app device). Values look like this:
+Start from the file `fourier devices new` wrote, or from `config/devices/m8_tracker.yaml` (an
+SD-card device with a path limit) or `digitakt_2.yaml` (a transfer-app device). Values look like
+this:
 
 ```yaml
 id: my_sampler
@@ -152,10 +165,10 @@ citations:
   path-limit: {claim: paths up to 255 characters, page: 40, quote: "..."}
 ```
 
-Fill `manual:` from step 1 (the title, version, URL and sha256 of the PDF you quoted). `page`
-is the PDF page (1-based), which is not always the printed page number. A profile that still has
-`status: unverified` at the top cites nothing: remove that line once the values are cited (a
-value nobody has checked can stay `{value, status: unverified}` on its own).
+Fill `manual:` from step 1 with the title, version, URL and sha256 of the PDF you quoted. `page`
+is the 1-based PDF page, not always the printed page number. A profile with `status: unverified`
+at the top cites nothing, so remove that line once the values are cited. A value nobody has
+checked can stay `{value, status: unverified}` on its own.
 
 ### 4. Check it
 
@@ -167,8 +180,8 @@ fourier render my_sampler --from /tmp/syn/out/FourierCurated --out /tmp/render
 fourier verify --from /tmp/syn/out/FourierCurated --render my_sampler
 ```
 
-`FOURIER_MANUALS_DIR` is the folder holding the PDF; the test finds the manual there by its
+`FOURIER_MANUALS_DIR` is the folder holding the PDF. The test finds the manual there by its
 sha256, whatever the file is called, and reads it with `pypdfium2` (in the `[dev]` extra).
-Without the variable, or without a matching file, it skips the page check. The loader refuses a
-value without a source, and the citation test fails when a quote isn't on its page. Then load a
-render on the device and try it; note in the pull request what you checked on the hardware.
+Without the variable or a matching file, it skips the page check. The loader refuses a value
+without a source, and the citation test fails when a quote isn't on its page. Then load a render
+on the device and try it. Note in the pull request what you checked on the hardware.
