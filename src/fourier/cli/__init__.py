@@ -10,7 +10,7 @@ All commands print structured, human-readable output. `fourier --help` lists the
   Look inside        fourier open | why | verify | diff | search
   Settings           fourier config edit|show|explain | devices list|show|new
   Listen and rate    fourier review rate|import|queue|score|misfiles|ratings
-  Advanced           fourier tools scan|analyze|audit|dedup|import-folder|resolve|db-stats
+  Advanced           fourier tools scan|analyze|train|audit|dedup|import-folder|resolve|db-stats
 """
 
 from __future__ import annotations

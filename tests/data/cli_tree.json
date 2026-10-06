@@ -2275,7 +2275,7 @@
   "help": "Power tools for the steps `fourier build` runs for you, and for looking after the\nlibrary and its database.\n\n\b\n  fourier tools scan               # bring new and changed files into the database\n  fourier tools analyze --status   # how far each analysis step has got\n  fourier tools train              # train the sound model on your library\n  fourier tools audit              # what the master leaves out of the library\n  fourier tools import-folder ~/Downloads/new-pack",
   "hidden": false,
   "params": [],
-  "short_help": "Power tools: scan, analyze, audit, imports and the database."
+  "short_help": "Power tools: scan, analyze, train, audit, imports and the database."
  },
  "fourier tools analyze": {
   "group": false,

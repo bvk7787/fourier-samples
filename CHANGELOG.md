@@ -7,6 +7,12 @@ change the CLI or the config).
 
 ## [Unreleased]
 
+### Fixed
+
+- With one worker (`--workers 1`), the pitch and event analysis steps run in this process
+  instead of a one-process pool, so no worker can die under them.
+- `fourier --help` lists `tools train` with the other power tools.
+
 ## [0.1.1] - 2026-10-06
 
 ### Changed

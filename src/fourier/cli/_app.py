@@ -284,7 +284,7 @@ def main(ctx, db, config_path, sets, verbose):
         pass
 
 
-@main.group("tools", short_help="Power tools: scan, analyze, audit, imports and the database.")
+@main.group("tools", short_help="Power tools: scan, analyze, train, audit, imports and the database.")
 def tools():
     """Power tools for the steps `fourier build` runs for you, and for looking after the
     library and its database.
