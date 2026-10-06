@@ -90,6 +90,11 @@ include = ["src/", "config/", "tests/", "scripts/", "docs/*.md", "README.md", "L
 markers = [
     "slow: an end-to-end run (CLI subprocesses or whole builds); -m 'not slow' leaves them out",
 ]
+# librosa imports audioread, whose import warns about modules Python 3.13 removed (aifc, sunau,
+# audioop); Fourier never decodes through it (fourier/audioio.py)
+filterwarnings = [
+    "ignore::DeprecationWarning:audioread.*",
+]
 
 [tool.ruff]
 line-length = 100

@@ -449,7 +449,7 @@ def test_clap_hears_the_start_of_a_file_longer_than_any_category_takes(tmp_path,
     asked = []
 
     def load(path, sr=None, mono=True, duration=None, **kw):
-        asked.append((os.path.basename(path), duration))
+        asked.append((os.path.basename(getattr(path, "name", path)), duration))   # a SoundFile
         raise RuntimeError("stop before the model")
     monkeypatch.setitem(sys.modules, "torch", types.ModuleType("torch"))
     import librosa

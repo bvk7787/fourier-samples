@@ -68,7 +68,8 @@ def estimate_key(
     import librosa
 
     try:
-        y, _ = librosa.load(str(path), sr=sr, mono=True, duration=max_duration_s)
+        from ..audioio import load as load_audio
+        y, _ = load_audio(path, sr=sr, mono=True, duration=max_duration_s)
     except Exception as exc:
         log.warning("estimate_key: failed to load %s: %s", Path(path).name, exc)
         return {"detected_key": None, "key_confidence": 0.0}
