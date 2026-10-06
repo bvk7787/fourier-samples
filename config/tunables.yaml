@@ -145,6 +145,9 @@ curate_config:
   PHASE_FIX_CORR: correctness
   PHASE_FIX_LOSS_DB: correctness
   PHASE_WARN_CORR: correctness
+  PHASE_FIX_DRUM_CATS: correctness
+  PHASE_FIX_DRUM_CORR: correctness
+  PHASE_FIX_DRUM_LOSS_DB: correctness
   KEYS_EXCLUDE: rules
   KEYS_CLAP_MARGIN: engine
   KEYS_MIN_HARMONICITY: engine

@@ -5668,6 +5668,29 @@
   "type": "float",
   "value": -0.3
  },
+ "curate_config.PHASE_FIX_DRUM_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "CLAPS",
+    "CYMBALS",
+    "DRUMLOOPS",
+    "HATS",
+    "KICKS",
+    "PERC",
+    "SNARES",
+    "TOMS"
+   ]
+  }
+ },
+ "curate_config.PHASE_FIX_DRUM_CORR": {
+  "type": "float",
+  "value": -0.3
+ },
+ "curate_config.PHASE_FIX_DRUM_LOSS_DB": {
+  "type": "float",
+  "value": 4.5
+ },
  "curate_config.PHRASES_CATEGORY": {
   "type": "str",
   "value": "PHRASES"

@@ -622,6 +622,20 @@ for _c in ("KICKS", "SNARES", "CLAPS", "TOMS"):
 PHASE_FIX_CORR = _tunable("PHASE_FIX_CORR", -0.8)
 PHASE_FIX_LOSS_DB = _tunable("PHASE_FIX_LOSS_DB", 10.0)
 PHASE_WARN_CORR = _tunable("PHASE_WARN_CORR", -0.3)
+# Drums and drum loops are held to a stricter line: a hat or snare that loses 4.5 dB summed to
+# mono plays thin on a mono system, and anti-phase width is rarely the point of a drum. Ordinary
+# wide stereo (uncorrelated channels lose 3 dB) stays stereo.
+PHASE_FIX_DRUM_CATS = _tunable("PHASE_FIX_DRUM_CATS",
+                               {"KICKS", "SNARES", "CLAPS", "HATS", "CYMBALS", "TOMS", "PERC", "DRUMLOOPS"})
+PHASE_FIX_DRUM_CORR = _tunable("PHASE_FIX_DRUM_CORR", -0.3)
+PHASE_FIX_DRUM_LOSS_DB = _tunable("PHASE_FIX_DRUM_LOSS_DB", 4.5)
+
+
+def phase_fix_limits(category: str | None) -> tuple[float, float]:
+    """(correlation, dB lost summed to mono) past which a category's stereo file keeps one channel."""
+    if category in PHASE_FIX_DRUM_CATS:
+        return PHASE_FIX_DRUM_CORR, PHASE_FIX_DRUM_LOSS_DB
+    return PHASE_FIX_CORR, PHASE_FIX_LOSS_DB
 
 # Keys routing: Sononym files keys under "Tone Leads & MidHiKeys", so piano / e-piano /
 # clav notes and chords would home in SYNTH, SUB and FX. A keys sample is one
