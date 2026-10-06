@@ -28,6 +28,10 @@ change the CLI or the config).
 
 ### Fixed
 
+- Drums and drum loops whose stereo channels partly cancel are written mono (their louder
+  channel) from a correlation of -0.3 or 4.5 dB lost summed to mono, where other categories
+  still need -0.8 or 10 dB. A hat or snare no longer thins out on a mono system; ordinary
+  wide stereo stays stereo.
 - CLAP embedded a file over 10 seconds differently on every run, because its feature extractor
   crops a longer clip at a random offset. It now hears and decodes only the first 10 seconds, so
   the same file always gets the same embedding. A library analyzed with 0.1.0 keeps its earlier

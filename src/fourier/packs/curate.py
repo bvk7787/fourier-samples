@@ -3732,13 +3732,15 @@ def phase_stats(y):
     return corr, loss
 
 
-def _fix_phase(kroot, entries, kind="oneshot"):
+def _fix_phase(kroot, entries, kind="oneshot", category=None):
     """A stereo file whose channels nearly cancel (correlation under PHASE_FIX_CORR, or
-    PHASE_FIX_LOSS_DB lost summed to mono) keeps its louder channel, as a forced mono file
-    does: a clap that vanishes in mono isn't a width choice.
+    PHASE_FIX_LOSS_DB lost summed to mono; drums and drum loops under the stricter
+    PHASE_FIX_DRUM_CORR / PHASE_FIX_DRUM_LOSS_DB) keeps its louder channel, as a forced mono
+    file does: a clap that vanishes in mono isn't a width choice.
     Written anew; the entry records `phase_fix`. Returns files."""
     import soundfile as sf
-    from .curate_config import PHASE_FIX_CORR, PHASE_FIX_LOSS_DB
+    from .curate_config import phase_fix_limits
+    max_corr, max_loss = phase_fix_limits(category)
     n = 0
     for e in entries:
         p = Path(kroot) / e["out"]
@@ -3749,7 +3751,7 @@ def _fix_phase(kroot, entries, kind="oneshot"):
         except Exception:
             continue
         corr, loss = phase_stats(y)
-        if not ((corr is not None and corr < PHASE_FIX_CORR) or loss > PHASE_FIX_LOSS_DB):
+        if not ((corr is not None and corr < max_corr) or loss > max_loss):
             continue
         k = int(np.argmax(np.mean(np.square(y), axis=0)))
         y1 = y[:, k]
@@ -5125,7 +5127,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
             except Exception:
                 failed += 1
         if category != WAVES_CATEGORY:
-            _fix_phase(kroot, [e for e in file_entries if e["family"] == c["name"]], kind=cfg["kind"])
+            _fix_phase(kroot, [e for e in file_entries if e["family"] == c["name"]], kind=cfg["kind"],
+                       category=category)
         if category in LEVEL_CATS and loudness:
             _level_folder(kroot, [e for e in file_entries if e["family"] == c["name"]],
                           rms_ceil_db=ONESHOT_RMS_CEIL_DB.get(category))

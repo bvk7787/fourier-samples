@@ -847,9 +847,10 @@ def check_audio(ctx):
             if max(_a[0], _a[-1]) > pk * 10 ** (C.EDGE_HOT_DB / 20):
                 seams.append((c, e["out"], round(float(_a[0]), 3), round(float(_a[-1]), 3)))
         if x.shape[1] == 2 and _k != "waves":
-            from .curate_config import PHASE_FIX_CORR, PHASE_FIX_LOSS_DB, PHASE_WARN_CORR
+            from .curate_config import PHASE_WARN_CORR, phase_fix_limits
             _corr, _loss = C.phase_stats(x)
-            if (_corr is not None and _corr < PHASE_FIX_CORR) or _loss > PHASE_FIX_LOSS_DB:
+            _fc, _fl = phase_fix_limits(c)
+            if (_corr is not None and _corr < _fc) or _loss > _fl:
                 phase_bad.append((c, e["out"], None if _corr is None else round(_corr, 2), round(_loss, 1)))
             elif _corr is not None and _corr < PHASE_WARN_CORR:
                 phase_warn.append((c, e["out"], round(_corr, 2), round(_loss, 1)))

@@ -681,6 +681,38 @@ def test_flipped_stereo_keeps_its_louder_channel(tmp_path):
     assert sf.info(str(fam / "wide.wav")).channels == 2 and "phase_fix" not in ents[1]
 
 
+
+def test_drums_are_held_to_a_stricter_phase_line(tmp_path):
+    """A hat whose channels partly cancel (correlation about -0.5, about 6 dB lost in mono)
+    keeps one channel in HATS and DRUMLOOPS; the same file stays stereo in PADS, where only a
+    near flip is fixed. Uncorrelated wide noise stays stereo even as a drum."""
+    import numpy as np
+    import soundfile as sf
+    from fourier.packs.curate import _fix_phase, phase_stats
+    from fourier.packs.curate_config import phase_fix_limits
+    sr = 44100
+    n = sr // 4
+    t = np.arange(n) / sr
+    rng = np.random.default_rng(1)
+    env = np.exp(-12 * t)
+    a, b = rng.normal(0, 0.2, n), rng.normal(0, 0.2, n)
+    part = np.stack([a, -0.5 * a + 0.75 * b], 1) * env[:, None]       # partly flipped
+    wide = np.stack([a, b], 1) * env[:, None]                         # uncorrelated: about 3 dB
+    corr, loss = phase_stats(part)
+    assert -0.7 < corr < -0.3 and 4.5 < loss < 10
+    assert phase_stats(wide)[1] < 4.5
+    for cat, fixed in (("HATS", True), ("DRUMLOOPS", True), ("PADS", False)):
+        fam = tmp_path / cat / "f"
+        fam.mkdir(parents=True)
+        sf.write(str(fam / "part.wav"), part, sr, subtype="PCM_24")
+        sf.write(str(fam / "wide.wav"), wide, sr, subtype="PCM_24")
+        ents = [dict(family="f", out="f/part.wav"), dict(family="f", out="f/wide.wav")]
+        kind = "loop" if cat == "DRUMLOOPS" else "oneshot"
+        assert _fix_phase(tmp_path / cat, ents, kind=kind, category=cat) == int(fixed)
+        assert sf.info(str(fam / "part.wav")).channels == (1 if fixed else 2)
+        assert sf.info(str(fam / "wide.wav")).channels == 2
+    assert phase_fix_limits("HATS") != phase_fix_limits("PADS") == phase_fix_limits(None)
+
 def test_detected_root_renames_the_note_in_the_name():
     """Saw2D1-env5-mod8, retuned -2 by its detected D, plays C: the name says C1; a token
     that isn't the detected note (mod8, env5) stays."""
