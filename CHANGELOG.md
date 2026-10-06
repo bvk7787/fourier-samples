@@ -7,6 +7,19 @@ change the CLI or the config).
 
 ## [Unreleased]
 
+### Added
+
+- The sound model's training report gives each category's precision at every confidence
+  threshold, so a weak category (often SYNTH, PADS or FX) shows where its placements stop being
+  trustworthy ([#3](https://github.com/bvk7787/fourier-samples/issues/3)).
+
+### Changed
+
+- Without Sononym, the count of samples the library's names label (which decides whether to
+  train the sound model) is kept between builds and redone only when the samples, ratings,
+  settings or naming rules change: about a minute saved per build on a large library
+  ([#4](https://github.com/bvk7787/fourier-samples/issues/4)).
+
 ### Fixed
 
 - Audio is read through soundfile only: a file it can't open is reported as unreadable instead
