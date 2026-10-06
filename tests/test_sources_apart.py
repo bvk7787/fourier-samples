@@ -291,3 +291,19 @@ def test_a_migrated_database_builds_the_golden_before_and_after_own_analysis(tmp
 @pytest.mark.slow
 def test_a_migrated_duckdb_database_builds_the_golden(tmp_path):
     assert "golden: identical" in _synthetic(tmp_path, "--schema-v1", "--duckdb", "--check")
+
+
+def test_one_worker_runs_in_this_process(monkeypatch):
+    """With one worker the pYIN and event steps map in this process: no pool is started, so no
+    worker can die under them (it did once on a CI runner)."""
+    import concurrent.futures as cf
+
+    from fourier.cli import enrich
+
+    def no_pool(*a, **k):
+        raise AssertionError("a process pool was started for one worker")
+    monkeypatch.setattr(cf, "ProcessPoolExecutor", no_pool)
+    with enrich._jobs(1) as jobs:
+        assert list(jobs(lambda x: x * 2, [1, 2, 3], chunksize=16)) == [2, 4, 6]
+    with enrich._jobs(0) as jobs:
+        assert list(jobs(str, [7])) == ["7"]

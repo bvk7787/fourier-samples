@@ -1047,6 +1047,22 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
         session.close()
 
 
+def _jobs(workers):
+    """A map over worker processes, or with one worker (or fewer) a plain map in this process:
+    nothing to spawn, and no worker whose sudden death stops the step."""
+    from concurrent.futures import ProcessPoolExecutor
+    from contextlib import contextmanager
+
+    @contextmanager
+    def ctx():
+        if workers <= 1:
+            yield lambda fn, items, chunksize=1: map(fn, items)
+        else:
+            with ProcessPoolExecutor(max_workers=workers) as ex:
+                yield ex.map
+    return ctx()
+
+
 def _event_profile_job(item):
     sample_id, path = item
     import os as _os
@@ -1074,7 +1090,6 @@ def enrich_events(workers, force, limit, max_dur):
     Runs in `fourier tools analyze` (--only events).
     """
     import time
-    from concurrent.futures import ProcessPoolExecutor
     from datetime import datetime
 
     from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
@@ -1122,8 +1137,8 @@ def enrich_events(workers, force, limit, max_dur):
         with Progress(TextColumn("[progress.description]{task.description}"), BarColumn(),
                       TaskProgressColumn(), TimeRemainingColumn(), console=console, disable=not console.is_terminal) as progress:
             task = progress.add_task("events", total=len(items))
-            with ProcessPoolExecutor(max_workers=workers) as ex:
-                for sid, prof in ex.map(_event_profile_job, items, chunksize=64):
+            with _jobs(workers) as jobs:
+                for sid, prof in jobs(_event_profile_job, items, chunksize=64):
                     if prof is None:
                         n_err += 1
                     elif prof["n_events"] >= 2 and not prof["event_echo"]:
@@ -1300,7 +1315,6 @@ def enrich_own(workers, force, limit):
     Runs in `fourier tools analyze` (--only own).
     """
     import time
-    from concurrent.futures import ProcessPoolExecutor
     from datetime import datetime
 
     from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
@@ -1340,8 +1354,8 @@ def enrich_own(workers, force, limit):
             with Progress(TextColumn("[progress.description]{task.description}"), BarColumn(),
                           TaskProgressColumn(), TimeRemainingColumn(), console=console, disable=not console.is_terminal) as progress:
                 task = progress.add_task("own", total=len(items))
-                with ProcessPoolExecutor(max_workers=max(1, workers)) as ex:
-                    for sid, midi, ok in ex.map(_root_job, items, chunksize=16):
+                with _jobs(workers) as jobs:
+                    for sid, midi, ok in jobs(_root_job, items, chunksize=16):
                         if not ok:
                             n_err += 1          # unreadable: tried again next time
                         else:
