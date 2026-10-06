@@ -160,7 +160,7 @@ def enrich_derived(limit, force):
     Runs in `fourier tools analyze` (--only derived).
     """
     import time
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from sqlalchemy import text
 
@@ -254,7 +254,7 @@ def enrich_derived(limit, force):
             # Sononym's values only: a sample without a Sononym row gets none
             derived = (compute_derived(meta, duration_s=duration_s) if meta is not None
                        else dict.fromkeys(DERIVED_COLUMNS))
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
 
             # Upsert into SampleFeatures
             existing = (
@@ -664,11 +664,11 @@ def _upsert_loop_trim_batch(session, batch: list[tuple[int, dict]]) -> None:
 
 def _upsert_librosa_batch(session, batch: list[tuple[int, dict]]) -> None:
     """Insert or update librosa features for a batch of (sample_id, feats) pairs."""
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from fourier.db.models import SampleFeatures
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     for sample_id, feats in batch:
         existing = (
             session.query(SampleFeatures)
@@ -1075,7 +1075,7 @@ def enrich_events(workers, force, limit, max_dur):
     """
     import time
     from concurrent.futures import ProcessPoolExecutor
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
 
@@ -1103,7 +1103,7 @@ def enrich_events(workers, force, limit, max_dur):
         batch = []
 
         def flush():
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             ids = [sid for sid, _ in batch]
             feats = {f.sample_id: f for f in session.query(SampleFeatures)
                      .filter(SampleFeatures.sample_id.in_(ids)).all()}
@@ -1301,7 +1301,7 @@ def enrich_own(workers, force, limit):
     """
     import time
     from concurrent.futures import ProcessPoolExecutor
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
     from sqlalchemy import text
@@ -1327,7 +1327,7 @@ def enrich_own(workers, force, limit):
             batch = []
 
             def flush():
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc).replace(tzinfo=None)
                 feats = {f.sample_id: f for f in session.query(SampleFeatures)
                          .filter(SampleFeatures.sample_id.in_([sid for sid, _m in batch])).all()}
                 for sid, midi in batch:
