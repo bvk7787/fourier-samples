@@ -7,6 +7,8 @@ change the CLI or the config).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-06
+
 ### Changed
 
 - Documentation rewritten to be shorter and plainer, with consistent numbers and American
@@ -36,6 +38,8 @@ change the CLI or the config).
   crops a longer clip at a random offset. It now hears and decodes only the first 10 seconds, so
   the same file always gets the same embedding. A library analyzed with 0.1.0 keeps its earlier
   embeddings until `fourier tools analyze --only clap --force` redoes them.
+- Saving ratings to a bare file name (`FOURIER_RATINGS=ratings.json`) failed; it saves in the
+  current folder now ([#22](https://github.com/bvk7787/fourier-samples/issues/22)).
 
 ## [0.1.0] - 2026-10-04
 
@@ -85,5 +89,6 @@ The first public release.
 
 The [README](README.md) has the full tour.
 
-[Unreleased]: https://github.com/bvk7787/fourier-samples/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/bvk7787/fourier-samples/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/bvk7787/fourier-samples/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/bvk7787/fourier-samples/releases/tag/v0.1.0
