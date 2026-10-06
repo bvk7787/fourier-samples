@@ -2,6 +2,8 @@
 import json
 import os
 
+import pytest
+
 from fourier.packs.ratings import (
     LIVE_USER_XMP, apply_tags, keep_pins, misfiled_map, format_scorecard, harvest, load_store, read_folder_tags,
     scorecard, verdict_of,
@@ -38,6 +40,20 @@ def _master(root, stamp, entries, tags=None):
 
 ENTRIES = {"KICKS": [("808-sub", "BD 808.wav", "/lib/SampleLibrary/A/BD 808.wav")],
            "SNARES": [("crack", "SD 1.wav", "/lib/SampleLibrary/A/SD 1.wav")]}
+
+
+@pytest.mark.parametrize("path", ["ratings.json", "./ratings.json", "nested/ratings.json"])
+@pytest.mark.parametrize("from_env", [False, True])
+def test_save_store_relative_path(tmp_path, monkeypatch, path, from_env):
+    from fourier.packs.ratings import save_store
+
+    monkeypatch.chdir(tmp_path)
+    if from_env:
+        monkeypatch.setenv("FOURIER_RATINGS", path)
+    store = {"version": 1, "ratings": {"/lib/Acme/kick.wav": {"verdict": "keep"}}}
+    save_store(store, None if from_env else path)
+    assert json.loads((tmp_path / path).read_text()) == store
+    assert not (tmp_path / (path + ".tmp")).exists()
 
 
 def test_verdict_of_group_and_priority():
