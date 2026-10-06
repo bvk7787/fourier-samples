@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fourier-samples"
-version = "0.1.0"
+version = "0.1.1"
 description = "Curate a sample library into device-ready folders for hardware samplers"
 readme = "README.md"
 license = "Apache-2.0"
