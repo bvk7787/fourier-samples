@@ -45,6 +45,13 @@ end-to-end tests are marked `slow`.
 [CLAUDE.md](CLAUDE.md) describes the architecture and the rules the code keeps. Read it before
 a larger change.
 
+## Before you start
+
+Open an issue, or comment on an existing one, and wait for a maintainer's go-ahead before you
+write code. That goes for pull requests that only add or reshape tests too: tests are code to
+maintain, and each one should guard behavior someone relies on. Pull requests without that
+agreement may be closed.
+
 ## What a pull request needs
 
 - **Tests.** A behavior change comes with a test. Curation changes also run the synthetic
