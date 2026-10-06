@@ -176,7 +176,8 @@ def compute_loop_trim(
         return _null
 
     try:
-        y, _ = librosa.load(str(path), sr=sr, mono=True)
+        from ..audioio import load as load_audio
+        y, _ = load_audio(path, sr=sr, mono=True)
     except Exception as exc:
         log.warning("loop_trim: cannot load %s: %s", path, exc)
         return _null

@@ -221,8 +221,8 @@ def embed_audio_file(path: str | Path) -> np.ndarray:
     import torch
 
     try:
-        import librosa
-        y, _ = librosa.load(str(path), sr=CLAP_SAMPLE_RATE, mono=True, duration=CLAP_WINDOW_S)
+        from ..audioio import load as load_audio
+        y, _ = load_audio(path, sr=CLAP_SAMPLE_RATE, mono=True, duration=CLAP_WINDOW_S)
         y = y[:CLAP_WINDOW]           # resampling can leave a sample over: the extractor would crop it
     except Exception as exc:
         logger.warning("CLAP: could not load %s: %s", path, exc)

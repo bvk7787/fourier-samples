@@ -83,7 +83,8 @@ def compute_features(path: str | Path, sr: int = _SR) -> dict:
         return {}
 
     try:
-        y, _ = librosa.load(str(path), sr=sr, mono=True, duration=_MAX_DURATION_S)
+        from ..audioio import load as load_audio
+        y, _ = load_audio(path, sr=sr, mono=True, duration=_MAX_DURATION_S)
     except Exception as exc:
         log.debug(f"Failed to load {path.name}: {exc}")
         return {}

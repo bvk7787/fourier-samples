@@ -9,6 +9,10 @@ change the CLI or the config).
 
 ### Fixed
 
+- Audio is read through soundfile only: a file it can't open is reported as unreadable instead
+  of falling back to audioread, which is slow, decodes differently and warns about modules
+  Python 3.13 removed. Every file soundfile opens decodes exactly as before
+  ([#7](https://github.com/bvk7787/fourier-samples/issues/7)).
 - With one worker (`--workers 1`), the pitch and event analysis steps run in this process
   instead of a one-process pool, so no worker can die under them.
 - `fourier --help` lists `tools train` with the other power tools.

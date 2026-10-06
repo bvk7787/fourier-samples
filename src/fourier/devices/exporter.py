@@ -180,7 +180,8 @@ def _convert_and_copy(
         src_bits = _SUBTYPE_BITS.get(sf.info(str(source)).subtype, 0)
     except Exception:
         src_bits = 0
-    audio, sr = librosa.load(str(source), sr=None, mono=False)
+    from ..audioio import load as load_audio
+    audio, sr = load_audio(source, sr=None, mono=False)
     src_peak = float(np.max(np.abs(audio), initial=0.0))
     if convert_to_mono:
         audio = _mono_downmix(audio, keep_level=not preserve_length)
