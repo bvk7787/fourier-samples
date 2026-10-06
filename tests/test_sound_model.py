@@ -569,3 +569,50 @@ def test_reliable_needs_enough_held_out_and_confident_calls(monkeypatch):
     assert "agreed with the names only 50% of the time (80% needed)" in T.reliable(got)[1]
     got.update(accuracy_at_min=0.92)
     assert T.reliable(got) == (True, "")
+
+
+def test_the_report_gives_precision_per_category_at_each_threshold():
+    """Of the holdout samples placed in a category at or above a threshold, the share whose label
+    agrees, with how many: here KICKS is right 2 of 3 times at 0.5 and 1 of 1 at 0.9."""
+    import numpy as np
+
+    from fourier.metadata.train import THRESHOLDS, report_training
+    cats = ["KICKS", "SNARES"]
+    P_h = np.array([[0.95, 0.05], [0.6, 0.4], [0.55, 0.45], [0.2, 0.8]])
+    y_h = np.array([0, 0, 1, 1])
+    info = dict(version="t", clap="c", n=4, labelled=4, shaped=0, packs=2, hold_packs=1,
+                it_cat=1, t_cat=1.0, it_cls=0, t_cls=1.0, seconds=0.0)
+    lines = report_training(cats, ["KICKS", "KICKS", "SNARES", "SNARES"], [True] * 4, P_h, y_h,
+                            [None] * 4, [True] * 4, np.zeros(0), np.zeros(0, dtype=int),
+                            ["names"] * 4, P_h, np.zeros(0), info)
+    text = "\n".join(lines)
+    assert "Precision per category" in text
+    row = next(l for l in lines if l.startswith("| KICKS |") and "(3)" in l)
+    cells = [c.strip() for c in row.strip("|").split("|")]
+    assert cells[1 + THRESHOLDS.index(0.5)] == "66.7% (3)"
+    assert cells[1 + THRESHOLDS.index(0.9)] == "100.0% (1)"
+    assert cells[1 + THRESHOLDS.index(0.95)] == "100.0% (1)"
+    snares = next(l for l in lines if l.startswith("| SNARES |") and "(1)" in l)
+    assert "100.0% (1)" in snares and "-" in snares        # 0.8 only; nothing at 0.9
+
+
+def test_the_label_count_is_kept_until_what_it_depends_on_changes(tmp_path, monkeypatch):
+    """label_counts reads every sample's names once; a second build with the same samples,
+    ratings and settings reuses the count, and a renamed sample counts again."""
+    import numpy as np
+
+    from fourier.metadata import train as T
+    monkeypatch.setenv("FOURIER_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("FOURIER_RATINGS", str(tmp_path / "ratings.json"))
+    rels = ["Northwind/Drums/Kick Qxvwz.wav", "Northwind/Drums/Snare Qxvwz.wav", "Other/Pads/Pad Qxvwz.wav"]
+    rows = [np.array([1, 2, 3]), "clap", None, list(rels), [0.5, 0.4, 3.0], [f"/l/{r}" for r in rels]]
+    monkeypatch.setattr(T, "library_rows", lambda session: tuple(rows))
+    calls = []
+    real = T.labels
+    monkeypatch.setattr(T, "labels", lambda *a, **k: calls.append(1) or real(*a, **k))
+    first = T.label_counts(None)
+    assert T.label_counts(None) == first and len(calls) == 1
+    assert (tmp_path / "home" / "run" / "sound_labels.json").is_file()
+    rows[3][2] = "Other/Pads/Pad Qxvwz Two.wav"
+    T.label_counts(None)
+    assert len(calls) == 2

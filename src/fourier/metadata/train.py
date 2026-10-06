@@ -302,6 +302,14 @@ def _table(head, rows) -> list:
     return out
 
 
+def _precision_cell(pred, y, pmax, k, t) -> str:
+    """Of the holdout samples placed in category k at confidence >= t: the share whose label is
+    k, and how many there are ("-" when there are none)."""
+    placed = (pred == k) & (pmax >= t)
+    n = int(placed.sum())
+    return f"{_pct(int((placed & (y == k)).sum()), n)} ({n})" if n else "-"
+
+
 def report_training(cats, y_cat, hold, P_h, y_h, shape_y, shape_hold, pl_h, sy_h, src, P_lib,
                     pl_lib, info) -> list:
     """The report's sections on the labels and the holdout (everything but the yardstick)."""
@@ -353,6 +361,12 @@ def report_training(cats, y_cat, hold, P_h, y_h, shape_y, shape_hold, pl_h, sy_h
                       [(t, _pct((pmax >= t).sum(), len(pmax)),
                         _pct(((pmax >= t) & (pred == y_h)).sum(), (pmax >= t).sum()),
                         _pct((lib >= t).sum(), len(lib))) for t in THRESHOLDS])
+        out += ["", "Precision per category (holdout: of the samples the model places in the "
+                    "category at or above the threshold, the share whose label agrees; how many "
+                    "in brackets):", ""]
+        out += _table(["category"] + [f">= {t}" for t in THRESHOLDS],
+                      [[cats[k]] + [_precision_cell(pred, y_h, pmax, k, t) for t in THRESHOLDS]
+                       for k in used if (pred == k).any()])
     out += ["", "## Holdout: one-shot or loop", ""]
     if not len(sy_h):
         out.append("No holdout samples with a shape label.")
@@ -441,16 +455,63 @@ def default_out() -> Path:
     return fourier_home() / S.HOME_NAME
 
 
+LABEL_CACHE = ("run", "sound_labels.json")   # under the Fourier home: the last count and its key
+
+
+def _labels_key(ids, rels, durs, paths) -> str:
+    """What the name labels depend on: the samples (id, path, length), the ratings, the
+    tunables, the path provider's rules and the code that reads them. Equal keys, equal counts."""
+    import json
+
+    from .. import settings
+    from ..packs import rules
+    from ..packs.ratings import default_store
+    from . import shadow
+    h = hashlib.sha256(b"labels 1\n")
+    h.update(json.dumps([settings.tunables_hash(), shadow.rules_version(shadow.PATH)]).encode())
+    for mod in (S, shadow, rules):
+        h.update(Path(mod.__file__ or "").read_bytes())
+    try:
+        h.update(Path(default_store()).read_bytes())
+    except OSError:
+        h.update(b"no ratings")
+    for row in zip(ids.tolist(), rels, durs, paths):
+        h.update(repr(row).encode())
+    return h.hexdigest()
+
+
 def label_counts(session) -> tuple:
     """(samples with a category label from their own names or a rating, packs they're in, all
-    samples with an embedding): what the training gate reads. (0, 0, 0) without embeddings."""
+    samples with an embedding): what the training gate reads. (0, 0, 0) without embeddings.
+    Reading every sample's names takes about a minute on a large library, so the count is kept
+    in <home>/run/sound_labels.json with the key it was made under (_labels_key) and reused
+    until something it depends on changes."""
+    import json
+
+    from ..paths import home_path
     try:
         ids, _clap, _own, rels, durs, paths = library_rows(session)
     except SystemExit:
         return 0, 0, 0
+    key = _labels_key(ids, rels, durs, paths)
+    cache = home_path(*LABEL_CACHE)
+    try:
+        got = json.loads(cache.read_text())
+        if got.get("key") == key:
+            return tuple(int(x) for x in got["counts"])
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     y_cat, _ys, _src = labels(ids, rels, durs, paths, None)
     keys = {pack_key(r) for r, c in zip(rels, y_cat) if c is not None}
-    return sum(1 for c in y_cat if c is not None), len(keys), len(ids)
+    counts = (sum(1 for c in y_cat if c is not None), len(keys), len(ids))
+    try:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        tmp = cache.with_name(cache.name + ".tmp")
+        tmp.write_text(json.dumps({"key": key, "counts": list(counts)}) + "\n")
+        os.replace(tmp, cache)
+    except OSError:
+        pass                                     # a read-only home: counted again next time
+    return counts
 
 
 def train(session, out=None, report=None, ratings=None, index=None, clap_prior_=False, l2=L2,
