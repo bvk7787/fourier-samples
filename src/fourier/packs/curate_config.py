@@ -51,10 +51,10 @@ DEMO_PATH = _tunable("DEMO_PATH", _re.compile(
 # category, so no one vendor's aesthetic dominates.
 VENDOR_MAX_SHARE = _tunable("VENDOR_MAX_SHARE", 0.40)  # per-vendor cap per category
 # Which folder of a library path is a sample's vendor for that cap (packs/vendors.py, the
-# `vendors` knob): "first-folder" (a vendor/pack/... library) or "auto" (each library
-# folder's layout decides: vendor/pack folders, folders by sound type, an umbrella folder
-# of packs, or a flat folder of files).
-VENDORS = _tunable("VENDORS", "first-folder")
+# `vendors` knob): "auto" (the default: each library folder's layout decides, vendor/pack
+# folders, folders by sound type, an umbrella folder of packs, or a flat folder of files) or
+# "first-folder" (the first folder is always the vendor: a vendor/pack/... library).
+VENDORS = _tunable("VENDORS", "auto")
 # Favored sources get a selection nudge (curate.py FAVOR_WEIGHT); matched on the path.
 FAVORED_SOURCES = _tunable("FAVORED_SOURCES", _re.compile(_NEVER, _re.I))   # library
 

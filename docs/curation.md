@@ -539,8 +539,8 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
 - Exempt: a category with `no_vendor_cap`, and a pool from fewer than three vendors (where one
   is all of it, or two can't both stay under the cap).
 - Never below the category's folder minimum: the best of what it removed comes back.
-- The vendor is `packs/vendors.py`'s. With `vendors = "first-folder"` (the code's default) it's
-  the top-level folder. With `"auto"` (what setup writes) each library folder's layout decides:
+- The vendor is `packs/vendors.py`'s. With `vendors = "first-folder"` it's always the top-level
+  folder. With `"auto"` (the default, and what setup writes) each library folder's layout decides:
   - vendor/pack folders: the top-level folder;
   - folders by sound type such as `Drums/Kicks`, `Loops`, `Bass` (60% of the files under
     sound-type folders): no vendor, never capped;

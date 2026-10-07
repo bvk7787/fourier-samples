@@ -106,8 +106,9 @@ naming, routing, loudness, ratings). `fourier why --rules` prints the routing pr
   `ingest/chunks.py`, read by the walk into `samples.acid_bpm/acid_beats/root_note`) are tried
   only when the usual chain finds nothing, except the ACID tempo (and a name's "bpm120"),
   which comes before librosa's estimate (`curate._resolve_tempo`). The vendor the per-vendor cap counts is
-  `packs/vendors.py` (`vendors` knob: "first-folder", the code's default, or "auto", which
-  setup writes: per library folder, vendor/pack, by sound type, umbrella or flat). The tempo
+  `packs/vendors.py` (`vendors` knob: "auto", the code's default and what setup writes: per
+  library folder, vendor/pack, by sound type, umbrella or flat; or "first-folder", which the
+  synthetic golden pins). The tempo
   knob derives the fold window from its range (`fold_window`; `TEMPO_FOLD_RANGE` only for a
   range narrower than its top octave, so 85-180 sets nothing) and `fold = "off"` turns
   folding off. Genre presets (`hiphop-lofi`, `house-techno`, `ambient-cinematic`, `trap`)

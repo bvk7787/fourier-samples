@@ -8,7 +8,7 @@ into the tunables it stands for (docs/design-history.md, "How it became configur
     tempo = "85-180"                            # the 5-BPM loop bands span this range, and
                                                 # loops fold by octaves into its top octave
     fold = "auto"                               # auto (as tempo says) | off (no octave folding)
-    vendors = "auto"                            # first-folder | auto (each library's layout)
+    vendors = "auto"                            # auto (each library's layout) | first-folder
     words = { KICKS = ["bombo"] }               # your words for a category (without Sononym)
     sets = "on"                                 # on | off (00_KITS and 00_SLICE)
     size = "auto"                               # auto (fits the devices, pools' surplus moves), fixed, "5GB"
@@ -425,10 +425,10 @@ def names(value, known) -> dict:
 
 @knob("vendors")
 def vendors(value, known) -> dict:
-    """first-folder (the first folder under the library folder is a sample's vendor, for the
-    per-vendor cap) or auto (each library folder's layout decides: vendor/pack folders, folders
-    by sound type with no vendor cap, an umbrella folder whose packs are the vendors, a flat
-    folder of files; packs/vendors.py)."""
+    """auto, the default (each library folder's layout decides: vendor/pack folders, folders by
+    sound type with no vendor cap, an umbrella folder whose packs are the vendors, a flat folder
+    of files; packs/vendors.py) or first-folder (the first folder under the library folder is
+    always a sample's vendor, for the per-vendor cap)."""
     from .packs.vendors import MODES
     v = _choice("vendors", value, MODES)
     return {} if v == known["curate_config.VENDORS"] else {"curate_config.VENDORS": v}

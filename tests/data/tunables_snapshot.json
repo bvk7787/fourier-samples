@@ -8145,7 +8145,7 @@
  },
  "curate_config.VENDORS": {
   "type": "str",
-  "value": "first-folder"
+  "value": "auto"
  },
  "curate_config.TEMPO_FOLD_RANGE": {
   "type": "NoneType",

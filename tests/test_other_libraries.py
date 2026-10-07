@@ -98,7 +98,8 @@ def test_layouts_are_detected():
 
 def test_vendor_of(monkeypatch):
     from fourier.packs import curate_config as cc
-    assert V.vendor_of("Acme/Pack/Kick.wav") == "Acme" and V.vendor_of("") == "?"      # first-folder
+    monkeypatch.setattr(cc, "VENDORS", "first-folder")
+    assert V.vendor_of("Acme/Pack/Kick.wav") == "Acme" and V.vendor_of("") == "?"
     assert V.pack_key("Acme/Pack/Kits/Kick.wav") == "Acme/Pack"
     monkeypatch.setattr(cc, "VENDORS", "auto")
     for lay, rel, vendor, pack in ((V.TYPES, "Drums/Kicks/Kick.wav", None, None),
@@ -108,6 +109,16 @@ def test_vendor_of(monkeypatch):
                                    (V.PACKS, "Acme/Pack/Kits/Kick.wav", "Acme", "Acme/Pack")):
         monkeypatch.setattr(V, "_LAYOUTS", {"": {"layout": lay, "umbrellas": ["Downloads"]}})
         assert (V.vendor_of(rel, rel), V.pack_key(rel)) == (vendor, pack), lay
+
+
+def test_layouts_without_a_session(monkeypatch):
+    """prepare() with no session (a build called without one) falls back to the database's own,
+    and to nothing without a database: a vendor is then the first folder."""
+    from fourier.packs import curate_config as cc
+    monkeypatch.setattr(cc, "VENDORS", "auto")
+    monkeypatch.setattr(V, "_LAYOUTS", {})
+    assert V.prepare(None) == {}
+    assert V.vendor_of("Acme/Pack/Kick.wav", "Acme/Pack/Kick.wav") == "Acme"
 
 
 def test_samples_without_a_vendor_are_never_capped():
@@ -120,8 +131,9 @@ def test_samples_without_a_vendor_are_never_capped():
 
 
 def test_vendors_knob(known):
-    assert knobs.apply({"vendors": "first-folder"}, known) == []
-    assert knobs.apply({"vendors": "auto"}, known) == [("vendors", "curate_config.VENDORS", "auto")]
+    assert knobs.apply({"vendors": "auto"}, known) == []                  # the default
+    assert knobs.apply({"vendors": "first-folder"}, known) == [
+        ("vendors", "curate_config.VENDORS", "first-folder")]
     with pytest.raises(ConfigError, match="vendors"):
         knobs.apply({"vendors": "second-folder"}, known)
 
