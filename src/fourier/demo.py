@@ -327,7 +327,8 @@ def run(root=DEFAULT_DIR, say=print) -> dict:
             _fourier(["--db", db, "render", d], log)
         from .packs.curate_config import CATEGORY_ORDER     # the play order, as the build had it
         order = list(CATEGORY_ORDER)
-    manifest = json.loads((where["master"] / "manifest.json").read_text())
+    from .packs import manifests
+    manifest = manifests.read(where["master"])
     built = manifest.get("categories") or {}
     cats = {c: len(built[c].get("entries") or ()) for c in sorted(
         built, key=lambda c: order.index(c) if c in order else len(order))}

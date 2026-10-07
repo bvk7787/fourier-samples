@@ -12,6 +12,7 @@ from click.testing import CliRunner
 
 from fourier import safety
 from fourier.cli import main
+from fourier.packs import manifests
 
 
 def _flat(text: str) -> str:
@@ -119,7 +120,7 @@ def test_a_release_published_elsewhere_stays_protected(env, monkeypatch):
     res = _run(env, "publish", "--from", str(m), "--to", str(elsewhere), "--no-verify")
     assert res.exit_code == 0, res.output
     v1 = elsewhere / "releases" / "v1"
-    assert json.loads((v1 / "manifest.json").read_text())["release"] == "v1"
+    assert manifests.read(v1 / "manifest.json")["release"] == "v1"
     assert str(v1.resolve()) in safety.published_record().read_text()
     moved = env.tmp / "Moved" / "v1"                          # a copy moved anywhere else
     moved.parent.mkdir()
@@ -128,7 +129,7 @@ def test_a_release_published_elsewhere_stays_protected(env, monkeypatch):
     for p in ("manifest.json", "KICKS/fam/k1.wav"):
         (v1 / p).parent.mkdir(parents=True, exist_ok=True)
         (v1 / p).write_bytes((moved / p).read_bytes())
-    man = json.loads((v1 / "manifest.json").read_text())
+    man = manifests.read(v1 / "manifest.json")
     del man["release"]                                        # only the publish record knows v1
     (v1 / "manifest.json").write_text(json.dumps(man))
     (elsewhere / "releases" / "LATEST.txt").unlink()

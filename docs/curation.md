@@ -98,20 +98,26 @@ old name.
 
 ### 1.2 manifest.json
 
-- Top level: `fourier_manifest` (2: each entry's canonical `labels`), `seed` (`CURATION_SEED`
-  0), `git_sha`, `config_hash` (CATEGORIES), `code_hash` (curate_config, curate, naming),
-  `ratings_hash`, `clap_model` (`laion/clap-htsat-unfused`), `generated`. Additive builds add
-  `base` and `add_allowance`; a library-scaled build adds `scale` (`factor`, `samples`,
-  `per_master`, `keep_all`, `min_files`, `folder_files`, `folder_min_files`; section 3.5).
+- Top level: `fourier_manifest` (3: library-relative sources; 2 added each entry's canonical
+  `labels`), `src_roots` (the library folders the sources sit in, the home folder as `~`),
+  `library` (the configured folders, also from `~`), `seed` (`CURATION_SEED` 0), `git_sha`,
+  `config_hash` (CATEGORIES), `code_hash` (curate_config, curate, naming), `ratings_hash`,
+  `clap_model` (`laion/clap-htsat-unfused`), `generated`. Additive builds add `base` and
+  `add_allowance`; a library-scaled build adds `scale` (`factor`, `samples`, `per_master`,
+  `keep_all`, `min_files`, `folder_files`, `folder_min_files`; section 3.5).
 - `categories.<CAT>`: `families`, `files`, `source_samples`, `note_gated`, `loop_gated`,
   `chain_gated`, `entries`, plus `built` from the parallel path, and `budget` where a surplus
   round raised it or the library scaled it.
-- Entry, always: `family`, `out`, `src`, `out_md5`, `support`, `band`, `sononym`, `ableton`,
-  `son_cats`, `ab_cats`. Loops: `bpm`, `bpm_src` (`name` / `sononym` / `librosa`), `bpm_fold`;
-  DRUMLOOPS also `bars`, `slice_clean`, `swing`, `rotate_ms`. When set: `loop_row`, `retune`,
-  `root_src`, `level_db`, `dsp_fallback`, `from_base`, `added_over`.
-- `sets.KITS` / `sets.SLICE`: entries with `came_from` (the curated file) and, on a kit file
-  turned down, `gain_db`. Category rules don't apply to sets.
+- Entry, always: `family`, `out`, `src` (relative to its library folder in `src_roots`, with
+  `src_root` naming the folder when it isn't the first; absolute for a source outside every
+  library folder), `out_md5`, `support`, `band`, `sononym`, `ableton`, `son_cats`, `ab_cats`.
+  Loops: `bpm`, `bpm_src` (`name` / `sononym` / `librosa`), `bpm_fold`; DRUMLOOPS also `bars`,
+  `slice_clean`, `swing`, `rotate_ms`. When set: `loop_row`, `retune`, `root_src`, `level_db`,
+  `dsp_fallback`, `from_base`, `added_over`.
+- Every reader goes through `packs/manifests.py`, which turns `src` back into the absolute path
+  the build used; format 1 and 2 manifests (absolute throughout) read as they are.
+- `sets.KITS` / `sets.SLICE`: entries (`src` as above) with `came_from` (the curated file) and,
+  on a kit file turned down, `gain_db`. Category rules don't apply to sets.
 
 ## 2. Classifiers and tags
 

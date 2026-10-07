@@ -211,9 +211,11 @@ def library_root_of(path: str) -> str | None:
 def library_record() -> dict:
     """What a build's manifest records of the library it read (`library`): the configured
     folders and bare folder names. A later build into the same master compares it
-    (master_library_problem)."""
+    (master_library_problem). A folder in the home folder is written from ~, so the manifest
+    names no one's home (_same_library expands it)."""
+    from .packs.manifests import collapse_home
     roots, names = library()
-    return {"folders": list(roots), "names": list(names)}
+    return {"folders": [collapse_home(r) for r in roots], "names": list(names)}
 
 
 def _same_library(recorded: dict, roots, names) -> bool:

@@ -6,6 +6,7 @@ import pytest
 
 from fourier.packs import curate as C
 from fourier.packs.curate_config import CATEGORIES
+from fourier.packs import manifests
 
 
 @pytest.mark.usefixtures("umbrella_vendor")
@@ -108,13 +109,12 @@ def test_unknown_category_raises():
 
 
 def test_manifest_merge_keeps_other_categories(tmp_path):
-    import json
     summ = dict(families=2, files=5, source_samples=40)
     C.update_build_manifest(tmp_path, "KICKS", summ, [{"family": "a", "out": "a/k.wav", "src": "/l/k.wav"}])
     C.merge_manifest(tmp_path, [("SNARES", dict(summ, chain_gated=3), [{"family": "b"}]),
                                 ("HATS", None, None)])                    # a failed build: skipped
-    doc = json.loads((tmp_path / "manifest.json").read_text())
-    assert set(doc["categories"]) == {"KICKS", "SNARES"} and doc["fourier_manifest"] == 2
+    doc = manifests.read(tmp_path / "manifest.json")
+    assert set(doc["categories"]) == {"KICKS", "SNARES"} and doc["fourier_manifest"] == manifests.FORMAT == 3
     assert doc["categories"]["KICKS"]["entries"][0]["out"] == "a/k.wav"
     assert doc["categories"]["SNARES"]["chain_gated"] == 3 and "built" in doc["categories"]["SNARES"]
     assert doc.get("generated") and doc.get("code_hash")

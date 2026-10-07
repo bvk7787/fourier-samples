@@ -28,7 +28,6 @@ them unset renders exactly as before, byte for byte and path for path):
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import shutil
 import time
@@ -37,6 +36,7 @@ from pathlib import Path
 
 from ..devices.exporter import _convert_and_copy, _sanitize_filename, _strip_boilerplate  # noqa: F401
 from ..devices.loader import DeviceLoader
+from . import manifests
 
 # Render cache (~/.fourier/cache/render): a converted file is kept under a key of its source
 # audio (md5), the conversion settings and the exporter's code, and hardlinked into the next
@@ -82,7 +82,7 @@ def _md5_file(p) -> str:
 def _manifest_md5s(master: Path) -> dict:
     """{absolute master path: out_md5} from the master's manifest (categories and sets)."""
     try:
-        man = json.loads((master / "manifest.json").read_text())
+        man = manifests.read(master / "manifest.json")
     except (OSError, ValueError):
         return {}
     out = {}
@@ -303,7 +303,7 @@ def _slice_overflow(master: Path, device) -> set[str]:
     if not device.max_slices or device.max_slices >= sets.SLICE_MAX:
         return set()
     try:
-        man = json.loads((master / "manifest.json").read_text())
+        man = manifests.read(master / "manifest.json")
     except (OSError, ValueError):
         return set()
     bars = {f"{cat}/{e['out']}": e.get("bars") for cat, cd in (man.get("categories") or {}).items()

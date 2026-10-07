@@ -7,6 +7,7 @@ import numpy as np
 import soundfile as sf
 
 from fourier.packs import sets as S
+from fourier.packs import manifests
 
 SR = 44100
 
@@ -123,7 +124,7 @@ def test_build_sets(tmp_path):
     rows = (root / "loops.csv").read_text().splitlines()
     assert rows[0].startswith("folder,file,bpm") and len(rows) == 3
     assert "swung" in [r for r in rows if "swung.wav" in r][0]
-    man = json.loads((root / "manifest.json").read_text())
+    man = manifests.read(root / "manifest.json")
     assert "sets" in man and "KITS" not in man["categories"]
     # rebuilding replaces, not accumulates
     S.build_sets(root, log=lambda *a: None)
@@ -132,7 +133,7 @@ def test_build_sets(tmp_path):
 
 def test_kit_needs_required_roles(tmp_path):
     root = _master(tmp_path)
-    man = json.loads((root / "manifest.json").read_text())
+    man = manifests.read(root / "manifest.json")
     man["categories"]["HATS"]["entries"] = [e for e in man["categories"]["HATS"]["entries"]
                                             if e["band"] != "open"]
     assert S._kits(man) == []
@@ -219,7 +220,7 @@ def test_kit_slots_follow_names():
 def test_additive_build_keeps_the_release_sets(tmp_path):
     root = _master(tmp_path)
     S.build_sets(root, log=lambda *a: None)
-    man = json.loads((root / "manifest.json").read_text())
+    man = manifests.read(root / "manifest.json")
     kits_before = sorted(e["out"] for e in man["sets"]["KITS"]["entries"])
     # an additive build: one more kick, one new loop
     man["base"] = "v1"
@@ -251,7 +252,7 @@ def test_kit_slots_turned_down_to_their_role_level(tmp_path):
     from fourier.packs.curate import _short_term_db
     from fourier.packs.verify import _Ctx, check_sets, FAIL, PASS
     root = _master(tmp_path)
-    man = json.loads((root / "manifest.json").read_text())
+    man = manifests.read(root / "manifest.json")
     loud = 0.89 * np.sin(np.arange(8000) * 0.02) * np.exp(-np.arange(8000) / 4000.0)  # a hot kick
     for e in man["categories"]["KICKS"]["entries"]:
         p = root / "KICKS" / e["out"]
@@ -271,7 +272,7 @@ def test_kit_slots_turned_down_to_their_role_level(tmp_path):
     res = list(check_sets(ctx))
     assert all(r.level == PASS for r in res), [(r.check, r.detail) for r in res if r.level != PASS]
     # a kit file that doesn't match its recorded gain fails
-    man = json.loads((root / "manifest.json").read_text())
+    man = manifests.read(root / "manifest.json")
     for e in man["sets"]["KITS"]["entries"]:
         if e.get("gain_db"):
             e["gain_db"] += 2.0
@@ -309,7 +310,7 @@ def test_acoustic_kit_names():
 def test_loops_csv_bars_at_folder_tempo(tmp_path):
     """loops.csv doesn't double a bar count that was already taken at the folder tempo."""
     root = _master(tmp_path)
-    man = json.loads((root / "manifest.json").read_text())
+    man = manifests.read(root / "manifest.json")
     for e in man["categories"]["DRUMLOOPS"]["entries"]:
         e.update(bpm=60.0, bpm_fold=120.0, bpm_bars=120.0)
     (root / "manifest.json").write_text(json.dumps(man))

@@ -259,6 +259,7 @@ def main(argv=None) -> int:
     os.environ["FOURIER_NO_STICKY"] = "1"          # nothing to stick to: a fresh build
     import fourier.analysis.clap_features as CF
     from fourier import synthlib
+    from fourier.packs import manifests
     CF.embed_text = fake_embed_text               # the stand-in text encoder
     files = synthlib.generate(lib)
     lib_before = library_fingerprint(lib)
@@ -297,12 +298,12 @@ def main(argv=None) -> int:
         if e.code and not (without and partial.exists()):
             return int(e.code)
         if e.code:          # categories failed: check what the partial build filled
-            return check_fallback(json.loads(partial.read_text()), without)
+            return check_fallback(manifests.read(partial), without)
     if a.own:
         # Fourier's own analysis on top (with Sononym it moves no pick), then the build again;
         # the first build's manifest is checked here, the second's below
         if a.check:
-            first = check(json.loads((out / "manifest.json").read_text()), lib)
+            first = check(manifests.read(out / "manifest.json"), lib)
             if first:
                 print("synthetic --own: the build before Fourier's own analysis differs from the golden")
                 return first
@@ -327,7 +328,7 @@ def main(argv=None) -> int:
     if changed:                   # the library is read, never written
         print(f"synthetic: the build changed {len(changed)} library file(s), e.g. {changed[0]}")
         return 1
-    manifest = json.loads((out / "manifest.json").read_text())
+    manifest = manifests.read(out / "manifest.json")
     if a.scale:                   # it built, so verify passed
         return check_scaled(manifest)
     if a.preset:                  # it built, so verify passed

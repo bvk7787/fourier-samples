@@ -418,7 +418,8 @@ def publish(src, root, notes, as_version, force, as_release, dry_run, base, no_v
         console.print(f"copy failed: {chr(10).join(lines)[-400:]}", style="red", markup=False)
         raise SystemExit(1)
     import hashlib as _h
-    man = _json.loads(open(_os.path.join(partial, "manifest.json")).read())
+    from ..packs import manifests
+    man = manifests.read(_os.path.join(partial, "manifest.json"))
     bad = []
     for sect in ("categories", "sets"):
         for c, cd in (man.get(sect) or {}).items():
@@ -434,10 +435,7 @@ def publish(src, root, notes, as_version, force, as_release, dry_run, base, no_v
     # the release's manifest says it's one, wherever it's moved or published (--to): no build
     # or sync ever writes into it (fourier/safety.py)
     _mp = _os.path.join(partial, "manifest.json")
-    _rel_man = dict(man, release=f"v{n}")
-    with open(_mp + ".tmp", "w") as _f:
-        _f.write(_json.dumps(_rel_man, indent=2))
-    _os.replace(_mp + ".tmp", _mp)
+    manifests.write(_mp, dict(man, release=f"v{n}"))
     if _os.path.exists(target):
         old = _os.path.join(staging, f"v{n}.replaced")
         if _os.path.exists(old):
@@ -510,7 +508,6 @@ def _list_releases(root):
     """The releases under the publish root and which is LATEST."""
     import os as _os
     import re as _re
-    import json as _json
     root = (root or _publish_root()).rstrip("/")
     reldir = _os.path.join(root, "releases")
     if not _os.path.isdir(reldir):
@@ -531,7 +528,8 @@ def _list_releases(root):
         mp = _os.path.join(reldir, v, "manifest.json"); meta = ""
         try:
             if _os.path.exists(mp):
-                d = _json.loads(open(mp).read())
+                from ..packs import manifests
+                d = manifests.read(mp)
                 stamp = ", ".join(str(x) for x in (str(d.get("generated") or "")[:10],
                                                    (d.get("git_sha") and f"code {d['git_sha']}")
                                                    or (d.get("fourier_version")

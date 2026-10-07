@@ -53,6 +53,7 @@ from ..metadata.rows import CANDIDATE_FIELDS, HOME_FIELDS, fetch, like_any, samp
 from ..metadata import resolve as _resolve      # which source each value the build uses came from
 from ..devices.exporter import canonical_stem
 from ..settings import for_module as _for_module
+from . import manifests
 from .curate_config import NAMES, STEM_MAX, FAMILY_NAME_MAX  # noqa: F401
 from .curate_config import NAME_PHRASES, NAME_EXCLUDE_WORDS, NAME_SUPPORT_FULL, PACK_HOME, FOLDER_MAX
 from .curate_config import INSTRUMENT_ROOTS
@@ -579,8 +580,9 @@ def _quality(r):
     return max(0.0, q)
 
 
-# manifest.json format: 2 adds each entry's canonical classifier labels ("labels")
-_MANIFEST_VERSION = 2
+# manifest.json format (manifests.FORMAT): 2 added each entry's canonical classifier labels
+# ("labels"), 3 the library-relative source paths
+_MANIFEST_VERSION = manifests.FORMAT
 
 
 # ---------------------------------------------------------------------------
@@ -1370,7 +1372,7 @@ def placed_nowhere(session, master_dir) -> list | None:
     if not master_dir or not os.path.exists(man_p):
         return None
     try:
-        man = json.loads(open(man_p).read())
+        man = manifests.read(man_p)
     except (OSError, ValueError):
         return None
     srcs = {e.get("src") for c in (man.get("categories") or {}).values() for e in (c.get("entries") or ())}
@@ -2420,7 +2422,7 @@ def _previous_families(category):
             from .builddiff import latest_archived
             last = None if os.environ.get("FOURIER_NO_STICKY") else latest_archived()
             if last is not None:
-                doc = json.loads(last.read_text())
+                doc = manifests.read(last)
         except Exception:
             doc = None
         _PREV_FAMS["doc"] = doc
@@ -3959,7 +3961,7 @@ def update_build_manifest(out_dir, category, summary, file_entries):
     categories so both single-category and --all builds stay coherent."""
     mpath = Path(out_dir) / "manifest.json"
     try:
-        doc = json.loads(mpath.read_text()) if mpath.exists() else {}
+        doc = manifests.read(mpath) if mpath.exists() else {}
     except Exception:
         doc = {}
     doc["fourier_manifest"] = _MANIFEST_VERSION
@@ -3976,7 +3978,7 @@ def update_build_manifest(out_dir, category, summary, file_entries):
     )
     if summary.get("scale"):
         doc["scale"] = summary["scale"]
-    mpath.write_text(json.dumps(doc, indent=2))
+    manifests.write(mpath, doc)
 
 
 def merge_manifest(out_dir, results):
@@ -3986,7 +3988,7 @@ def merge_manifest(out_dir, results):
     (or serial) build are preserved."""
     mpath = Path(out_dir) / "manifest.json"
     try:
-        doc = json.loads(mpath.read_text()) if mpath.exists() else {}
+        doc = manifests.read(mpath) if mpath.exists() else {}
     except Exception:
         doc = {}
     doc["fourier_manifest"] = _MANIFEST_VERSION
@@ -4010,7 +4012,7 @@ def merge_manifest(out_dir, results):
         doc["scale"] = scaled[0]
     else:
         doc.pop("scale", None)
-    mpath.write_text(json.dumps(doc, indent=2))
+    manifests.write(mpath, doc)
 
 
 # ---------------------------------------------------------------------------

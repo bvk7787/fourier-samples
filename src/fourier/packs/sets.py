@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import json
 import os
 import re
 import shutil
@@ -27,6 +26,7 @@ from pathlib import Path
 import numpy as np
 
 from ..settings import for_module as _for_module
+from . import manifests
 
 _tunable = _for_module("sets")   # overridable: fourier/settings.py, config/tunables.yaml
 
@@ -329,7 +329,7 @@ def build_sets(master_dir, log=print):
     """Write KITS/, SLICE/ and loops.csv into a built master and list them in its manifest."""
     root = Path(master_dir)
     mp = root / "manifest.json"
-    man = json.loads(mp.read_text())
+    man = manifests.read(mp)
     additive = bool(man.get("base"))
     if additive:
         # a v2 on top of a release keeps the release's kits and slice set as they are
@@ -375,7 +375,7 @@ def build_sets(master_dir, log=print):
                     "slice_clean", "slice_ready", "swung"])
         w.writerows(rows)
     man["sets"] = sets
-    mp.write_text(json.dumps(man, indent=2))
+    manifests.write(mp, man)
     log(f"sets: {len({e['family'] for e in sets['KITS']['entries']})} kits "
         f"({len(sets['KITS']['entries'])} files), {len(sets['SLICE']['entries'])} slice-ready loops")
     return sets

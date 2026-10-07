@@ -18,6 +18,7 @@ from scipy.signal import butter, lfilter
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_first_run import SR, Sandbox, _flat, _sounds  # noqa: E402
 from test_other_libraries_cli import RUNNER  # noqa: E402
+from fourier.packs import manifests
 
 # one sandbox, built once, that the tests below change in turn: one worker runs them all, in
 # order (pytest -n: --dist loadgroup, conftest.py)
@@ -144,7 +145,7 @@ class Box(Sandbox):
                                              concepts=str(tmp / "hears.json")))
 
     def manifest(self):
-        return json.loads((self.master / "manifest.json").read_text())
+        return manifests.read(self.master / "manifest.json")
 
 
 @pytest.fixture(scope="module")

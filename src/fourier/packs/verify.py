@@ -75,7 +75,8 @@ class _Ctx:
     def __init__(self, master_dir, store_path=None, prof=None):
         from .ratings import drop_set, keep_pins, misfiled_map
         self.root = Path(master_dir)
-        self.man = json.loads((self.root / "manifest.json").read_text())
+        from . import manifests
+        self.man = manifests.read(self.root / "manifest.json")
         self.cats = self.man.get("categories", {})
         self.entries = [(c, e) for c, cd in self.cats.items() for e in cd.get("entries", [])]
         self.set_entries = [(s, e) for s, sd in (self.man.get("sets") or {}).items()

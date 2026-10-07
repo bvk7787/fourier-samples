@@ -20,6 +20,8 @@ import numpy as np
 import pytest
 import soundfile as sf
 
+from fourier.packs import manifests
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_first_run import SR, Sandbox, _flat, _has, _sounds  # noqa: E402
 
@@ -113,7 +115,7 @@ class Libraries(Sandbox):
                                              concepts=str(concepts)))
 
     def manifest(self):
-        return json.loads((self.master / "manifest.json").read_text())
+        return manifests.read(self.master / "manifest.json")
 
 
 @pytest.fixture(scope="module")

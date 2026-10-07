@@ -5,7 +5,6 @@ into the same database; each config's builds, library scale, doctor, `build --dr
 folders."""
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -15,6 +14,7 @@ import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_first_run import SR, Sandbox, _flat, _sounds  # noqa: E402
+from fourier.packs import manifests
 
 # one sandbox, built once, that the tests below change in turn: one worker runs them all, in
 # order (pytest -n: --dist loadgroup, conftest.py)
@@ -67,7 +67,7 @@ def _run_b(b, *args, ok=True):
 
 
 def _srcs(master):
-    man = json.loads((master / "manifest.json").read_text())
+    man = manifests.read(master / "manifest.json")
     return [e["src"] for c in man["categories"].values() for e in c.get("entries") or ()]
 
 
@@ -168,7 +168,7 @@ def test_a_build_into_another_librarys_master_stops_before_anything_changes(two)
     b = two
     if not (b.master / "manifest.json").exists():
         pytest.skip("needs the first library's build above")
-    man = json.loads((b.master / "manifest.json").read_text())
+    man = manifests.read(b.master / "manifest.json")
     assert man["library"]["folders"] == [str(b.lib)]           # recorded by the build
     before = (b.master / "manifest.json").read_bytes()
     cfg = b.tmp / "shared.toml"

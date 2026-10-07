@@ -511,13 +511,12 @@ def _check_missing_sources(out_dir) -> None:
     manifest) are gone from disk and still in the database unmarked: the build would pick
     them again and fail to export them. Sources a walk marked missing, or that the
     database no longer has, don't count: the build leaves them out on its own."""
-    import json as _json
     import os as _os
     from sqlalchemy import text
     from ..metadata.rows import missing_marked
     try:
-        with open(_os.path.join(out_dir, "manifest.json")) as f:
-            doc = _json.load(f)
+        from ..packs import manifests
+        doc = manifests.read(_os.path.join(out_dir, "manifest.json"))
         srcs = sorted({e["src"] for c in (doc.get("categories") or {}).values()
                        for e in (c.get("entries") or []) if e.get("src")})
     except (OSError, ValueError, TypeError, KeyError, AttributeError):
@@ -860,13 +859,12 @@ def _unrecognized_note(master_dir=None) -> list[str]:
 def _master_twins(session, rows, master_dir) -> dict:
     """{sample id: category} of the rows not in the master whose bytes a master file's source
     has (a byte-identical copy: the master holds one of them)."""
-    import json as _json
     import os as _os
 
     from sqlalchemy import text
     try:
-        with open(_os.path.join(master_dir or "", "manifest.json")) as f:
-            man = _json.load(f)
+        from ..packs import manifests
+        man = manifests.read(_os.path.join(master_dir or "", "manifest.json"))
     except (OSError, ValueError, TypeError):
         return {}
     cat_of = {e.get("src"): c for c, cd in (man.get("categories") or {}).items()

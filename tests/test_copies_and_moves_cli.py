@@ -12,7 +12,6 @@ CLI (the sandbox and stand-in CLAP of tests/test_first_run.py), without Sononym 
   that and no list of possible reasons."""
 from __future__ import annotations
 
-import json
 import shutil
 import sys
 from pathlib import Path
@@ -21,6 +20,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_first_run import Sandbox, _flat, make_library  # noqa: E402
+from fourier.packs import manifests
 
 # one sandbox, built once, that the tests below change in turn: one worker runs them all, in
 # order (pytest -n: --dist loadgroup, conftest.py)
@@ -46,7 +46,7 @@ def box(tmp_path_factory):
 
 
 def _entries(b):
-    man = json.loads((b.master / "manifest.json").read_text())
+    man = manifests.read(b.master / "manifest.json")
     return {e["src"]: (c, e["out"], e["out_md5"]) for c, cd in man["categories"].items()
             for e in cd.get("entries") or ()}
 

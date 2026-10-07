@@ -234,8 +234,8 @@ def save_store(store, path=None):
 
 
 def _manifest(master_dir):
-    with open(os.path.join(master_dir, "manifest.json")) as f:
-        return json.load(f)
+    from . import manifests
+    return manifests.read(os.path.join(master_dir, "manifest.json"))
 
 
 def harvest(master_dir=None, store_path=None, log=print):

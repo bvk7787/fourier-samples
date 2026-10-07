@@ -1,7 +1,13 @@
 """Files gone, new, moved and with changed audio between two master manifests (a stable
 rebuild shows none). python scripts/manifest_diff.py <old manifest.json> <new manifest.json>"""
-import json, os, sys
-a = json.load(open(os.path.expanduser(sys.argv[1]))); b = json.load(open(os.path.expanduser(sys.argv[2])))
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from fourier.packs.manifests import read  # noqa: E402  (sources absolute, any manifest format)
+
+a, b = read(os.path.expanduser(sys.argv[1])), read(os.path.expanduser(sys.argv[2]))
 def ents(m):
     out = {}
     for c, v in m["categories"].items():

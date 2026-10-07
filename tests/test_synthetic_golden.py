@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from fourier import synthlib
+from fourier.packs import manifests
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -51,12 +52,11 @@ def test_the_synthetic_library_scaled_builds_every_category(tmp_path):
     11,600 files) scaled to the 280-file library, so every category keeps what it has in one
     or two folders (a folder per tempo range for the loops), kits and slices are made, and
     verify passes against the recorded budgets. The golden above builds with scale = "off"."""
-    import json
     r = subprocess.run([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
                         str(tmp_path / "work"), "--scale"], capture_output=True, text=True, check=False)
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
     assert "synthetic --scale: factor 0.00" in r.stdout and "19 of 19 categories" in r.stdout
-    man = json.loads((tmp_path / "work" / "out" / "FourierCurated" / "manifest.json").read_text())
+    man = manifests.read(tmp_path / "work" / "out" / "FourierCurated" / "manifest.json")
     assert man["scale"]["samples"] == 280 and set(man["sets"]) == {"KITS", "SLICE"}
     folders = {c: len({e["family"] for e in cd["entries"]}) for c, cd in man["categories"].items()}
     assert max(folders.values()) <= 3 and sum(folders.values()) < 30, folders

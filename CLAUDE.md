@@ -77,6 +77,9 @@ naming, routing, loudness, ratings). `fourier why --rules` prints the routing pr
   build into a master whose recorded library shares no folder with the config's stops before
   anything (`places.master_library_problem`, a doctor FAIL), and `setup --to` a config other
   than the default one gives it `[output]` folders named after it (`setup.default_outputs`).
+  manifest.json is read and written only through `packs/manifests.py` (`read`, `write`): from
+  format 3 an entry's `src` is stored relative to its library folder (`src_roots`, from `~`)
+  and `read` makes it absolute again, so code past it sees absolute paths as before.
 - **Metadata.** Curation reads samples through `src/fourier/metadata/rows.py`; code in
   `packs/` never names a provider's tables. Providers (`metadata/providers.py`): `sononym` and
   `ableton` when their data is there or `fourier.toml` names them, else the built-in `path`

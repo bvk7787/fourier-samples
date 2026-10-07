@@ -23,6 +23,10 @@ change the CLI or the config).
   `vendors` line now detects each library folder's layout instead of always taking the first
   folder as the vendor. A config that relied on the old default and wants to keep it says
   `vendors = "first-folder"`.
+- The master's `manifest.json` (format 3) records each source path relative to its library
+  folder, and the library folders once, with the home folder written as `~`: a manifest no
+  longer repeats your home folder in every entry, so it can be shared. Fourier reads format 1
+  and 2 manifests (absolute paths) as before, and builds are unchanged.
 
 ### Fixed
 
