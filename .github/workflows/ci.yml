@@ -47,10 +47,20 @@ jobs:
       - name: Install (locked versions; core + dev)
         shell: bash
         run: |
+          # a venv first, on PATH for every later step: the tests' subprocesses then find the same
+          # packages as pytest (on a macOS runner a child of the runner's Python once didn't)
+          python -m venv "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+          . "$RUNNER_TEMP/venv/bin/activate"
           python -m pip install --upgrade pip uv
           uv export --frozen --no-hashes --extra dev --no-emit-project > "$RUNNER_TEMP/requirements.lock.txt"
-          pip install -r "$RUNNER_TEMP/requirements.lock.txt"
-          pip install -e . --no-deps
+          python -m pip install -r "$RUNNER_TEMP/requirements.lock.txt"
+          python -m pip install -e . --no-deps
+      - name: The venv is the Python every step uses
+        shell: bash
+        run: |
+          python -c "import sys; print(sys.executable)"
+          python -c "import sys, click, fourier; assert sys.prefix != sys.base_prefix, sys.prefix"
       - name: Lint
         run: ruff check src tests
       - name: Tests
@@ -105,10 +115,20 @@ jobs:
       - name: Install (locked versions; core + dev)
         shell: bash
         run: |
+          # a venv first, on PATH for every later step: the tests' subprocesses then find the same
+          # packages as pytest (on a macOS runner a child of the runner's Python once didn't)
+          python -m venv "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+          . "$RUNNER_TEMP/venv/bin/activate"
           python -m pip install --upgrade pip uv
           uv export --frozen --no-hashes --extra dev --no-emit-project > "$RUNNER_TEMP/requirements.lock.txt"
-          pip install -r "$RUNNER_TEMP/requirements.lock.txt"
-          pip install -e . --no-deps
+          python -m pip install -r "$RUNNER_TEMP/requirements.lock.txt"
+          python -m pip install -e . --no-deps
+      - name: The venv is the Python every step uses
+        shell: bash
+        run: |
+          python -c "import sys; print(sys.executable)"
+          python -c "import sys, click, fourier; assert sys.prefix != sys.base_prefix, sys.prefix"
       - name: mypy (settings in pyproject.toml)
         run: mypy
 
