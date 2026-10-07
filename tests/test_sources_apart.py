@@ -275,7 +275,10 @@ def test_why_names_the_source_of_a_picks_tempo(tmp_path):
 def _synthetic(tmp_path, *args):
     r = subprocess.run([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
                         str(tmp_path / "work"), *args], capture_output=True, text=True, check=False)
-    assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
+    if r.returncode != 0:  # which interpreter the child ran, and where it looked for packages
+        where = subprocess.run([sys.executable, "-c", "import sys; print(sys.executable, sys.prefix, sys.path)"],
+                               capture_output=True, text=True, check=False).stdout
+        raise AssertionError(f"{r.stdout[-3000:]}{r.stderr[-3000:]}\nchild interpreter: {where}")
     return r.stdout
 
 
