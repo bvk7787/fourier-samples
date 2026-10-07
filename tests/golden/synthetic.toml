@@ -5,5 +5,7 @@ preset = "breaks-acid"
 # the synthetic library is small, so the master would scale to it (scale = "library"): the
 # golden builds the budgets below as they are (synthetic_build.py --scale builds it scaled)
 scale = "off"
+# the golden predates vendor detection: its vendor is always the first folder
+vendors = "first-folder"
 [advanced]
 BUDGETS = {DRUMLOOPS = 24, PHRASES = 24, KICKS = 24, SNARES = 24, HATS = 24, PERC = 24, SUB = 24, TOMS = 24, CLAPS = 24, CYMBALS = 24, FX = 24, SYNTH = 24, PADS = 24, STABS = 24, BLIPS = 24, VOX = 24, PIANO = 24, WAVES = 24, ACOUSTIC = 24}

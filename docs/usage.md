@@ -215,8 +215,8 @@ stays at 174 rather than 87, and with `hiphop-lofi`'s 70-100, a 120 BPM loop sta
 `fold = "off"` files every loop at its own tempo.
 
 **Vendors.** No vendor may supply more than 40% of a category (`sources.vendor_max`). With
-`vendors = "auto"`, which `fourier setup` writes, each library folder's layout decides the
-vendor:
+`vendors = "auto"`, the default (and what `fourier setup` writes), each library folder's layout
+decides the vendor:
 
 - vendor or pack folders: the first folder;
 - folders by sound type (`Drums/Kicks`, `Loops`): no vendor, so no cap;

@@ -4,10 +4,8 @@ verify's vendor and pack checks count by.
 
 The `vendors` knob (curate_config.VENDORS):
 
-  first-folder   the first folder under the library folder is the vendor, the first two the
-                 pack (the code's default: a library laid out vendor/pack/...)
-  auto           each library folder's layout decides (detect), which `fourier setup` writes
-                 for a new config:
+  auto           each library folder's layout decides (detect): the code's default, and what
+                 `fourier setup` writes for a new config:
                    packs      vendor/pack/... folders: as first-folder
                    types      folders by sound type (Drums/Kicks, Loops, Bass, FX, ...): there is
                               no vendor in the path, so no vendor or pack cap
@@ -15,6 +13,8 @@ The `vendors` knob (curate_config.VENDORS):
                               folder, "Downloads"): the vendor is the folder below them, the pack
                               the one below that
                    flat       files with no folders: no vendor or pack cap
+  first-folder   the first folder under the library folder is always the vendor, the first
+                 two the pack (a library laid out vendor/pack/...; the default before 0.2)
 
 `fourier doctor` and `fourier setup` print the layout they detect in one line. A sample
 with no vendor (None) is never capped, so a type-organized or flat library isn't cut to

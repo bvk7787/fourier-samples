@@ -19,6 +19,10 @@ change the CLI or the config).
   train the sound model) is kept between builds and redone only when the samples, ratings,
   settings or naming rules change: about a minute saved per build on a large library
   ([#4](https://github.com/bvk7787/fourier-samples/issues/4)).
+- `vendors = "auto"` is the default, as `fourier setup` already wrote it: a config without a
+  `vendors` line now detects each library folder's layout instead of always taking the first
+  folder as the vendor. A config that relied on the old default and wants to keep it says
+  `vendors = "first-folder"`.
 
 ### Fixed
 
