@@ -136,3 +136,12 @@ def _config_env_stays_put():
             os.environ.pop(k, None)
         else:
             os.environ[k] = v
+
+
+@pytest.fixture(autouse=True)
+def _fresh_vendor_layouts():
+    """The library layouts vendors = "auto" detected (packs/vendors.py) are kept per process:
+    forget them before every test, so one test's library never decides another's vendors."""
+    from fourier.packs import vendors
+    vendors.forget()
+    yield

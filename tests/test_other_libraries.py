@@ -111,6 +111,16 @@ def test_vendor_of(monkeypatch):
         assert (V.vendor_of(rel, rel), V.pack_key(rel)) == (vendor, pack), lay
 
 
+def test_layouts_without_a_session(monkeypatch):
+    """prepare() with no session (a build called without one) falls back to the database's own,
+    and to nothing without a database: a vendor is then the first folder."""
+    from fourier.packs import curate_config as cc
+    monkeypatch.setattr(cc, "VENDORS", "auto")
+    monkeypatch.setattr(V, "_LAYOUTS", {})
+    assert V.prepare(None) == {}
+    assert V.vendor_of("Acme/Pack/Kick.wav", "Acme/Pack/Kick.wav") == "Acme"
+
+
 def test_samples_without_a_vendor_are_never_capped():
     from fourier.packs import curate as C
     rec = [dict(id=i, vendor=None, qual=0.5, row=i) for i in range(10)]

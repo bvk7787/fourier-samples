@@ -110,6 +110,8 @@ def prepare(session) -> dict:
     needs nothing). Called by a build, verify and why before they ask for a vendor."""
     if mode() != AUTO:
         return {}
+    if session is None:                      # a caller with no session: the database's own
+        return ensure()
     from sqlalchemy import text
 
     from ..places import library_rel, library_root_of
