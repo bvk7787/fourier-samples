@@ -15,6 +15,8 @@ from pathlib import Path
 
 import pytest
 
+from fourier.packs import manifests
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_first_run import Sandbox, _flat, _has  # noqa: E402
 
@@ -38,7 +40,7 @@ def _manifest(b):
 
 
 def _sources(b):
-    man = json.loads(_manifest(b))
+    man = manifests.read(b.master / "manifest.json")             # sources absolute
     return sorted(e["src"] for cd in man["categories"].values() for e in cd.get("entries") or ())
 
 
