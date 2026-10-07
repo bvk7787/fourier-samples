@@ -14,7 +14,6 @@ share, a near-duplicate of which file, a gate, the budget, or a category left em
 """
 from __future__ import annotations
 
-import json
 import os
 from dataclasses import dataclass, field
 from ..places import library_rel
@@ -492,8 +491,8 @@ def explain(session, query, master_dir=None, store_path=None, limit=5):
     """[Why] for the samples a path or name fragment matches (at most `limit`)."""
     man = None
     if master_dir and os.path.exists(os.path.join(master_dir, "manifest.json")):
-        with open(os.path.join(master_dir, "manifest.json")) as f:
-            man = json.load(f)
+        from . import manifests
+        man = manifests.read(os.path.join(master_dir, "manifest.json"))
     rows = _rows(session, query, limit)
     try:
         from ..metadata.providers import active

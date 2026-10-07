@@ -10,7 +10,6 @@ and their progress bars are the progress.
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 import sys
@@ -146,7 +145,8 @@ class Quiet:
         log = self.lines()
         out = []
         try:
-            man = json.loads((Path(self.out_dir) / "manifest.json").read_text())
+            from ..packs import manifests
+            man = manifests.read(Path(self.out_dir) / "manifest.json")
         except (OSError, ValueError):
             man = {}
         cats = {c: len((d or {}).get("entries") or ()) for c, d in (man.get("categories") or {}).items()}

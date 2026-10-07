@@ -10,10 +10,11 @@ of its files came from it; a different name then is a rename.
 """
 from __future__ import annotations
 
-import json
 import os
 from collections import Counter, defaultdict
 from pathlib import Path
+
+from . import manifests
 
 MATCH_SHARE = 0.5
 
@@ -49,7 +50,7 @@ def _of_this_library(p: Path) -> bool:
         roots, names = places.library()
         if not roots and not names:
             return True
-        doc = json.loads(p.read_text())
+        doc = manifests.read(p)
     except Exception:
         return True
     srcs = [e.get("src") for c in (doc.get("categories") or {}).values()
@@ -68,7 +69,7 @@ def load_manifest(ref) -> dict:
         cand = builds_dir() / (str(ref) if str(ref).endswith(".json") else f"{ref}.json")
         if cand.exists():
             p = cand
-    return json.loads(p.read_text())
+    return manifests.read(p)
 
 
 def _families(doc) -> dict:
@@ -203,7 +204,7 @@ def write_changelog(out_dir, log=print) -> Path | None:
     if not mp.exists() or prev is None:
         return None
     try:
-        d = diff_manifests(json.loads(prev.read_text()), json.loads(mp.read_text()))
+        d = diff_manifests(manifests.read(prev), manifests.read(mp))
         (out / "CHANGELOG.md").write_text(format_diff(d))
         return out / "CHANGELOG.md"
     except Exception as e:                         # a changelog never fails a build
@@ -216,7 +217,7 @@ def archive_build(out_dir) -> Path | None:
     mp = Path(out_dir) / "manifest.json"
     if not mp.exists():
         return None
-    new = json.loads(mp.read_text())
+    new = manifests.read(mp)
     bd = builds_dir()
     bd.mkdir(parents=True, exist_ok=True)
     stamp = (new.get("generated") or "build").replace(":", "").replace("-", "")

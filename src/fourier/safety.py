@@ -221,7 +221,8 @@ def _manifest(d: Path) -> dict | None:
     if not m.is_file():
         return None
     try:
-        doc = json.loads(m.read_text())
+        from .packs import manifests
+        doc = manifests.read(m)
     except Exception:
         return None
     return doc if isinstance(doc, dict) else None

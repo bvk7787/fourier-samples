@@ -24,6 +24,7 @@ from sqlalchemy import select, text
 
 from ..places import releases_root
 from ..safety import UnsafePath
+from . import manifests
 
 # Canonical releases live here: <[output] publish>/releases (fourier/places.py), read once
 RELEASES_ROOT = releases_root()
@@ -132,7 +133,7 @@ def import_version(session, version, root=RELEASES_ROOT, log=print):
     vdir = os.path.join(root, version)
     mp = os.path.join(vdir, "manifest.json")
     if os.path.exists(mp):
-        r = record_release(session, version, json.loads(open(mp).read()), notes="from manifest")
+        r = record_release(session, version, manifests.read(mp), notes="from manifest")
         log(f"{version}: recorded {r['files']} files from manifest")
         return r
     if not os.path.isdir(vdir):
@@ -180,7 +181,7 @@ def list_releases(session):
 
 def _master_entries(master_dir):
     """{out_path: entry} from a master's manifest.json."""
-    man = json.loads(open(os.path.join(master_dir, "manifest.json")).read())
+    man = manifests.read(os.path.join(master_dir, "manifest.json"))
     out = {}
     for cat, cd in man.get("categories", {}).items():
         for e in cd.get("entries", []):
@@ -449,10 +450,10 @@ def additive_build(session, base_version, out_dir, per_family=25, transcode=True
                          for c, ents in sup_cats.items()}
     if os.path.exists(bm):
         # the base's kits and slice set are part of the release: carried over as they are
-        base_sets = json.loads(open(bm).read()).get("sets")
+        base_sets = manifests.read(bm).get("sets")
         if base_sets:
             doc["sets"] = base_sets
-    open(os.path.join(out_dir, "manifest.json"), "w").write(json.dumps(doc, indent=2))
+    manifests.write(os.path.join(out_dir, "manifest.json"), doc)
     log(f"additive build: base {len(base)} files + {added_total} new "
         f"({routed_total} into existing folders) = superset in {out_dir}")
     return dict(base=len(base), added=added_total, routed=routed_total, failed=failed)

@@ -26,7 +26,7 @@ from pathlib import Path
 # top-level keys that describe the run, not its output
 META_KEYS = frozenset({"generated", "git_sha", "code_hash", "config_hash", "ratings_hash",
                        "seed", "clap_model", "fourier_manifest", "tunables_hash", "overrides",
-                       "providers", "fourier_version", "library"})
+                       "providers", "fourier_version", "library", "src_roots"})
 # per-category keys that describe the run
 CATEGORY_META_KEYS = frozenset({"built", "entries"})
 # manifest format ("fourier_manifest") -> the entry fields it added
@@ -169,4 +169,5 @@ def load(path) -> dict:
     p = Path(path).expanduser()
     if p.is_dir():
         p = p / "manifest.json"
-    return json.loads(p.read_text())
+    from . import manifests
+    return manifests.resolve(json.loads(p.read_text()))

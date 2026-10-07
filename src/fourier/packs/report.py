@@ -57,7 +57,8 @@ def build_report(master_dir, out_path) -> dict:
     """Write the report for master_dir to out_path. Returns {files, categories}."""
     from ..places import library_rel
     master = Path(master_dir)
-    man = json.loads((master / "manifest.json").read_text())
+    from . import manifests
+    man = manifests.read(master / "manifest.json")
     loops = _loops(master)
     cats = man.get("categories") or {}
     sets = man.get("sets") or {}

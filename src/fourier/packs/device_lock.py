@@ -108,10 +108,12 @@ def master_files(master_dir) -> list[MasterFile]:
     by_out = {}
     mf = master / "manifest.json"
     if mf.exists():
-        for cat, cd in json.loads(mf.read_text()).get("categories", {}).items():
+        from . import manifests
+        man = manifests.read(mf)
+        for cat, cd in man.get("categories", {}).items():
             for e in cd.get("entries", []):
                 by_out[f"{cat}/{e['out']}"] = e
-        for sname, sd in (json.loads(mf.read_text()).get("sets") or {}).items():
+        for sname, sd in (man.get("sets") or {}).items():
             for e in sd.get("entries", []):
                 by_out[f"{sname}/{e['out']}"] = e
     out = []

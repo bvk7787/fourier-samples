@@ -46,14 +46,14 @@ def _short(v, n=70):
 def _category_examples(n=3) -> dict:
     """{category: [file names]} from the current master's manifest, else from the library
     (files with one of the category's labels), else nothing."""
-    import json as _json
     import os as _os
     from ..packs.curate_config import CATEGORIES
     try:
         from ..packs.ratings import live_master_dir
         man = _os.path.join(live_master_dir(), "manifest.json")
         if _os.path.exists(man):
-            doc = _json.loads(open(man).read())
+            from ..packs import manifests
+            doc = manifests.read(man)
             return {c: [_os.path.basename(e.get("out") or "") for e in (v.get("entries") or [])[:n]]
                     for c, v in (doc.get("categories") or {}).items()}
     except Exception:

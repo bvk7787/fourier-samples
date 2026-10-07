@@ -8,6 +8,7 @@ import numpy as np
 import soundfile as sf
 
 from fourier.packs.verify import FAIL, verify_master
+from fourier.packs import manifests
 
 SR = 44100
 LIB = "/lib/SampleLibrary"
@@ -135,7 +136,7 @@ def test_dc_and_waves(tmp_path):
     sf.write(src, np.tile(wave, 2), SR)                   # source has 4096 samples, export 2048
     files = _clean() + lots_dc + [("WAVES", "cycle-saw-bright", "SAW.wav", wave, "WAVETABLES/Synth A/SAW.wav")]
     root, store = _master(tmp_path, files)
-    m = json.loads(open(os.path.join(root, "manifest.json")).read())
+    m = manifests.read(os.path.join(root, "manifest.json"))
     for e in m["categories"]["WAVES"]["entries"]:
         e["src"] = str(src)
     open(os.path.join(root, "manifest.json"), "w").write(json.dumps(m))

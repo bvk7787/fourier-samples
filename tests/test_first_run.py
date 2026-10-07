@@ -11,7 +11,6 @@ prompts' words point the same way, so no torch or model is needed. The library f
 byte-identical (path, size, mtime, sha256) after every command."""
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -20,6 +19,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 import soundfile as sf
+
+from fourier.packs import manifests
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests" / "golden"))
@@ -359,7 +360,7 @@ def test_a_first_run_without_sononym_or_live(box):
     assert "Budgets, scaled to this library" in out and "can't estimate" not in out
     out = _flat(b.run("build", "--all", "--resume"))
     assert "resuming:" in out and not nxt.exists() and "4/4 Verify" in out
-    man = json.loads((b.master / "manifest.json").read_text())
+    man = manifests.read(b.master / "manifest.json")
     per = {c: len(cd.get("entries") or ()) for c, cd in man["categories"].items()}
     assert all(per.get(c, 0) >= 6 for c in FILLED), per
     assert set(man["providers"]) == {"path", "audio"}, man["providers"]
@@ -465,7 +466,7 @@ def test_a_small_three_vendor_library_fills_its_drums_and_loops(tmp_path):
     before = db.stat().st_mtime_ns
     out = _flat(b.run("build", "--all", "--dry-run"))
     assert db.stat().st_mtime_ns == before and "This library: up to about 41 files" in out, out
-    man = json.loads((b.master / "manifest.json").read_text())
+    man = manifests.read(b.master / "manifest.json")
     where = {e["src"].split("SampleLibrary/")[-1]: cat for cat, cd in man["categories"].items()
              for e in cd.get("entries") or ()}
     per = {c: sum(1 for x in where.values() if x == c) for c in set(where.values())}
@@ -567,7 +568,7 @@ def test_a_small_library_gets_a_master_its_size(tmp_path):
     assert "KICKS: budget 6 (the style's" in out and "minimum 2, 1 folder" in out
     assert "readmitted" not in out and "PHRASES: none found; need 2" in out
     assert "4/4 Verify" in out and "New master in place at" in out
-    man = json.loads((b.master / "manifest.json").read_text())
+    man = manifests.read(b.master / "manifest.json")
     assert 0 < man["scale"]["factor"] < 0.01 and man["scale"]["min_files"] == 2
     where = {e["src"].split("SampleLibrary/")[-1]: cat for cat, cd in man["categories"].items()
              for e in cd.get("entries") or ()}

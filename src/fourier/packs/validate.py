@@ -21,7 +21,6 @@ Checks (per category, from manifest.json):
 """
 from __future__ import annotations
 
-import json
 import os
 from collections import Counter
 from ..places import library_rel
@@ -51,7 +50,8 @@ def validate_master(master_dir, budgets=None, floor=6, ceil=None, vendor_max=Non
         return False, [("FAIL", "manifest", master_dir)]
     from .vendors import ensure
     ensure(session)               # the library folders' layouts (vendors = "auto" only)
-    _doc = json.load(open(mp))
+    from . import manifests
+    _doc = manifests.read(mp)
     cats = _doc.get("categories", {})
     if _doc.get("base") and budgets is BUDGETS:
         # an additive build: its base release plus the add allowance (releases.additive_build)

@@ -84,8 +84,8 @@ AUTO_MISFILE_MARGIN = 0.4   # a conservative margin
 
 
 def _manifest_entries(master_dir):
-    with open(os.path.join(master_dir, "manifest.json")) as f:
-        man = json.load(f)
+    from . import manifests
+    man = manifests.read(os.path.join(master_dir, "manifest.json"))
     entries = [dict(src=e["src"], category=cat, family=e.get("family"), out=e["out"],
                     support=e.get("support"), son_cats=e.get("son_cats"), ab_cats=e.get("ab_cats"))
                for cat, cd in man.get("categories", {}).items() for e in cd.get("entries", [])]
