@@ -1180,54 +1180,43 @@ chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN.
 
 ## 14. Decision log
 
-The curation decisions, as they stand now.
+The curation decisions as they stand, grouped; the sections named hold the detail, and
+[design-history.md](design-history.md) holds why.
 
-- Sononym and Ableton Live are optional; when there, their votes are equals and Live's family
-  vetoes cross-family homes. Without them the built-in path and audio providers classify.
-- The sound model learns from the pack makers' names and your ratings, never from Sononym or
-  Live; it places only what the names leave open, and only without Sononym.
-- The code's defaults are `balanced`'s (what a config naming no preset gets, and a build with
-  none); `breaks-acid` is the reference style the goldens build.
-- The master is built locally; publishing cuts immutable releases.
-- Preset `breaks-acid`'s budgets favor breakbeats and acid; DRUMLOOPS is its largest category
-  (1900).
-- Fewer, fuller folders: about 12 per category (more for DRUMLOOPS), 15-120 files each.
-- The master follows the library's size: a library under 8 usable samples a budgeted file gets
-  a master in proportion (every category with 2 usable files builds, about 24 files a folder);
-  a larger one gets the style's budgets, unchanged.
-- Device folders numbered in play order, drums first; kits and slice-ready loops at 00.
-- One name per file in Live, on the M8 and on the Digitakt; names cut in the middle.
-- The Digitakt 2 render is nested CATEGORY/family, like the M8.
-- The filename's tempo wins; 5-BPM tempo folders; named tempos aren't folded except half-time
-  breaks.
-- Classic breaks get their own DRUMLOOPS folder and are all kept.
-- Musical loops live in PHRASES; one-shot folders hold one-shots only.
-- All keys (notes and chord stabs) and organs live in PIANO.
-- STABS holds named stabs and chord stabs only.
-- Rims live in SNARES, a leading "RS" (rimshot) included.
-- MALLETS folded into ACOUSTIC and SYNTH; SCRATCHES folded into FX as a band.
-- FX weighted to transitions, risers their own band; CYMBALS split ride / crash / cymbal.
-- VOX choirs capped at 25%.
-- Stereo only where it's real (sides over -30 dB); KICKS and SUB mono. Both devices keep the
-  master's stereo (the M8 too).
-- A stereo file that cancels in mono keeps its louder channel; a partly out-of-phase one is a
-  listening call.
-- Acoustic percussion lives in PERC, never SYNTH.
-- Tonal one-shots retuned to C; voices, keys and acoustic instruments by at most 3 semitones,
-  sung lines not at all.
-- Loops at -20 dBFS RMS with up to 3 dB of peak limiting; melodic folders leveled, drum
-  folders' loudest hits turned down; off-grid drum loops rotated.
-- Kits leveled: each slot down to its role's level, so kits swap without a jump.
-- Kits favor acoustic kits (`KIT_ACOUSTIC_PACKS`) over drum machines; at most 10 machines.
-- Classic-breaks folders carry no tempo.
-- No 64-file cap for the Digitakt.
-- Folder names drop the category noun (PIANO, ACOUSTIC, WAVES keep it) and stay put across
-  builds.
-- No per-pack cap in SUB / SYNTH: a large pack can take a large share there.
-- Builds keep the previous build's picks while they're still eligible (stable picks).
-- Builds on a release are additive with a 15% allowance and route new groups into close
-  folders.
-- 303 / acid phrases are their own PHRASES role; 155-180 BPM breaks may be named jungle.
-- Names contradicted by the audio keep their pitch; detected roots rename the note they fix.
-- Once loaded on a device, a release is frozen: later changes go into the next version
-  (`--base vN`), and a loaded version is never re-cut.
+- **Classifiers** (2): Sononym and Ableton Live are optional equals, Live's family vetoing
+  cross-family homes; without them the built-in path and audio providers classify. The sound
+  model learns from pack makers' names and your ratings (never Sononym or Live) and places only
+  what the names leave open, only without Sononym.
+- **Styles and size** (1, 3.4, 3.5): the code's defaults are `balanced`'s; `breaks-acid` is the
+  reference the goldens build, with DRUMLOOPS its largest budget (1900). Fewer, fuller folders:
+  about 12 per category (more for DRUMLOOPS), 15-120 files each. The master follows the
+  library's size below 8 usable samples per budgeted file (every category with 2 usable files
+  builds), and takes the style's budgets above it.
+- **Where sounds live** (1.1, 4): musical loops in PHRASES, with 303 / acid phrases their own
+  role; one-shot folders hold one-shots only; all keys and organs in PIANO; STABS only named and
+  chord stabs; rims, a leading "RS" included, in SNARES; acoustic percussion in PERC, never
+  SYNTH; MALLETS folded into ACOUSTIC and SYNTH, SCRATCHES into FX as a band; FX weighted to
+  transitions with risers their own band; CYMBALS split ride / crash / cymbal; VOX choirs at
+  most 25%; no per-pack cap in SUB or SYNTH.
+- **Tempo and breaks** (4, 5): the filename's tempo wins; 5-BPM tempo folders; named tempos
+  aren't folded except half-time breaks; 155-180 BPM breaks may be named jungle. Classic breaks
+  get their own DRUMLOOPS folder, all kept, with no tempo in its name.
+- **Audio** (6): stereo only where it's real (sides over -30 dB), KICKS and SUB mono, and both
+  devices keep the master's stereo. A file that cancels in mono keeps its louder channel; a
+  partly out-of-phase one is a listening call. Tonal one-shots retune to C (voices, keys and
+  acoustic instruments by at most 3 semitones, sung lines not at all), and names the audio
+  contradicts keep their pitch. Loops sit at -20 dBFS RMS with up to 3 dB of peak limiting;
+  melodic folders are leveled, drum folders' loudest hits turned down, off-grid drum loops
+  rotated.
+- **Kits** (9): each slot leveled to its role, so kits swap without a jump; acoustic kits
+  (`KIT_ACOUSTIC_PACKS`) favored over drum machines, at most 10 machines.
+- **Names and folders** (5, 8): one name per file in Live, on the M8 and on the Digitakt, cut in
+  the middle; detected roots rename the note they fix. Folder names drop the category noun
+  (PIANO, ACOUSTIC, WAVES keep it) and stay put across builds. Device folders are numbered in
+  play order, drums first, kits and slice-ready loops at 00; the Digitakt 2 render nests
+  CATEGORY/family like the M8's, with no 64-file cap.
+- **Builds and releases** (10, 11): the master is built locally and publishing cuts immutable
+  releases. Builds keep the previous build's picks while they're still eligible; builds on a
+  release are additive, with a 15% allowance, and route new groups into close folders. A
+  release loaded on a device is frozen: later changes go into the next version (`--base vN`),
+  and a loaded version is never re-cut.
