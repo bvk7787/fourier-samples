@@ -7,6 +7,8 @@ change the CLI or the config).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-07
+
 ### Added
 
 - The sound model's training report gives each category's precision at every confidence
@@ -120,6 +122,7 @@ The first public release.
 
 The [README](README.md) has the full tour.
 
-[Unreleased]: https://github.com/bvk7787/fourier-samples/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/bvk7787/fourier-samples/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/bvk7787/fourier-samples/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/bvk7787/fourier-samples/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/bvk7787/fourier-samples/releases/tag/v0.1.0
