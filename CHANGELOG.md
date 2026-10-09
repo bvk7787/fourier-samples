@@ -7,6 +7,14 @@ change the CLI or the config).
 
 ## [Unreleased]
 
+### Added
+
+- `phrases.csv` beside `loops.csv` in the master: each phrase's folder, file and tempo, and
+  the key its pack states for it, from its file name, the nearest folder that names one, or the
+  files beside it when they agree, with where the key came from. Keys are never guessed from
+  the audio: measured on loops whose names state one, no detector tried was right often enough
+  (curation.md, section 13).
+
 ## [0.1.2] - 2026-10-07
 
 ### Added

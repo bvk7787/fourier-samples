@@ -290,7 +290,7 @@ def master_known_files(root) -> set[str]:
     if man is None:
         raise UnsafePath(f"can't read {root / 'manifest.json'}, so there's no telling Fourier's "
                          f"files from yours: restore it, or move the folder aside")
-    known = {"manifest.json", "CHANGELOG.md", "loops.csv"}
+    known = {"manifest.json", "CHANGELOG.md", "loops.csv", "phrases.csv"}
     for sect in ("categories", "sets"):
         for cat, cd in (man.get(sect) or {}).items():
             known.add(f"{cat}/_manifest.json")
