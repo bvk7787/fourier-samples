@@ -57,6 +57,7 @@ rewrites many files at once, and a sync client can leave conflict copies beside 
 | `KITS/<kit>/`, `SLICE/<family>/` | derived sets (section 9) |
 | `manifest.json` | build manifest (section 1.2) |
 | `loops.csv` | every drum loop: folder, file, bpm, bars, folder_bpm, bars_at_folder_bpm, swing_pct, slice_clean, slice_ready, swung |
+| `phrases.csv` | every phrase: folder, file, bpm, the key its pack states, and where that came from (`key_source`: name, folder or siblings) |
 | `CHANGELOG.md` | changes against the previous archived build |
 | `_REVIEW/` | review queue (hard links; never published or rendered) |
 
@@ -1036,7 +1037,7 @@ off; unused entries are pruned after 14 days.
 ## 9. Derived sets
 
 Built after every build from the manifest (`sets.py`), unless `sets = "off"` (`SETS_ON`: the
-category folders only, no `00_KITS`, `00_SLICE` or `loops.csv`). SLICE files are hardlinks to
+category folders only, no `00_KITS`, `00_SLICE`, `loops.csv` or `phrases.csv`). SLICE files are hardlinks to
 the curated files; kit files are too unless leveled. The SLICE grid is at most `SLICE_MAX` (64)
 slices, lowered by the `devices` knob to the smallest `audio.max_slices` a configured profile
 sets below it.
@@ -1183,6 +1184,16 @@ chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN.
 - **The harmonicity measure.** Without Sononym, harmonicity is HPSS's harmonic share, which
   reads a drum loop with a bassline or chord under it as tonal. Such loops fail DRUMLOOPS'
   `har_max` and come back only through the minimum's floor (3.2, step 16).
+- **Keys from audio.** A phrase's key in `phrases.csv` is only ever the one its pack states
+  (`packs/keys.py`): its file name, the nearest folder naming one, or the files beside it when
+  at least two state a key and all agree. Detected keys aren't used. On 1,425 loops whose pack
+  names state a key and a mode (2026-10), the Krumhansl and Temperley profiles found that key
+  at most 39% of the time over seven chroma types, profiles learned from the library 44%
+  (scored one vendor at a time), essentia's EDM profiles 41% (56% for its minor-only one, the
+  labels being 93% minor), and madmom's CNN, trained on dance music, 40%. Most misses are a fifth away. Even the answers each was surest of were right about
+  two times in three; all four agreeing and madmom at least 80% sure was right 87% of the
+  time on 11% of the loops. The `key` analysis step (`tools analyze --only key`) still stores
+  its reading in the database, which nothing curates by.
 
 ## 14. Decision log
 

@@ -37,6 +37,7 @@ Northwind Loops/                             DRUMLOOPS/                 08_DRUML
   ...                                            Break_174_dusty.wav        Break_174_dusty.wav
                                              KITS/  SLICE/              00_KITS/  00_SLICE/
                                              manifest.json  loops.csv
+                                             phrases.csv
 ```
 
 - **Nineteen categories** in play order (kicks, snares, claps, hats, cymbals, toms, percussion,

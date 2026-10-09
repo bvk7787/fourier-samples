@@ -1246,6 +1246,8 @@ def _read_keys(paths, workers) -> None:
 def enrich_key(limit, workers, force, all_classes):
     """
     Detect the musical key of tonal samples using Krumhansl-Schmuckler profile matching.
+    Stored in the database only: on loops whose names state a key it agrees about 4 times
+    in 10, so no build uses it (phrases.csv takes the key a pack states; curation.md 13).
 
     By default only processes the samples Fourier's own analysis calls tonal (a pYIN root,
     or mostly harmonic with a pitch focus: metadata/resolve.py), with or without Sononym,

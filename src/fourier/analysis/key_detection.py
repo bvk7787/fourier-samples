@@ -1,6 +1,9 @@
 """
 Musical key estimation using Krumhansl-Schmuckler tonal hierarchy profile matching.
 
+Measured on 1,425 loops whose pack names state a key: right about 4 times in 10, mostly a
+fifth away otherwise (docs/curation.md, section 13). Nothing curates by it.
+
 No new dependencies — uses only librosa (already a core dep) and numpy.
 
 Usage::

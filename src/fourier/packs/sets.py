@@ -7,6 +7,7 @@ beside the categories. Built after a whole build from its manifest.
   SLICE/<family>/  drum loops that slice cleanly on an equal 16th grid (the Digitakt 2
                  Slice machine's CREATE SLICE GRID, the M8's even slices), not swung
   loops.csv      every drum loop's tempo, bars, swing and slice verdict
+  phrases.csv    every phrase's tempo and the key its pack states (packs/keys.py)
 
 Renders number them 00_KITS / 00_SLICE (curate_config.DERIVED_DIRS). The manifest lists
 them under "sets" (not "categories"), so category rules don't apply to the copies. SLICE
@@ -30,7 +31,7 @@ from . import manifests
 
 _tunable = _for_module("sets")   # overridable: fourier/settings.py, config/tunables.yaml
 
-# the sets knob: "off" builds the category folders only (no 00_KITS, 00_SLICE or loops.csv)
+# the sets knob: "off" builds the category folders only (no 00_KITS, 00_SLICE, loops.csv or phrases.csv)
 SETS_ON = _tunable("SETS_ON", True)
 SLICE_STEP = _tunable("SLICE_STEP", 16)            # slices per bar (16ths)
 SLICE_MAX = _tunable("SLICE_MAX", 64)             # the Digitakt 2's largest grid (p.99)
@@ -325,6 +326,25 @@ def _kits(man):
     return out
 
 
+def write_phrases(root: Path, man: dict) -> int:
+    """phrases.csv: each phrase's folder, file, tempo, and the key its pack states (its own
+    name, a folder above it, or the files beside it: packs/keys.py), with where the key came
+    from. Returns how many have one."""
+    from ..places import library_rel
+    from .keys import label, stated_key
+    rows, keyed = [], 0
+    for e in (man.get("categories", {}).get("PHRASES") or {}).get("entries", []):
+        key, where = stated_key(e["src"], library_rel(e["src"]))
+        keyed += key is not None
+        rows.append([e["family"], os.path.basename(e["out"]), e.get("bpm_fold") or e.get("bpm"),
+                     label(key), where])
+    with open(root / "phrases.csv", "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["folder", "file", "bpm", "key", "key_source"])
+        w.writerows(rows)
+    return keyed
+
+
 def build_sets(master_dir, log=print):
     """Write KITS/, SLICE/ and loops.csv into a built master and list them in its manifest."""
     root = Path(master_dir)
@@ -374,6 +394,7 @@ def build_sets(master_dir, log=print):
         w.writerow(["folder", "file", "bpm", "bars", "folder_bpm", "bars_at_folder_bpm", "swing_pct",
                     "slice_clean", "slice_ready", "swung"])
         w.writerows(rows)
+    write_phrases(root, man)
     man["sets"] = sets
     manifests.write(mp, man)
     log(f"sets: {len({e['family'] for e in sets['KITS']['entries']})} kits "
