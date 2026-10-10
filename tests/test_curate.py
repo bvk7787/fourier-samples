@@ -403,3 +403,32 @@ def test_near_duplicate_partner_is_the_kept_file_it_repeats():
     kept, _ = C._prune_near_dups(rec, E, 0.985, keep=4, partners=partners)
     assert len(kept) == 4 and set(partners) | {d["id"] for d in kept} == {1, 2, 3, 4, 5}
     assert all(p in {d["id"] for d in kept} and p != s for s, p in partners.items())
+
+
+def test_instrument_categories_drop_only_copies():
+    """PIANO and ACOUSTIC skip the near-duplicate prune (a multisample's notes sit above
+    NEAR_DUP_COS) but drop one recording shipped under two names (INSTRUMENT_COPY_COS), and a
+    copy never comes back to fill a minimum."""
+    rec = [dict(id=i, row=i, qual=1.0) for i in range(4)]
+    E = np.array([[1, 0, 0], [1, .12, 0], [1, 0, .12], [1, .001, 0]], dtype="float32")
+    E /= np.linalg.norm(E, axis=1, keepdims=True)
+    assert float(E[0] @ E[1]) > C.NEAR_DUP_COS > float(E[0] @ E[1]) - 0.02    # notes: ~0.993
+    partners = {}
+    out, pruned = C._prune_near_dups(rec, E, C.INSTRUMENT_COPY_COS, keep=0, partners=partners)
+    assert [r["id"] for r in out] == [0, 1, 2] and pruned == 1 and partners == {3: 0}
+
+
+@pytest.mark.parametrize("category", ["PIANO", "ACOUSTIC"])
+def test_the_instrument_path_runs_the_copy_prune(category, monkeypatch):
+    calls = []
+    real = C._prune_near_dups
+
+    def spy(rec, emb_n, thr, keep=0, partners=None, apart=None):
+        calls.append((thr, keep))
+        return real(rec, emb_n, thr, keep=keep, partners=partners, apart=apart)
+    monkeypatch.setattr(C, "_prune_near_dups", spy)
+    rows, E, id2row = _kicks(3, ["Acme"])
+    monkeypatch.setattr(C, "embed_text", lambda t: np.ones(E.shape[1], dtype="float32"))   # no CLAP model
+    C._select_records(rows, CATEGORIES[category], E, id2row, category=category, floor=6)
+    assert (C.INSTRUMENT_COPY_COS, 0) in calls
+    assert all(thr != C.NEAR_DUP_COS for thr, _ in calls)

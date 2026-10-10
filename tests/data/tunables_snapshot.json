@@ -374,6 +374,10 @@
   "type": "float",
   "value": 0.985
  },
+ "curate.INSTRUMENT_COPY_COS": {
+  "type": "float",
+  "value": 0.999
+ },
  "curate.NOTE_CONF": {
   "type": "float",
   "value": 0.4

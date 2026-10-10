@@ -166,6 +166,10 @@ DEFAULT_MODEL = _tunable("DEFAULT_MODEL", "qwen3.5:9b")
 QUAL_WEIGHT = _tunable("QUAL_WEIGHT", 0.06)        # medoid nudge toward higher measured quality (breaks near-ties)
 FAVOR_WEIGHT = _tunable("FAVOR_WEIGHT", 0.10)       # medoid nudge toward favored sources (curate_config.FAVORED_SOURCES)
 NEAR_DUP_COS = _tunable("NEAR_DUP_COS", 0.985)      # CLAP cosine above which two samples are treated as near-identical
+# the instrument categories (PIANO, ACOUSTIC) skip that prune, since a multisample's notes sit
+# above it; above this they're one recording under two names (a pack shipped twice), and the
+# copy goes. No copy comes back to fill a minimum.
+INSTRUMENT_COPY_COS = _tunable("INSTRUMENT_COPY_COS", 0.999)
 TRIM_FLOOR_DB = _tunable("TRIM_FLOOR_DB", -50.0)     # silence floor (dBFS below peak) for edge trimming
 TRIM_PAD_MS = _tunable("TRIM_PAD_MS", 3.0)         # lead-in kept before the first non-silent sample (avoids clicks)
 PEAK_CEILING_DB = _tunable("PEAK_CEILING_DB", -1.0)    # one-shot / instrument peak-normalization target (dBFS)
@@ -3554,6 +3558,11 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                                            max(1, int(np.ceil(INSTRUMENT_PACK_MAX_SHARE * _pool)))),
                     "pack_capped", lambda d: _vendors.pack_key(d["path"]))
         stats["pack_capped"] = _b0 - len(rec)
+        _copies = {} if why is not None else None
+        rec, stats["near_dup"] = _prune_near_dups(rec, emb_n, INSTRUMENT_COPY_COS, keep=0,
+                                                  partners=_copies)
+        if why is not None and _copies:
+            why.setdefault("near_dup", {}).update(_copies)
     if cfg["kind"] != "instrument":
         _before = len(rec)
         rec = _gone(rec, _cap_instrument_packs(rec, emb_n), "instr_capped", lambda d: d["pack"])

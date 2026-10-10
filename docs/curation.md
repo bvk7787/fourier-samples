@@ -538,7 +538,7 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
 | Instrument packs (PIANO, ACOUSTIC) | each vendor/pack <= 20% (`INSTRUMENT_PACK_MAX_SHARE`) |
 | Multisample libraries (other kinds) | `INSTRUMENT_PACKS` <= 20 files each (`INSTRUMENT_CAP`) |
 | Vendor (other kinds) | a vendor <= 40% (`VENDOR_MAX_SHARE`); see [Vendor cap](#vendor-cap) |
-| Near-duplicates | CLAP cosine > 0.985 (`NEAR_DUP_COS`) pruned, better quality kept (WAVES off); see [Near-duplicate prune](#near-duplicate-prune) |
+| Near-duplicates | CLAP cosine > 0.985 (`NEAR_DUP_COS`) pruned, better quality kept (WAVES off; PIANO and ACOUSTIC only above 0.999, `INSTRUMENT_COPY_COS`); see [Near-duplicate prune](#near-duplicate-prune) |
 | Routed rows | rows homed in from outside the classifier's bucket <= 35% (`ROUTED_MAX_SHARE`; stab-, scratch- and drum-named exempt) |
 
 #### Vendor cap
@@ -563,6 +563,9 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
   2 BPM) aren't duplicates: the same groove at another tempo.
 - Never below the category's folder minimum: the least similar of the pruned come back. An
   additive build (`--base`) caps and prunes as before: no vendor count, no minimum.
+- The instrument categories (PIANO, ACOUSTIC) prune only copies, above 0.999
+  (`INSTRUMENT_COPY_COS`): a multisample's notes sit above 0.985, but one recording shipped in
+  two packs under two names sits at 0.9996 or more. A copy never comes back to fill a minimum.
 - `fourier why` names the kept file each pruned one repeats and where the master holds it.
 
 Pins removed by a cap are restored. A category whose pool still ends under its folder minimum
