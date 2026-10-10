@@ -15,6 +15,13 @@ change the CLI or the config).
   the audio: measured on loops whose names state one, no detector tried was right often enough
   (curation.md, section 13).
 
+### Fixed
+
+- PIANO and ACOUSTIC no longer keep two copies of one recording that reach the library under
+  two names (a pack shipped twice, renamed): the near-duplicate prune those categories skip, so
+  a multisample's notes stay, now drops copies above a CLAP cosine of 0.999
+  (`INSTRUMENT_COPY_COS`). Found by a QA sweep of a 246,000-sample library: 11 such pairs.
+
 ## [0.1.2] - 2026-10-07
 
 ### Added

@@ -307,6 +307,7 @@ curate:
   QUAL_WEIGHT: engine
   FAVOR_WEIGHT: taste
   NEAR_DUP_COS: correctness
+  INSTRUMENT_COPY_COS: correctness
   TRIM_FLOOR_DB: correctness
   TRIM_PAD_MS: correctness
   PEAK_CEILING_DB: correctness
