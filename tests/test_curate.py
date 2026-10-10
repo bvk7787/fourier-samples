@@ -428,6 +428,7 @@ def test_the_instrument_path_runs_the_copy_prune(category, monkeypatch):
         return real(rec, emb_n, thr, keep=keep, partners=partners, apart=apart)
     monkeypatch.setattr(C, "_prune_near_dups", spy)
     rows, E, id2row = _kicks(3, ["Acme"])
+    monkeypatch.setattr(C, "embed_text", lambda t: np.ones(E.shape[1], dtype="float32"))   # no CLAP model
     C._select_records(rows, CATEGORIES[category], E, id2row, category=category, floor=6)
     assert (C.INSTRUMENT_COPY_COS, 0) in calls
     assert all(thr != C.NEAR_DUP_COS for thr, _ in calls)
