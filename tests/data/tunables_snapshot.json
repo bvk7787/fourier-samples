@@ -1949,7 +1949,7 @@
        ],
        [
         "noise",
-        "clap|snare|(?<![a-z])ride(?![a-z])|hi-?hat|(?<![a-z])(oh|ch|hh|bd|sd)(?![a-z])|kick ?drum|(?<![a-z])kick(?![a-z])"
+        "clap|snare|(?<![a-z])ride(?![a-z])|hi-?hat|(?<![a-z])(oh|ch|hh|bd|sd)(?![a-z])(?!\\d+[a-z])|kick ?drum|(?<![a-z])kick(?![a-z])"
        ]
       ]
      }
@@ -3273,7 +3273,7 @@
  "curate_config.DEMO_PATH": {
   "type": "Pattern",
   "value": {
-   "$re": "(ableton folder info/previews|/demos?/|[ _-]demo[s]?[ _.)\\-]|\\bpreview\\b|full[ _-]?(mix|track|song)|construction[ _-]?kit)",
+   "$re": "(ableton folder info/previews|/demos?/|[/ _-]demo[s]?[ _.)\\-]|\\bpreview\\b|full[ _-]?(mix|track|song)|construction[ _-]?kit|(?:^|/)samples/processed/(?:crop|consolidate|reverse|freeze)/)",
    "flags": 34
   }
  },
@@ -3471,7 +3471,7 @@
    {
     "$tuple": [
      {
-      "$re": "(?<![a-z])(?:kicks?|kiks?|bds?|bass ?drums?)(?![a-z])|(?<![a-z])bass(?= ?sds ?800)|(?-i:(?<=[a-z])Kick)",
+      "$re": "(?<![a-z])(?:kicks?|kiks?|bass ?drums?)(?![a-z])|(?<![a-z])bds?(?![a-z])(?!\\d+[a-z])|(?<![a-z])bass(?= ?sds ?800)|(?-i:(?<=[a-z])Kick)",
       "flags": 34
      },
      "KICKS"
@@ -3480,7 +3480,7 @@
    {
     "$tuple": [
      {
-      "$re": "(?<![a-z])(?:snares?|snrs?|sd|rims?|rimshots?|sidesticks?|side ?stick)(?![a-z])|^rs(?= )|(?-i:(?<=[a-z])Snare)",
+      "$re": "(?<![a-z])(?:snares?|rims?|rimshots?|sidesticks?|side ?stick)(?![a-z])|(?<![a-z])(?:snrs?|sd)(?![a-z])(?!\\d+[a-z])|^rs(?= )|(?-i:(?<=[a-z])Snare)",
       "flags": 34
      },
      "SNARES"
@@ -3498,7 +3498,7 @@
    {
     "$tuple": [
      {
-      "$re": "hi-?hats?|hihats?|(?<![a-z])(?:hh|oh|ch|hat|hats|shakers?|tambourines?)(?![a-z])",
+      "$re": "hi-?hats?|hihats?|(?<![a-z])(?:hat|hats|shakers?|tambourines?)(?![a-z])|(?<![a-z])(?:hh|ch)(?![a-z])(?!\\d+[a-z])|(?<![a-z+])oh(?![a-z])(?!\\d+[a-z])",
       "flags": 34
      },
      "HATS"
@@ -3516,7 +3516,7 @@
    {
     "$tuple": [
      {
-      "$re": "cymbal|(?<![a-z])(?:crash|ride|cy|cymbs?|splash|china)(?![a-z])|(?-i:(?<=[a-z])Cymb)",
+      "$re": "cymbal|(?<![a-z])(?:crash|ride|splash|china)(?![a-z])|(?<![a-z])(?:cy|cymbs?)(?![a-z])(?!\\d+[a-z])|(?-i:(?<=[a-z])Cymb)",
       "flags": 34
      },
      "CYMBALS"
@@ -4214,7 +4214,7 @@
  "curate_config.HAT_CLOSED_RE": {
   "type": "Pattern",
   "value": {
-   "$re": "closed|(?<![a-z])c\\.?h(?:h)?(?![a-z])|pedal|(?<![a-z])p\\.?h(?![a-z])|tight",
+   "$re": "closed|clsd|(?<![a-z])c\\.?h(?:h)?(?![a-z])(?!\\d+[a-z])|pedal|(?<![a-z])p\\.?h(?![a-z])(?!\\d+[a-z])|(?<![a-z])foot(?![a-z])|tight",
    "flags": 34
   }
  },
@@ -4225,7 +4225,7 @@
  "curate_config.HAT_OPEN_RE": {
   "type": "Pattern",
   "value": {
-   "$re": "open|(?<![a-z])o\\.?h(?:h)?(?![a-z])|sizzl|washy",
+   "$re": "open|(?<![a-z+])o\\.?h(?:h)?(?![a-z])(?!\\d+[a-z])|sizzl|washy",
    "flags": 34
   }
  },
@@ -6559,7 +6559,7 @@
  "curate_config.STAB_CHORD_NAME_RE": {
   "type": "Pattern",
   "value": {
-   "$re": "(?<![a-z])chords?(?![a-z])|(?<![a-z])(?:maj7|maj9|min7|min9|m7|m9|7th|sus[24]?|dim7?|aug|add9)(?![a-z])|(?-i:(?<![A-Za-z])[A-G](?:#|b)?(?:maj7|maj9|m7|m9|min7|dim|aug|sus[24]?|add9)(?![A-Za-z]))",
+   "$re": "(?<![a-z])chords?(?![a-z])|(?<![a-z])(?:maj7|maj9|min7|min9|m7|m9|7th|sus(?:[24]|(?!\\d))|dim7?|aug|add9)(?![a-z])(?!\\d+[a-z])|(?-i:(?<![A-Za-z])[A-G](?:#|b)?(?:maj7|maj9|m7|m9|min7|dim|aug|sus(?:[24]|(?!\\d))|add9)(?![A-Za-z])(?!\\d+[A-Za-z]))",
    "flags": 34
   }
  },
@@ -6573,7 +6573,7 @@
  "curate_config.STAB_NAME_EXCLUDE": {
   "type": "Pattern",
   "value": {
-   "$re": "kick|snare|percussion|(?<![a-z])(?:hh|hats?|toms?|percs?|claps?|cymbals?|rims?|zaps?|bd|sd|cy)(?![a-z])",
+   "$re": "kick|snare|percussion|(?<![a-z])(?:hats?|toms?|percs?|claps?|cymbals?|rims?|zaps?)(?![a-z])|(?<![a-z])(?:hh|bd|sd|cy)(?![a-z])(?!\\d+[a-z])",
    "flags": 34
   }
  },
@@ -8036,7 +8036,7 @@
         "flags": 34
        },
        {
-        "$re": "tamb|shak|marac|cabasa",
+        "$re": "tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])",
         "flags": 34
        }
       ]

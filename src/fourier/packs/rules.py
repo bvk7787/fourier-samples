@@ -21,7 +21,7 @@ from .curate_config import (
     PLUCKED_NAME_RE, PREVIEW_PATH_RE, SCRATCH_NAME_EXCLUDE, SCRATCH_NAME_RE,
     STAB_CHORD_NAME_RE, STAB_MOVE_EXCLUDE, STAB_NAME_EXCLUDE, STAB_NAME_RE, STRING_NAME_RE,
     WAVE_MAX_DUR, WAVE_NOT_PATH_RE, WAVE_PATH_RE, WAVE_SINGLE_MAX_SAMPLES, WIND_NAME_RE,
-    WIND_RESERVE_NOT_RE, WIND_RESERVE_NOT_TAGS,
+    WIND_RESERVE_NOT_RE, WIND_RESERVE_NOT_TAGS, _ABBR_END,
 )
 
 
@@ -390,12 +390,31 @@ def _drum_named(name):
     stem = os.path.splitext(os.path.basename(name or ""))[0].replace("_", " ")
     hits = {cat for rx, cat in DRUM_NAME_RULES if rx.search(stem)}
     if hits == {"HATS", "CYMBALS"}:
-        return "HATS" if re.search(r"hi-?hat|hihat|(?<![a-z])(?:hh|oh|ch|hat)(?![a-z])", stem, re.I) else "CYMBALS"
+        return "HATS" if re.search(r"hi-?hat|hihat|(?<![a-z])hat(?![a-z])|(?<![a-z])(?:hh|ch)" + _ABBR_END
+                                   + r"|(?<![a-z+])oh" + _ABBR_END, stem, re.I) else "CYMBALS"
     return next(iter(hits)) if len(hits) == 1 else None
 
 
+def _drum_name_wins(name, canon, ab_tags, rel=None, fallback=False):
+    """The drum category a one-shot's name names (_drum_named_in) when a classifier also files
+    it with a drum (a DRUM_NAME_RULES category, by its canonical labels or Live's tags) and
+    not with VOX, else None. Such a file is the drum rule's, ahead of the acoustic and organ
+    reservations (a "Bell Kick 3", a "Brass Rim 2", an organ maker's drum machine "Snare"),
+    except in an orchestra library's section folders (ORCH_PATH_RE)."""
+    dn = _drum_named_in(name, rel, fallback)
+    if not dn or _orch_path(rel) is not None:
+        return None
+    from .curate_config import ABLETON_TAGS_BY_CATEGORY, CATEGORIES
+    part = {c: cfg for c, cfg in CATEGORIES.items() if cfg["kind"] in ("oneshot", "loop", "gated")}
+    tags = set(ab_tags or ())
+    votes = _classifier_votes(part, set(canon or ())) | {
+        c for c in part if tags & set(ABLETON_TAGS_BY_CATEGORY.get(c, ()))}
+    return dn if votes & {cat for _rx, cat in DRUM_NAME_RULES} and "VOX" not in votes else None
+
+
 _SHAKEN_RE = re.compile(r"(?<![a-z])(?:shaker|tambourine|tamb|cabasa|maraca)s?(?![a-z])", re.I)
-_HAT_WORD_RE = re.compile(r"hi-?hats?|hihats?|(?<![a-z])(?:hh|oh|ch|hat|hats)(?![a-z])", re.I)
+_HAT_WORD_RE = re.compile(r"hi-?hats?|hihats?|(?<![a-z])(?:hat|hats)(?![a-z])"
+                          r"|(?<![a-z])(?:hh|ch)" + _ABBR_END + r"|(?<![a-z+])oh" + _ABBR_END, re.I)
 _PERC_FOLDER_RE = re.compile(r"(?<![a-z])(?:percs?|percussions?)(?![a-z])", re.I)
 
 

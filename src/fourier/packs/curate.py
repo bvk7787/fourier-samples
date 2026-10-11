@@ -100,6 +100,7 @@ from .rules import (  # noqa: F401  (re-exported: verify, why, tests and callers
     _acoustic_band, _is_plucked, _is_synth_tagged, _is_mallet_named, _is_acoustic_named, _is_organ_named,
     _is_wind_named, _perc_sourced, _orch_path, _acoustic_reserved, _plucked_label, _is_keys,
     _is_chord, _is_stab, _stab_named, _is_named_stab, _scratch_named, _drum_named, _drum_named_in,
+    _drum_name_wins,
     _keys_candidates, _acoustic_label, _is_ir, _is_preview, _name_reserved, _is_loop_row,
 )
 
@@ -902,20 +903,26 @@ def compute_homes(session, emb_n, id2row, log=print):
         # acoustic orchestral instruments (strings/winds/brass/classical guitar) are
         # reserved for ACOUSTIC; keep them out of the drum/synth/pad homing entirely
         _fn = os.path.basename(r.path or "")
-        if _acoustic_tagged(ab_tags, _fn, pack) and not ORCH_PACK_EXCLUDE.search(pack):
-            continue
         is_oneshot = any("OneShot" in c for c in classes)
         is_loop = any("Loop" in c for c in classes)
+        # ...but a one-shot named as one kind of drum that a classifier also files with the
+        # drums is the drum rule's (below), not the acoustic or organ reservation's
+        _drum = _drum_name_wins(_fn, _canonical_of(r), ab_tags, r.rel_path or r.path, fallback) \
+            if is_oneshot and not is_loop else None
+        if _drum and _drum in misfiled.categories(r.path, emb_n[id2row[r.id]]):
+            _drum = None
+        if _acoustic_tagged(ab_tags, _fn, pack) and not ORCH_PACK_EXCLUDE.search(pack) and not _drum:
+            continue
         # plucked strings named as such are ACOUSTIC's (like the tagged ones above)
         # (and tuned percussion: xylophone, kalimba, church bell, ...)
         # (and a named wind, or anything in an orchestra folder (ORCH_PATH_RE), loop class or not:
         # a sustained tremolo reads as a loop to Sononym)
         if ((is_oneshot and not is_loop and _is_acoustic_named(_fn, ab_tags))
                 or (not is_loop and _is_wind_named(_fn, ab_tags))
-                or _orch_path(r.rel_path) is not None) and not ORCH_PACK_EXCLUDE.search(pack):
+                or _orch_path(r.rel_path) is not None) and not ORCH_PACK_EXCLUDE.search(pack) and not _drum:
             continue
         # a named organ one-shot (not a stab) is PIANO's
-        if not is_loop and _is_organ_named(_fn):
+        if not is_loop and _is_organ_named(_fn) and not _drum:
             continue
         # ...and so is one the built-in providers name keys and nothing else (without Sononym)
         if fallback and not is_loop and _keys_labeled(r):
@@ -3529,6 +3536,15 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         if category in DRUM_NAME_FROM and cfg["kind"] == "oneshot":
             _dn = SCRATCH_HOME if _scratch_named(r.filename, rel) else _drum_named_in(r.filename, rel, fallback)
             if _dn and _dn != category and _dn not in misfiled.categories(r.path, emb_n[id2row[r.id]]):
+                stats["named_elsewhere"] = stats.get("named_elsewhere", 0) + 1
+                _out(r, "named_elsewhere", _dn)
+                continue
+        # ...and a drum-named one-shot the drum rule takes ahead of the acoustic and organ
+        # reservations (_drum_name_wins, as compute_homes has it) isn't an instrument's
+        elif cfg["kind"] == "instrument" and any("OneShot" in c for c in _as_list(getattr(r, "classes", None))) \
+                and not any("Loop" in c for c in _as_list(getattr(r, "classes", None))):
+            _dn = _drum_name_wins(r.filename, _canonical_of(r), _as_list(r.ableton_tags), rel, fallback)
+            if _dn and _dn not in misfiled.categories(r.path, emb_n[id2row[r.id]]):
                 stats["named_elsewhere"] = stats.get("named_elsewhere", 0) + 1
                 _out(r, "named_elsewhere", _dn)
                 continue

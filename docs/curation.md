@@ -452,8 +452,8 @@ Then the rules below decide, first match wins. `fourier why <name>` replays them
 | 5 | pack home | `PACK_HOME`: a pack that belongs to one category (set by the library overlay) |
 | 6 | instrument pack | `INST_ROUTED_PACKS` (a user's piano, keys and orchestral section packs, set in their overlay): its instrument category only |
 | 7 | phrase | a musical phrase homes in PHRASES ahead of every vote (unless rated Misfiled there or name-reserved elsewhere) |
-| 8 | acoustic | acoustic Ableton tag, named plucked string or tuned percussion one-shot, named wind, or an orchestra folder path (`ORCH_PATH_RE`; not from `ORCH_PACK_EXCLUDE`): ACOUSTIC |
-| 9 | organ | a named organ (`ORGAN_NAME_RE`), not a stab: PIANO |
+| 8 | acoustic | acoustic Ableton tag, named plucked string or tuned percussion one-shot, named wind, or an orchestra folder path (`ORCH_PATH_RE`; not from `ORCH_PACK_EXCLUDE`): ACOUSTIC; except a one-shot named as one drum kind that a classifier also files with a drum (`rules._drum_name_wins`, outside an orchestra folder), which rule 15 homes |
+| 9 | organ | a named organ (`ORGAN_NAME_RE`), not a stab: PIANO; except a drum name a classifier agrees with, as in rule 8 |
 | 10 | name override | `NAME_OVERRIDES` (end of section 4): that category |
 | 11 | sound model | without Sononym, a sample whose own name and folder hold no strong category word (its pack's name or a weak word gave it one): the sound model's category when it is at least `SOUND_MODEL_OVERRIDE_MIN` and disagrees (2.2) |
 | 12 | keys | keyboard-named, or CLAP piano anchor beats anti by `KEYS_CLAP_MARGIN` 0.10 with harmonicity >= 0.5: never SYNTH, SUB, FX, STABS (`KEYS_EXCLUDE`) or a drum category; without Sononym a file the path words call keys and nothing else is PIANO's |
@@ -474,9 +474,11 @@ KICKS; snare / snr / SD / rim / rimshot / sidestick / a leading "RS " (rimshot) 
 / snap -> CLAPS; hi-hat / HH / OH / CH / hat / shaker / tambourine -> HATS; Tom (all-caps TOM is
 a drum machine's name) -> TOMS; cymbal / crash / ride / splash / china, or the abbreviations
 Cymb and CY -> CYMBALS; conga / bongo / cowbell / clave / woodblock / timbale / agogo -> PERC;
-zap -> BLIPS. CamelCase words count. Two kinds decide nothing, except hat plus cymbal words
-(HATS when a hat, HH, OH or CH word is present, else CYMBALS). Other keys-named files lose the
-drum categories.
+zap -> BLIPS. CamelCase words count. An abbreviation (BD, SD, SNR, HH, OH, CH, CY, Cymb) may be followed by
+a number ("CH01", "BD909") but not by a number glued to more letters, which is a pack's prefix
+("XX4d-..." names no hat), and "+OH" is an overhead mic, not an open hat. Two kinds decide
+nothing, except hat plus cymbal words (HATS when a hat, HH, OH or CH word is present, else
+CYMBALS). Other keys-named files lose the drum categories.
 
 ### 3.2 Selection gates
 
@@ -502,12 +504,14 @@ drum categories.
     STABS, PADS, PIANO, ACOUSTIC) drops 2+ silence-separated events that aren't an echo;
     regular (VOX, FX) drops 3+ events with spacing CV < 0.2. Unprofiled files pass.
 11. DRUMLOOPS needs a Live drum tag (without Live, a `NAME_TAGS` path word stands in; without
-    Sononym, the drum evidence its vote needed, 2.2); `DEMO_PATH` out of non-instrument
-    categories; `PACK_HOME`; waves (and byte-identical copies of them) only in WAVES.
+    Sononym, the drum evidence its vote needed, 2.2); `DEMO_PATH` (demo, preview and full-mix
+    folders, a "Demo <name>" folder, and Live's own renders under a set's
+    `Samples/Processed/Crop|Consolidate|Reverse|Freeze`) out of non-instrument categories; `PACK_HOME`; waves (and byte-identical copies of them) only in WAVES.
 12. SUB/SYNTH/PADS/STABS/VOX: a file over 4 s from a loop folder is out.
 13. `DUR_CAP`; `BPM_NAME_GUARD` (a tempo in the name, or tempo-then-key like "120_Amin", keeps a
     file out of every one-shot category but FX); STABS stab-named only; drum categories drop
-    files drum- or scratch-named for another category.
+    files drum- or scratch-named for another category, and ACOUSTIC and PIANO a one-shot named
+    as a drum a classifier agrees with (rule 8).
 14. Instrument kinds: single-note guard (`max_onsets`), chord / chroma test, `dur_max`,
     `pack_exclude`, `name_exclude`, `ableton_exclude`, then in-pack / tag / name or CLAP.
 15. `exclude_phrases` (set on a category an added category carves from, `carve_from`): out when
@@ -798,9 +802,9 @@ keeps drum-named hits out.
 
 | Category | Rule |
 |---|---|
-| HATS | band `open` when named open / OH / sizzle / washy, `closed` when named closed / CH / pedal / PH / tight, else open at 0.35 s or longer (`HAT_OPEN_MIN_S`) |
+| HATS | band `open` when named open / OH / sizzle / washy, `closed` when named closed / clsd / CH / pedal / PH / foot / tight, else open at 0.35 s or longer (`HAT_OPEN_MIN_S`); an overhead-mic "+OH" says neither |
 | CYMBALS | band by name (ride, rd; crash, splash, china), then Sononym's ride/crash label, then Ableton's Ride/Crash tag, else `cymbal`. A HATS or CYMBALS folder can't take the other band's phrase words. |
-| STABS | only stab-named files: a chord (`STAB_CHORD_NAME_RE`: "chord", maj7, sus4, Dbmaj7; not a bare key like "Fm") or a stab / tonal hit (`STAB_NAME_RE`: stab, stb, orch hit, synth/brass/string/organ/choir/chord/rave hit, hoover), with no drum word. Vocal chords stay in VOX, keys chords in PIANO. |
+| STABS | only stab-named files: a chord (`STAB_CHORD_NAME_RE`: "chord", maj7, sus4, Dbmaj7; not a bare key like "Fm", nor a quality inside a random ID token such as "...-M93Q" or "...-SUS7") or a stab / tonal hit (`STAB_NAME_RE`: stab, stb, orch hit, synth/brass/string/organ/choir/chord/rave hit, hoover), with no drum word. Vocal chords stay in VOX, keys chords in PIANO. |
 | PIANO | all keys, notes and chord stabs, plus named organs (an organ stab stays in STABS). Pool: piano packs, keys-labeled Sononym one-shots, anything under an instrument collection's top folder (`INSTRUMENT_ROOTS`, set by a library overlay; empty by default), organ-named files. Gates: at most 2 onsets; chords must be stabs (one event, <= 4 s, not a progression or tempo phrase); notes need chroma >= 1.6; 30 s max; orchestral and mallet Ableton tags out unless named keyboard or organ; accepted from a piano pack, keys- or organ-named, or CLAP piano anchor beats anti and >= 0.30. Bands `note` / `chord`: note folders lead with their C (`c3-...`), chord folders with `chord`. |
 | ACOUSTIC | pool: `ORCH_PACKS`, `ACOUSTIC_ABLETON_TAGS` (strings, winds, brass, guitars, harp, sitar, timpani, gong, mallets; the catch-alls Misc Plucked/Strings/Woodwind/Mallets, Bell Chromatic and Chime need an instrument name or pack), and files reserved by name or orchestra folder (`ORCH_PATH_RE`). Out: synth / drum-machine emulation packs (`ORCH_PACK_EXCLUDE`), names with keyboard, fm, synth, saw, square, pwm, 303, moog, juno. At most 2.5 onsets, 30 s max. Bands (name, orchestra folder, Ableton tag, pack, default string): `string` 0.30, `wind` 0.20, `plucked` 0.25, `mallet` 0.25, at least 2 folders each. Folders read band-note-instrument (`string-c3-cello-dark`); an instrument word (orchestra folder, specific Ableton tag, name word, catch-all tag) names a folder only if 40% of its files are that instrument. |
 | WAVES | a file of 1 s or less under a wavetable / single-cycle folder, or one named for a single-cycle waveform collection (`WAVE_PATH_RE`, plus `WAVE_PATH_WORDS` from the library overlay; folders only, not a drum-kit folder). At least 256 samples (`WAVE_MIN_SAMPLES`; shorter cycles are too coarse). Bands `cycle` (<= 4097 samples) and `table`. Folders named by source (the folder under a WAVETABLES directory, else the pack) when half the files share it. Never trimmed, exact DC removal, no near-dup prune; renders keep every sample. |
@@ -1079,8 +1083,8 @@ sets below it.
   uses the vendor; 40 characters max; repeats get `-2`.
 - **Roles** (`KIT_ROLES`): kick, snare, clap, closed hat, open hat, cymbal, two toms, two percs,
   picked across the pack by name. A slot takes a file whose name says the role when the pack has
-  one (`ROLE_NAME`: no tom as the kick, no tambourine or shaker as a hat, no rim as the snare, no
-  reversed cymbal). A kit needs kick, snare, closed and open hat (`KIT_REQUIRED`) and 6 of the 8
+  one (`ROLE_NAME`: no tom as the kick, no tambourine or shaker as a hat, no hat named closed as
+  the open hat, no rim as the snare, no reversed cymbal). A kit needs kick, snare, closed and open hat (`KIT_REQUIRED`) and 6 of the 8
   roles.
 - **Leveling**: each slot is turned down to its role's loudness (`KIT_LEVEL_DB`: kick -9, snare
   -13, clap -14, closed hat -16, open hat -15, cymbal -16, tom -11, perc -15 dBFS), so every kit

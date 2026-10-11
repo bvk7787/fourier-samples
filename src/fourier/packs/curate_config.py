@@ -25,6 +25,10 @@ taxonomy_view = _tax = _taxonomy.with_added(ADDED_CATEGORIES)
 # the tuples, sets and dicts are empty. A user's overlay sets them (config layers,
 # fourier/layers.py).
 _NEVER = r"(?!)"
+# Where a drum abbreviation ("BD", "SD", "HH", "CH", "OH", "CY") ends: no letter follows, and a
+# number may ("CH01", "BD909"), but not a number glued to more letters, which is a pack's
+# prefix ("XX4d-Qzv_05" is no closed hat).
+_ABBR_END = r"(?![a-z])(?!\d+[a-z])"
 # Other names a library's packs use for a machine the code knows ({label: [regex, ...]}), added
 # to the machine's patterns (DRUM_MACHINES, SYNTH_MACHINES, the acid phrase role and the
 # genre word backing "303") after its own name and before its model codes.
@@ -42,10 +46,13 @@ INSTRUMENT_CAP = _tunable("INSTRUMENT_CAP", 20)
 INSTRUMENT_LABELS_EXTRA = _tunable("INSTRUMENT_LABELS_EXTRA", [])   # library: [(pack substring, label)]
 
 # Pack demo/preview/jam files, identified by path. Kept out of every category but the
-# instrument ones (they are full/busy, not clean hits).
+# instrument ones (they are full/busy, not clean hits). A pack's "Demo <name>" folder is a demo too,
+# and so are the files Ableton Live writes into a Live Set's Samples/Processed folders when a
+# clip is cut to its crop, consolidated, reversed or frozen: renders of the set, not library samples.
 DEMO_PATH = _tunable("DEMO_PATH", _re.compile(
-    r"(ableton folder info/previews|/demos?/|[ _-]demo[s]?[ _.)\-]|\bpreview\b|"
-    r"full[ _-]?(mix|track|song)|construction[ _-]?kit)", _re.I))
+    r"(ableton folder info/previews|/demos?/|[/ _-]demo[s]?[ _.)\-]|\bpreview\b|"
+    r"full[ _-]?(mix|track|song)|construction[ _-]?kit"
+    r"|(?:^|/)samples/processed/(?:crop|consolidate|reverse|freeze)/)", _re.I))
 
 # Cap any single source folder (a vendor's pack folder) to this share of a
 # category, so no one vendor's aesthetic dominates.
@@ -399,8 +406,12 @@ PHRASE_DIMS = _tunable("PHRASE_DIMS", [("br", ("dark", "bright")), ("noi", ("cle
 #   fx    FX: the source library's own FX types
 #   loop  DRUMLOOPS: full kits / tops (hat and percussion loops, for layering)
 HAT_OPEN_MIN_S = _tunable("HAT_OPEN_MIN_S", 0.35)
-HAT_OPEN_RE = _tunable("HAT_OPEN_RE", _re.compile(r"open|(?<![a-z])o\.?h(?:h)?(?![a-z])|sizzl|washy", _re.I))
-HAT_CLOSED_RE = _tunable("HAT_CLOSED_RE", _re.compile(r"closed|(?<![a-z])c\.?h(?:h)?(?![a-z])|pedal|(?<![a-z])p\.?h(?![a-z])|tight", _re.I))
+# "+OH" is a recording's overhead-mic tag ("Closed Hat +OH 3"), not an open hat; "Clsd"
+# and a foot (pedal) hat are closed.
+HAT_OPEN_RE = _tunable("HAT_OPEN_RE", _re.compile(r"open|(?<![a-z+])o\.?h(?:h)?" + _ABBR_END + r"|sizzl|washy", _re.I))
+HAT_CLOSED_RE = _tunable("HAT_CLOSED_RE", _re.compile(
+    r"closed|clsd|(?<![a-z])c\.?h(?:h)?" + _ABBR_END + r"|pedal|(?<![a-z])p\.?h" + _ABBR_END
+    + r"|(?<![a-z])foot(?![a-z])|tight", _re.I))
 FX_BANDS = _tunable("FX_BANDS", [("Explosions & Shots", "impact"), ("Whooshes & Whips", "whoosh"),
             ("Sweeps & Lasers", "sweep"), ("Noise & Distortion", "noise"),
             ("Nature & Athmospheric", "ambience"), ("Cracks & Rustle", "foley")])
@@ -553,7 +564,7 @@ CATEGORIES = _tunable("CATEGORIES", _tax.with_taxonomy({   # kind and labels: co
                    # scratches (SCRATCHES folded in) are named files only
                    band_share=FX_BAND_SHARE,
                    # drum hits that leak in from the FX classifiers (a clap, a ride, an open hat)
-                   noise=r"clap|snare|(?<![a-z])ride(?![a-z])|hi-?hat|(?<![a-z])(oh|ch|hh|bd|sd)(?![a-z])"
+                   noise=r"clap|snare|(?<![a-z])ride(?![a-z])|hi-?hat|(?<![a-z])(oh|ch|hh|bd|sd)" + _ABBR_END +
                          r"|kick ?drum|(?<![a-z])kick(?![a-z])"),
                    # (an added category may carve its sounds out of FX: exclude_phrases,
                    # exclude_anti, exclude_min; taxonomy.Taxonomy.with_taxonomy)
@@ -969,10 +980,13 @@ LOOP_DIR_ONESHOT_CATS = _tunable("LOOP_DIR_ONESHOT_CATS", {"SUB", "SYNTH", "PADS
 # only: the chroma test for "chord" also fired on cymbals and toms. A bare key ("Bass Fm")
 # labels a single note, so it doesn't count; vocal chords stay in VOX and keys chords in
 # PIANO. Short and single-hit as for keys (curate._is_stab: <= KEYS_CHORD_MAX_DUR s).
+# A quality glued to a number and more letters, or a "sus" to another number, is part of a
+# random ID token ("..._C1-M93Q" reads no m9, "..._C4-SUS7" no sus): _ABBR_END.
 STAB_CHORD_NAME_RE = _tunable("STAB_CHORD_NAME_RE", _re.compile(
     r"(?<![a-z])chords?(?![a-z])"
-    r"|(?<![a-z])(?:maj7|maj9|min7|min9|m7|m9|7th|sus[24]?|dim7?|aug|add9)(?![a-z])"
-    r"|(?-i:(?<![A-Za-z])[A-G](?:#|b)?(?:maj7|maj9|m7|m9|min7|dim|aug|sus[24]?|add9)(?![A-Za-z]))", _re.I))
+    r"|(?<![a-z])(?:maj7|maj9|min7|min9|m7|m9|7th|sus(?:[24]|(?!\d))|dim7?|aug|add9)" + _ABBR_END
+    + r"|(?-i:(?<![A-Za-z])[A-G](?:#|b)?(?:maj7|maj9|m7|m9|min7|dim|aug|sus(?:[24]|(?!\d))|add9)"
+    r"(?![A-Za-z])(?!\d+[A-Za-z]))", _re.I))
 STAB_CHORD_FROM = _tunable("STAB_CHORD_FROM", {"SYNTH", "SUB", "FX", "BLIPS", "PADS", "PERC"})   # PERC: a chord in a percussion folder is still a chord
 # STABS holds only named stabs: a chord (above) or a file its maker calls a
 # stab or a hit of a tonal source ("Synth Stab 1", "Brass Stab 02", "Orchestra
@@ -985,7 +999,8 @@ STAB_NAME_RE = _tunable("STAB_NAME_RE", _re.compile(
     r"(?<![a-z])(?:stabs?|stb)(?![a-z])|orch(?:estra(?:l)?)?[ _-]?hits?|orchhit"
     r"|(?<![a-z])(?:brass|string|horn|organ|choir|synth|chord|rave)[ _-]?hits?(?![a-z])|hoover", _re.I))
 STAB_NAME_EXCLUDE = _tunable("STAB_NAME_EXCLUDE", _re.compile(
-    r"kick|snare|percussion|(?<![a-z])(?:hh|hats?|toms?|percs?|claps?|cymbals?|rims?|zaps?|bd|sd|cy)(?![a-z])", _re.I))
+    r"kick|snare|percussion|(?<![a-z])(?:hats?|toms?|percs?|claps?|cymbals?|rims?|zaps?)(?![a-z])"
+    r"|(?<![a-z])(?:hh|bd|sd|cy)" + _ABBR_END, _re.I))
 STAB_MOVE_EXCLUDE = _tunable("STAB_MOVE_EXCLUDE", _re.compile(r"bass|(?<![a-z])(?:vox|vocals?|voices?)(?![a-z])", _re.I))
 
 # --- scratches ---
@@ -1014,17 +1029,19 @@ SCRATCH_FROM = _tunable("SCRATCH_FROM", {"KICKS", "SNARES", "CLAPS", "HATS", "CY
 # kicks "Bass" before the machine name ("Bass SDS 800") is a kick.
 # CamelCase drum words count ("LowKick_1", "hiCymb_1"), an abbreviated cymbal counts
 # ("Cymb 01"), and "RS" opening a name is a rimshot ("RS 01", as drum machines abbreviate it).
-# Rims live in SNARES.
+# Rims live in SNARES. An abbreviation glued to a number and more letters is a pack's prefix
+# (_ABBR_END: "XX4d-Qzv_05" names no hat), and "+OH" is an overhead mic, not an open hat.
 DRUM_NAME_RULES = _tunable("DRUM_NAME_RULES", [
-    (_re.compile(r"(?<![a-z])(?:kicks?|kiks?|bds?|bass ?drums?)(?![a-z])|(?<![a-z])bass(?= ?sds ?800)"
-                 r"|(?-i:(?<=[a-z])Kick)", _re.I), "KICKS"),
-    (_re.compile(r"(?<![a-z])(?:snares?|snrs?|sd|rims?|rimshots?|sidesticks?|side ?stick)(?![a-z])|^rs(?= )"
-                 r"|(?-i:(?<=[a-z])Snare)", _re.I), "SNARES"),
+    (_re.compile(r"(?<![a-z])(?:kicks?|kiks?|bass ?drums?)(?![a-z])|(?<![a-z])bds?" + _ABBR_END
+                 + r"|(?<![a-z])bass(?= ?sds ?800)|(?-i:(?<=[a-z])Kick)", _re.I), "KICKS"),
+    (_re.compile(r"(?<![a-z])(?:snares?|rims?|rimshots?|sidesticks?|side ?stick)(?![a-z])"
+                 r"|(?<![a-z])(?:snrs?|sd)" + _ABBR_END + r"|^rs(?= )|(?-i:(?<=[a-z])Snare)", _re.I), "SNARES"),
     (_re.compile(r"(?<![a-z])(?:clap|claps|handclap|snaps?|finger ?snaps?)(?![a-z])", _re.I), "CLAPS"),
-    (_re.compile(r"hi-?hats?|hihats?|(?<![a-z])(?:hh|oh|ch|hat|hats|shakers?|tambourines?)(?![a-z])", _re.I), "HATS"),
+    (_re.compile(r"hi-?hats?|hihats?|(?<![a-z])(?:hat|hats|shakers?|tambourines?)(?![a-z])"
+                 r"|(?<![a-z])(?:hh|ch)" + _ABBR_END + r"|(?<![a-z+])oh" + _ABBR_END, _re.I), "HATS"),
     (_re.compile(r"(?<![A-Za-z])(?:Tom|tom|Toms|toms)(?![a-z])"), "TOMS"),
-    (_re.compile(r"cymbal|(?<![a-z])(?:crash|ride|cy|cymbs?|splash|china)(?![a-z])|(?-i:(?<=[a-z])Cymb)",
-                 _re.I), "CYMBALS"),
+    (_re.compile(r"cymbal|(?<![a-z])(?:crash|ride|splash|china)(?![a-z])|(?<![a-z])(?:cy|cymbs?)" + _ABBR_END
+                 + r"|(?-i:(?<=[a-z])Cymb)", _re.I), "CYMBALS"),
     (_re.compile(r"(?<![a-z])(?:conga|bongo|cowbell|clave|woodblock|timbale|agogo)s?(?![a-z])", _re.I),
      "PERC"),
     (_re.compile(r"(?<![a-z])zaps?(?![a-z])", _re.I), "BLIPS"),

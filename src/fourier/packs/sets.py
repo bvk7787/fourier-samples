@@ -262,7 +262,9 @@ ROLE_NAME = _tunable("ROLE_NAME", {
     "snare": (_W(r"snare|(?<![a-z])sd(?![a-z])|(?<![a-z])sn"), _W(r"rim|(?<![a-z])rs(?![a-z])|stick|perc")),
     "clap": (_W(r"clap|(?<![a-z])cp(?![a-z])|handclap"), None),
     "hat_closed": (_W(r"hat|(?<![a-z])(hh|ch|chh)(?![a-z])|closed"), _W(r"tamb|shak|marac|cabasa|open|(?<![a-z])oh")),
-    "hat_open": (_W(r"hat|(?<![a-z])(oh|ohh)(?![a-z])|open"), _W(r"tamb|shak|marac|cabasa")),
+    # (an open-hat band from a long tail or a mic tag: a hat its name calls closed isn't the open hat)
+    "hat_open": (_W(r"hat|(?<![a-z])(oh|ohh)(?![a-z])|open"),
+                 _W(r"tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])")),
     "cymbal": (_W(r"crash|ride|cym"), _W(r"(?<![a-z])rev|reverse")),
     "tom": (_W(r"tom"), None),
     "perc": (None, _W(r"fx|synth|flute|pad")),
