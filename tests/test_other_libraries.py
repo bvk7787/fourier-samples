@@ -224,7 +224,8 @@ Row = namedtuple("Row", "filename rel_path path duration_s acid_bpm acid_beats")
 
 
 @pytest.mark.parametrize("row, want", [
-    (Row("Beat bpm120.wav", "A/Beat bpm120.wav", "/l/A/Beat bpm120.wav", 3.3, None, None), (120.0, "name")),
+    (Row("Beat bpm120.wav", "A/Beat bpm120.wav", "/l/A/Beat bpm120.wav", 3.5, None, None), (120.0, "name")),
+    (Row("Beat bpm125.wav", "A/Beat bpm125.wav", "/l/A/Beat bpm125.wav", 3.5, None, None), (None, None)),  # 7.29 beats
     (Row("Groove96.wav", "A/Groove96.wav", "/l/A/Groove96.wav", 10.0, None, None), (96.0, "name")),
     (Row("T120.wav", "A/T120.wav", "/l/A/T120.wav", 7.0, None, None), (None, None)),   # not whole bars
     (Row("Groove 01.wav", "Loops/174/Groove 01.wav", "/l/Loops/174/Groove 01.wav", 4 * 4 * 60 / 174, None, None),

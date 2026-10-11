@@ -346,8 +346,9 @@ def _is_loop(classes, rel, duration_s, n_events, onset_rate_hz) -> bool:
 def _loop_tempos(session, from_sql, ids=None, where_sql="1 = 1", params=None) -> dict:
     """{sample id: (tempo, resolved)} for the loops among `ids` (None: every sample `where_sql`
     matches); a one-shot isn't in it. The tempo is the one a build resolves
-    (curate._resolve_tempo: a tempo the filename states; else Sononym's, else the measured one,
-    each also at x2 and x0.5, whichever makes the loop whole bars), so a 120 BPM loop the
+    (curate._resolve_tempo: a tempo the filename states that the length agrees with; else
+    Sononym's, else the measured one, each also at x2 and x0.5, whichever makes the loop
+    whole bars), so a 120 BPM loop the
     analysis reads at 60 shows 120. A loop no tempo fits keeps its measured one, unresolved
     (None when it has none)."""
     from sqlalchemy import text as sql_text

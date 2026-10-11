@@ -599,6 +599,21 @@ def check_routing(ctx):
             and (c, f["family"]) in unpinned]
     yield Result(FAIL if free else PASS, "loops without a whole-bar tempo are left out where required",
                  _fmt(free))
+    # the bar math, the build's own tests on each loop's length: whole beats at its tempo
+    # (C._whole_beats; a tempo the name states within C.NAME_TEMPO_TOL_MS, its silent ends
+    # aside, _name_tempo_fits) and at its folder tempo (_fold_keeps_beats); a tempo the WAV's
+    # ACID chunk states is as stated
+    offb = []
+    for c, e in ctx.entries:
+        d, bpm = durs.get((c, e["out"])), e.get("bpm")
+        if c not in loopish or ctx.pinned(c, e) or not d or not bpm or e.get("bpm_src") == "acid":
+            continue
+        ok = (C._name_tempo_fits(d, bpm, True, str(ctx.path(c, e))) if e.get("bpm_src") == "name"
+              else C._whole_beats(d, bpm))
+        if not ok or not C._fold_keeps_beats(d, bpm, e.get("bpm_fold") or bpm):
+            n, off = C._beats_off(d, bpm)
+            offb.append((c, e["out"], f"{n}{'+' if d * bpm / 60.0 > n else '-'}{off:.2f} beats at {bpm:g}"))
+    yield Result(FAIL if offb else PASS, "loops are whole beats at their tempo", _fmt(offb))
     lf = [(c, e["out"]) for c, e in ctx.entries if c in LOOP_DIR_ONESHOT_CATS and not ctx.pinned(c, e)
           and (durs.get((c, e["out"])) or 0) > LOOP_DIR_ONESHOT_MAX_S + 0.05
           and C._in_loop_folder(_rel(e["src"])) and ctx.misf.get(e["src"]) != "PHRASES"]

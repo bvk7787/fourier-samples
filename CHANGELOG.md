@@ -50,6 +50,19 @@ change the CLI or the config).
   note per set and C across the category's folders, the smallest shift first), so a folder no
   longer holds several copies of one chord at C3. A tonal folder's note (`c3-`, `mallet-c4-`)
   is the median of the notes its files play after the retune, judged on the files it holds.
+- A tempo written in a loop's name is taken only when the loop's length agrees: a whole number
+  of beats within 10 ms (`NAME_TEMPO_TOL_MS`), measured from its first sound and with a pad of
+  digital silence at its end left out (`LOOP_QUIET_DB`, `LOOP_PAD_DBFS`), else snapped to
+  whole bars within 3% (a "96bpm" break cut 1% long is filed at 95.07), else the rest of the
+  chain decides. Before, any
+  "Nbpm" was taken as written, so a loop named 100 BPM that is 16 beats at 110, or a take
+  number read as 72 BPM on a 128 BPM loop, was filed, banded and sliced at the wrong tempo
+  (63 of 2,500 drum loops and phrases in one library). Tempo folding no longer halves an odd
+  beat count, rotation skips a loop that isn't whole beats at its tempo, and verify checks
+  each drum loop's and phrase's bar math.
+- `phrases.csv` reads a bare note letter after the name's tempo as its key ("XX_124_E_Lead")
+  and "C Major" as well as "Cmaj", and never borrows a key from neighbouring files when the
+  file's own name holds a note letter (14 of 15 borrowed keys in one library contradicted it).
 - PIANO and ACOUSTIC no longer keep two copies of one recording that reach the library under
   two names (a pack shipped twice, renamed): the near-duplicate prune those categories skip, so
   a multisample's notes stay, now drops copies above a CLAP cosine of 0.999

@@ -56,7 +56,7 @@ def test_the_root_and_a_one_shots_tempo_are_what_curation_chose(fallback):
 def test_a_loops_tempo_is_curations_chain_with_its_source():
     from fourier.packs import curate as C
     cases = [
-        (_row(filename="Break 174bpm.wav"), False, (174.0, "name", R.NAME)),
+        (_row(filename="Break 174bpm.wav", duration_s=16 * 60 / 174), False, (174.0, "name", R.NAME)),
         (_row(bpm=87.0, duration_s=11.034), False, None),           # Sononym's, doubled to whole bars
         (_row(tempo_bpm=120.0, duration_s=8.0), False, (120.0, "librosa", R.AUDIO)),
         (_row(bpm=120.0, duration_s=8.0), True, (120.0, "sononym", R.NAME)),   # the path's, without Sononym

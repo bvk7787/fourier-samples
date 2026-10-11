@@ -370,10 +370,12 @@ def test_sibling_key_spans_pack_twin_folders():
 
 def test_filename_tempo_wins():
     from fourier.packs.curate import _resolve_tempo
-    # explicit bpm: as written, never snapped to the length (a reverb tail)
-    assert _resolve_tempo("Shuffle Drum Loop 92 bpm.wav", 10.66, 90.0, None) == (92.0, "name")
-    # explicit bpm even when the length doesn't fit bars
-    assert _resolve_tempo("Piano Chords Emin 155 bpm.wav", 7.0, 99.0, None) == (155.0, "name")
+    # explicit bpm: as written when the loop is whole beats at it (16 at 92)
+    assert _resolve_tempo("Shuffle Drum Loop 92 bpm.wav", 16 * 60 / 92, 90.0, None) == (92.0, "name")
+    # ...snapped to the length when it is then whole bars within 3% (16 beats at 90.06)
+    assert _resolve_tempo("Shuffle Drum Loop 92 bpm.wav", 10.66, 90.0, None) == (90.06, "name")
+    # explicit bpm at whole beats that aren't whole bars (18 beats: six bars of 3/4)
+    assert _resolve_tempo("Piano Chords Emin 155 bpm.wav", 18 * 60 / 155, 99.0, None) == (155.0, "name")
     # a bare number counts when it gives whole bars, any count (6 bars at 120 = 12 s)
     assert _resolve_tempo("Seq_120_6x4_Loop.wav", 12.0, None, 160.0) == (120.0, "name")
     # a bare number that doesn't fit is a take number: detection decides
