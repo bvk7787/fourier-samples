@@ -17,6 +17,11 @@ A profile's files_per_folder (folder_limit) sends new files past a full folder i
 numbered siblings ("punchy-2", "punchy-3"), counting the files the render holds there
 (locked paths kept, new ones placed so far; retired files don't count); locked paths stay
 where they are, so a release's paths never move.
+A key names the source by its absolute path, so a library that moved (another mount, a renamed
+library, vendor or pack folder) would find none of its keys. A source the lock doesn't know
+takes over the entry of a locked source gone from the master when they are the same master
+file (same master path, same audio) or the same library path (vendor/pack/...), one to one,
+and recording the render re-keys that entry to the new source (_follow_moves).
 """
 from __future__ import annotations
 
@@ -162,6 +167,11 @@ class Assignment:
     changed: list[str]             # kept keys whose master audio differs from the locked md5
     retired: list[str]             # locked keys absent from this master (paths stay reserved)
     shortened: tuple = (0, 0)      # (family folders, file names) a render cut to fit its path limit
+    rekeyed: dict[str, str] = field(default_factory=dict)  # kept key -> the lock key it took over
+
+    def locked_key(self, key: str) -> str:
+        """The lock's key for a kept key (another one when its source moved)."""
+        return self.rekeyed.get(key, key)
 
 
 def _folder_with_room(rel: str, held: dict[str, int], limit: int, name_len: int | None = None) -> str:
@@ -181,6 +191,55 @@ def _folder_with_room(rel: str, held: dict[str, int], limit: int, name_len: int 
     return f"{folder}/{name}"
 
 
+def _src(key: str) -> str | None:
+    return key.split("|", 1)[1] if "|" in key and not key.startswith("master:") else None
+
+
+def _same_library_path(old_src: str, rel: str) -> bool:
+    """Whether a locked source sits at `rel` (vendor/pack/...) under a library folder: the one
+    it is in now when it's under a configured one, else any (a library that moved)."""
+    from ..places import library_rel
+    now = library_rel(old_src)
+    return now == rel if now != old_src else old_src.endswith("/" + rel)
+
+
+def _follow_moves(files: list[MasterFile], locked: dict, unmatched: list[str]) -> dict[str, str]:
+    """{new key: lock key} for sources the lock doesn't know that are a locked source gone from
+    the master, moved: the same master file (master path and audio, as builddiff's library
+    moves), else the same category and library path; each one to one, else left new."""
+    from ..places import library_rel
+    out: dict[str, str] = {}
+    left = [f for f in sorted(files, key=lambda f: f.master) if f.key not in locked]
+    by_file: dict[tuple, list[str]] = {}
+    for k in unmatched:
+        e = locked[k]
+        if e.get("master") and e.get("md5"):
+            by_file.setdefault((e["master"], e["md5"]), []).append(k)
+    for f in left:
+        olds = by_file.get((f.master, f.md5))
+        if f.key not in out and olds and len(olds) == 1:
+            out[f.key] = olds.pop()
+    taken = set(out.values())
+    by_name: dict[tuple, list[str]] = {}
+    for k in unmatched:
+        src = _src(k)
+        if src and k not in taken:
+            by_name.setdefault((k.split("|", 1)[0], src.rsplit("/", 1)[-1]), []).append(k)
+    for f in left:
+        src = _src(f.key)
+        if not src or f.key in out:
+            continue
+        rel = library_rel(src)
+        if rel == src or "/" not in rel:      # outside the library, or no folder to tell it by
+            continue
+        olds = [k for k in by_name.get((f.category, rel.rsplit("/", 1)[-1]), ())
+                if k not in taken and _same_library_path(_src(k) or "", rel)]
+        if len(olds) == 1:
+            out[f.key] = olds[0]
+            taken.add(olds[0])
+    return out
+
+
 def assign(files: list[MasterFile], lock: Lock | None, fresh_name, limit_len: int | None = None,
            prefix_len: int = 0, name_len: int | None = None,
            folder_limit: int | None = None) -> Assignment:
@@ -189,19 +248,23 @@ def assign(files: list[MasterFile], lock: Lock | None, fresh_name, limit_len: in
     new file goes to the first of its folder and its numbered siblings with room."""
     locked = lock.files if lock else {}
     taken = lock.taken() if lock else set()
+    present = {f.key for f in files}
+    rekeyed = _follow_moves(files, locked, [k for k in locked if k not in present]) if locked else {}
     paths, new, kept, changed = {}, [], [], []
     for f in files:
-        if f.key in locked:
-            paths[f.key] = locked[f.key]["path"]
+        k = rekeyed.get(f.key, f.key)
+        if k in locked:
+            paths[f.key] = locked[k]["path"]
             kept.append(f.key)
-            if f.md5 and locked[f.key].get("md5") and f.md5 != locked[f.key]["md5"]:
+            if f.md5 and locked[k].get("md5") and f.md5 != locked[k]["md5"]:
                 changed.append(f.key)
     held: dict[str, int] = {}
     if folder_limit:
         for k in set(kept):
             d = paths[k].rsplit("/", 1)[0].lower() if "/" in paths[k] else ""
             held[d] = held.get(d, 0) + 1
-    for f in sorted((f for f in files if f.key not in locked), key=lambda f: f.master):
+    for f in sorted((f for f in files if f.key not in locked and f.key not in rekeyed),
+                    key=lambda f: f.master):
         if f.key in paths:  # same source twice in one master: first wins
             continue
         rel = fresh_name(f)
@@ -214,22 +277,26 @@ def assign(files: list[MasterFile], lock: Lock | None, fresh_name, limit_len: in
         taken.add(rel.lower())
         paths[f.key] = rel
         new.append(f.key)
-    present = {f.key for f in files}
-    retired = sorted(k for k in locked if k not in present)
-    return Assignment(paths, new, kept, changed, retired)
+    moved = set(rekeyed.values())
+    retired = sorted(k for k in locked if k not in present and k not in moved)
+    return Assignment(paths, new, kept, changed, retired, rekeyed=rekeyed)
 
 
 def record(lock: Lock | None, device_id: str, card_dir: str, files: list[MasterFile],
            a: Assignment, release: str | None, written: set[str] | None = None,
            root: str = "", fmt: dict | None = None) -> Lock:
-    """Add this render's new assignments to the lock (existing entries are never rewritten).
-    Only keys in `written` (files actually in the image) are locked when given."""
+    """Add this render's new assignments to the lock (existing entries are never rewritten; a
+    moved source's entry moves to its new key as it was). Only keys in `written` (files
+    actually in the image) are locked when given."""
     lock = lock or Lock(device=device_id, card_dir=norm_card_dir(card_dir), root=root,
                         fmt=dict(fmt or {}))
     if not lock.fmt and fmt:
         lock.fmt = dict(fmt)
     now = time.strftime("%Y-%m-%d")
     by_key = {f.key: f for f in files}
+    for k, old in a.rekeyed.items():
+        if old in lock.files and k not in lock.files:
+            lock.files[k] = lock.files.pop(old)
     for k in a.new:
         if written is not None and k not in written:
             continue

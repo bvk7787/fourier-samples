@@ -21,14 +21,14 @@ def _device(card_dir="/Samples/Fourier", max_path_length=127):
 def _master(root: Path, files: dict[str, tuple[str, float]]):
     """files: {"CAT/family/name.wav": (src_path, freq)}; writes wavs + manifest.json."""
     cats: dict[str, list] = {}
-    for rel, (src, freq) in files.items():
+    for rel, (src, freq, *md5) in files.items():       # an optional third item: the out_md5
         p = root / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         t = np.arange(4410) / 44100
         sf.write(str(p), (0.3 * np.sin(2 * np.pi * freq * t)).astype("float32"), 44100)
         cat, fam, name = rel.split("/")
         cats.setdefault(cat, []).append(dict(family=fam, out=f"{fam}/{name}", src=src,
-                                             out_md5=f"md5-{src}-{freq}"))
+                                             out_md5=md5[0] if md5 else f"md5-{src}-{freq}"))
     (root / "manifest.json").write_text(json.dumps(
         {"categories": {c: {"entries": e} for c, e in cats.items()}}))
     return root
@@ -164,3 +164,114 @@ def test_lock_pins_the_audio_format(tmp_path, monkeypatch):
     assert not R.device_plan(v1, dev, lock, log=lambda m: None)["safe"]
     with pytest.raises(RuntimeError, match="audio format"):
         R.render_master_to_device(v1, dev, tmp_path / "r2", log=lambda m: None, lock=lock)
+
+
+# A library that moved: the lock's keys name each source by its absolute path
+OLD_LIB = "/Users/q/Music/SampleLibrary"          # conftest: FOURIER_LIBRARY=SampleLibrary
+
+
+def _moved(files: dict, old: str, new: str) -> dict:
+    return {rel: (src.replace(old, new, 1), *rest) for rel, (src, *rest) in files.items()}
+
+
+def test_library_root_change_keeps_every_locked_path(tmp_path, monkeypatch):
+    rel_root = tmp_path / "releases"
+    monkeypatch.setattr(releases, "RELEASES_ROOT", str(rel_root))
+    lock_dir, dev = tmp_path / "locks", _device()
+    files = {f"KICKS/dark/BD_{i:02d}.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit/Qk {i}.wav", 50 + i, f"m{i}")
+             for i in range(1, 6)}
+    files["BASS/sub/Sub_A.wav"] = (f"{OLD_LIB}/Northwind/QX4d/Qb A.wav", 40, "ms")
+    R.render_master_to_device(_master(rel_root / "v1", files), dev, tmp_path / "r1",
+                              log=lambda m: None, release="v1", write_lock=True, lock_dir=lock_dir)
+    lock = L.load_lock("m8_test", lock_dir)
+    before = {e["path"] for e in lock.files.values()}
+
+    # the same library, now on another volume: every source path changed, nothing else did
+    v2 = _master(rel_root / "v2", _moved(files, "/Users/q/Music", "/Volumes/Qzv"))
+    plan = R.device_plan(v2, dev, lock, log=lambda m: None)
+    assert plan["safe"] and plan["kept"] == 6 and plan["new"] == plan["retired"] == 0
+    r2 = R.render_master_to_device(v2, dev, tmp_path / "r2", log=lambda m: None, lock=lock,
+                                   release="v2", write_lock=True, lock_dir=lock_dir)
+    assert r2["kept"] == 6 and r2["new"] == 0 and r2["files"] == 6
+    assert not [p for p in (tmp_path / "r2").rglob("*_2.wav")]
+    lock = L.load_lock("m8_test", lock_dir)       # re-keyed to the new sources, paths as they were
+    assert {e["path"] for e in lock.files.values()} == before
+    assert all(k.split("|", 1)[1].startswith("/Volumes/Qzv/SampleLibrary/") for k in lock.files)
+    assert {e["release"] for e in lock.files.values()} == {"v1"}
+    a = L.assign(L.master_files(v2), lock, _fresh)
+    assert len(a.kept) == 6 and not a.rekeyed and not a.new and not a.retired
+
+
+def _lock_of(files: dict) -> L.Lock:
+    return L.Lock("d", "", files={f"{m.split('/')[0]}|{src}": dict(path=f"01_{m}", master=m, md5=md5)
+                                  for m, (src, md5) in files.items()})
+
+
+def _files(files: dict) -> list:
+    return [_mf(f"{m.split('/')[0]}|{src}", m, md5) for m, (src, md5) in files.items()]
+
+
+def test_renamed_pack_folder_keeps_its_paths_and_new_files_get_new_ones():
+    lock = _lock_of({"KICKS/dark/BD_1.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit/Qk 1.wav", "a"),
+                     "SNARES/dry/SD_1.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit/Qs 1.wav", "b")})
+    now = {"KICKS/dark/BD_1.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit Zq/Qk 1.wav", "a"),     # pack renamed
+           "SNARES/dry/SD_1.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit Zq/Qs 1.wav", "b"),
+           "KICKS/dark/BD_2.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit Zq/Qk 2.wav", "c")}     # new file
+    a = L.assign(_files(now), lock, _fresh)
+    assert len(a.kept) == 2 and not a.retired and not a.changed
+    assert a.paths[f"KICKS|{OLD_LIB}/Acme/Qxvwz Kit Zq/Qk 1.wav"] == "01_KICKS/dark/BD_1.wav"
+    assert a.new == [f"KICKS|{OLD_LIB}/Acme/Qxvwz Kit Zq/Qk 2.wav"]
+    assert a.paths[a.new[0]] == "KICKS/dark/BD_2.wav"
+    rec = L.record(lock, "d", "", _files(now), a, "v2")
+    assert sorted(e["path"] for e in rec.files.values()) == [
+        "01_KICKS/dark/BD_1.wav", "01_SNARES/dry/SD_1.wav", "KICKS/dark/BD_2.wav"]
+    assert all("Qxvwz Kit Zq/" in k for k in rec.files)
+
+
+def test_renamed_library_folder_follows_the_library_path(monkeypatch):
+    """The library folder itself renamed (and fourier.toml with it), the audio re-processed:
+    the same vendor/pack/file keeps its path, flagged changed, as when nothing moved."""
+    monkeypatch.setenv("FOURIER_LIBRARY", "/Volumes/Qzv/Samples")
+    lock = _lock_of({"KICKS/dark/BD_1.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit/Qk 1.wav", "a"),
+                     "KICKS/dark/BD_9.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit/Qk 9.wav", "z")})
+    now = {"KICKS/punchy/BD_1.wav": ("/Volumes/Qzv/Samples/Acme/Qxvwz Kit/Qk 1.wav", "a2")}
+    a = L.assign(_files(now), lock, _fresh)
+    k = "KICKS|/Volumes/Qzv/Samples/Acme/Qxvwz Kit/Qk 1.wav"
+    assert a.kept == [k] and a.changed == [k] and a.paths[k] == "01_KICKS/dark/BD_1.wav"
+    assert a.locked_key(k) == f"KICKS|{OLD_LIB}/Acme/Qxvwz Kit/Qk 1.wav"
+    assert a.retired == [f"KICKS|{OLD_LIB}/Acme/Qxvwz Kit/Qk 9.wav"]
+
+
+def test_changed_audio_under_a_renamed_pack_is_a_new_file_as_before():
+    lock = _lock_of({"KICKS/dark/BD_1.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit/Qk 1.wav", "a")})
+    a = L.assign(_files({"KICKS/dark/BD_1.wav": (f"{OLD_LIB}/Acme/Vqx/Qk 1.wav", "a2")}), lock, _fresh)
+    assert not a.kept and len(a.new) == 1 and len(a.retired) == 1 and not a.rekeyed
+    # unmoved, the same source with new audio keeps its path and is flagged changed
+    a = L.assign(_files({"KICKS/dark/BD_1.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit/Qk 1.wav", "a2")}),
+                 lock, _fresh)
+    assert len(a.kept) == 1 and len(a.changed) == 1 and not a.rekeyed
+
+
+def test_a_library_path_two_locked_sources_share_is_not_guessed():
+    lock = _lock_of({"KICKS/dark/BD_1.wav": ("/Volumes/Qa/SampleLibrary/Acme/Kit/Qk 1.wav", "a"),
+                     "KICKS/deep/BD_1.wav": ("/Volumes/Qb/SampleLibrary/Acme/Kit/Qk 1.wav", "b")})
+    a = L.assign(_files({"KICKS/dark/BD_1x.wav": ("/Volumes/Qc/SampleLibrary/Acme/Kit/Qk 1.wav", "c")}),
+                 lock, _fresh)
+    assert not a.kept and len(a.new) == 1 and len(a.retired) == 2
+
+
+def test_plan_is_unsafe_when_a_new_file_repeats_locked_audio(tmp_path, monkeypatch):
+    """A source the lock can't follow (pack renamed and re-homed to another family at once)
+    would go on the card twice: render --dry-run says so instead of SAFE."""
+    rel_root = tmp_path / "releases"
+    monkeypatch.setattr(releases, "RELEASES_ROOT", str(rel_root))
+    v1 = _master(rel_root / "v1", {"KICKS/dark/BD_01.wav": (f"{OLD_LIB}/Acme/Qxvwz Kit/Qk 1.wav", 60, "m1")})
+    R.render_master_to_device(v1, _device(), tmp_path / "r1", log=lambda m: None, release="v1",
+                              write_lock=True, lock_dir=tmp_path / "locks")
+    lock = L.load_lock("m8_test", tmp_path / "locks")
+    work = _master(tmp_path / "master",
+                   {"KICKS/punchy/BD_01.wav": (f"{OLD_LIB}/Acme/Vqx/Qk 1.wav", 60, "m1")})
+    out: list[str] = []
+    plan = R.device_plan(work, _device(), lock, log=out.append)
+    assert not plan["safe"] and plan["duplicates"] == 1 and plan["at_risk"] == 0
+    assert any("DUPLICATE" in m for m in out)
