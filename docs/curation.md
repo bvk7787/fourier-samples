@@ -543,7 +543,7 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
 | Instrument packs (PIANO, ACOUSTIC) | each vendor/pack <= 20% (`INSTRUMENT_PACK_MAX_SHARE`) |
 | Multisample libraries (other kinds) | `INSTRUMENT_PACKS` <= 20 files each (`INSTRUMENT_CAP`) |
 | Vendor (other kinds) | a vendor <= 40% (`VENDOR_MAX_SHARE`); see [Vendor cap](#vendor-cap) |
-| Near-duplicates | CLAP cosine > 0.985 (`NEAR_DUP_COS`) pruned, better quality kept (WAVES off; PIANO and ACOUSTIC only above 0.999, `INSTRUMENT_COPY_COS`); see [Near-duplicate prune](#near-duplicate-prune) |
+| Near-duplicates | CLAP cosine > 0.985 (`NEAR_DUP_COS`) pruned, better quality kept (WAVES off; PIANO and ACOUSTIC only copies: above 0.95, `INSTRUMENT_COPY_COS`, and the audio agrees); see [Near-duplicate prune](#near-duplicate-prune) |
 | Routed rows | rows homed in from outside the classifier's bucket <= 35% (`ROUTED_MAX_SHARE`; stab-, scratch- and drum-named exempt) |
 
 #### Vendor cap
@@ -568,12 +568,14 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
   2 BPM) aren't duplicates: the same groove at another tempo.
 - Never below the category's folder minimum: the least similar of the pruned come back. An
   additive build (`--base`) caps and prunes as before: no vendor count, no minimum.
-- The instrument categories (PIANO, ACOUSTIC) prune only copies, above 0.999
-  (`INSTRUMENT_COPY_COS`): a multisample's notes sit above 0.985, but one recording shipped in
-  two packs under two names sits at 0.9996 or more. Each such pair is also compared as audio
-  (`COPY_XCORR`, as for one recording in two categories below), so two chords of one pack that
-  CLAP can't tell apart both stay; a source that can't be read is taken at CLAP's word. A copy
-  never comes back to fill a minimum.
+- The instrument categories (PIANO, ACOUSTIC) prune only copies: one recording that reaches
+  the library under two names (a pack shipped twice, or as mono and stereo, 44.1 and 48 kHz,
+  16 and 24 bit editions). CLAP can't say which pairs those are: a multisample's notes sit
+  above 0.985, and one recording's editions anywhere from 0.966 to 1.0. So CLAP over 0.95
+  (`INSTRUMENT_COPY_COS`) is only a prefilter, and each such pair is compared as audio
+  (`COPY_XCORR`, as for one recording in two categories below): two notes, two velocity layers
+  or round robins that are separate takes, and two chords of one pack all stay. A source that
+  can't be read stays too. A copy never comes back to fill a minimum.
 - `fourier why` names the kept file each pruned one repeats and where the master holds it.
 
 Pins removed by a cap are restored. A category whose pool still ends under its folder minimum
@@ -664,13 +666,20 @@ the earlier category in play order.
 
 **One recording under two names** (`_cross_copies`): a pack shipped twice, renamed, can put one
 recording in two categories as two sources. After every category has picked, picks in different
-categories with a CLAP cosine of at least 0.9996 (`CROSS_COPY_COS`) are compared as audio: the
-sources' normalized cross-correlation at the best lag, over their first 10 s (`COPY_SECONDS`), at
-the lower of their rates. At 0.99 or more (`COPY_XCORR`) they're one recording, and one copy
-stays: a Keep's, else the one whose own name gives it its category (`_named_home`, the rules
-_dup_winner follows), else the earlier category in play order. CLAP alone isn't enough: two chords of one pack, an Em and a Cm, sat at
-0.9997 and cross-correlate at 0.1; real copies sit at 1.0. The sources are compared, never the
-exports, which a retune or trim changes. `fourier why` names the copy that stayed and where.
+categories with a CLAP cosine of at least 0.88 (`CROSS_COPY_COS`, a loose prefilter: one
+recording's editions sit as low as 0.966) are compared as audio: the sources' normalized
+cross-correlation at the best lag, over their first 10 s (`COPY_SECONDS`), at the lower of
+their rates, as mono mixes, and a mono edition also against each side of a stereo one (a mono
+edition can be one side rather than the sum). At 0.99 or more (`COPY_XCORR`) they're one
+recording, and one copy stays: a Keep's, else the one whose own name gives it its category
+(`_named_home`, the rules _dup_winner follows), else the earlier category in play order. CLAP
+alone isn't enough either way: two chords of one pack, an Em and a Cm, sat at 0.9997 and
+cross-correlate at 0.1, while one chord's mono and stereo editions sat at 0.966; real copies
+cross-correlate at 1.0, two notes of a multisample or two takes of one note well under 0.99.
+The sources are compared, never the exports, which a retune or trim changes. `fourier why`
+names the copy that stayed and where, and `fourier verify` checks the master for any left the
+same way. On an 11,500-file master that's about 1,300 pairs to compare by audio. (A looser
+prefilter in verify alone would only fail builds on pairs the build never compared.)
 
 ### 3.5 Library scale
 

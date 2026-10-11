@@ -47,10 +47,89 @@ def test_instrument_copy_prune_asks_the_audio(tmp_path):
                                       apart=C._recordings_apart)
     assert pruned == 1 and partners == {1: 0}
     assert [r["id"] for r in kept] == [0, 2]                  # the other chord stays
-    # a source that can't be read stays a copy, as CLAP says
+    # CLAP's prefilter is loose: a source that can't be read stays, as nothing confirms a copy
     rec[2]["path"] = str(tmp_path / "gone.wav")
     kept, pruned = C._prune_near_dups(rec, emb_n, 0.999, apart=C._recordings_apart)
-    assert [r["id"] for r in kept] == [0]
+    assert [r["id"] for r in kept] == [0, 2]
+
+
+def _note(path, f0, seed, sr=44100, secs=2.0, bright=0.5, noise=0.0, subtype="PCM_16", stereo=None):
+    """A decaying harmonic note at f0 (seed picks its partials' phases and its noise), as a
+    multisample's note or velocity layer would be. stereo: (left, right) gains of a second,
+    unrelated voice (seed + 100), for a wide stereo recording."""
+    def voice(sd):
+        rng = np.random.default_rng(sd)
+        t = np.arange(int(sr * secs)) / sr
+        y = sum(bright ** (k - 1) * np.sin(2 * np.pi * k * f0 * t + rng.uniform(0, 6.3)) * np.exp(-(1 + k) * t)
+                for k in range(1, 12))
+        return y + noise * rng.standard_normal(len(t)) * np.exp(-3 * t)
+    y = voice(seed)
+    if stereo:
+        w = voice(seed + 100)
+        y = np.stack([y + stereo[0] * w, y + stereo[1] * w], axis=1)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(path, (0.5 * y / np.max(np.abs(y))).astype("float32"), sr, subtype=subtype)
+    return str(path)
+
+
+def _mono_of(stereo_path, path, side=None, sr=None, subtype="PCM_16", trim=0):
+    """A mono edition of a stereo file: its sum, or one side; at another rate, depth or trim."""
+    from scipy.signal import resample_poly
+    y, s0 = sf.read(stereo_path, dtype="float64")
+    m = y.mean(axis=1) if side is None else y[:, side]
+    if sr and sr != s0:
+        m = resample_poly(m, sr, s0)
+    sf.write(path, m[trim:].astype("float32"), sr or s0, subtype=subtype)
+    return str(path)
+
+
+def test_editions_of_one_recording_are_copies(tmp_path):
+    """One recording shipped as mono and stereo editions, at 44.1 and 48 kHz, in 16 and 24 bit,
+    trimmed: CLAP puts such editions as low as 0.966, the audio at 1.0."""
+    st = _note(tmp_path / "Qxvwz" / "Qzv Vqx.wav", 130.81, 1, sr=48000, subtype="PCM_24",
+               stereo=(0.8, -0.8))                                     # wide: its sides differ
+    summed = _mono_of(st, tmp_path / "s.wav", sr=44100)                # Qxvwz Mono: the sum, 44.1 kHz
+    left = _mono_of(st, tmp_path / "l.wav", side=0, sr=44100, trim=90)  # or the left side only, trimmed
+    assert C._same_recording(st, summed) is True
+    assert C._same_recording(left, st) is True
+    rate = _note(tmp_path / "r48.wav", 130.81, 2, sr=48000, subtype="PCM_24")
+    assert C._same_recording(rate, _note(tmp_path / "r44.wav", 130.81, 2, sr=44100)) is True   # 48/24 vs 44.1/16
+    # a mono file is no edition of a stereo recording it isn't
+    assert C._same_recording(_note(tmp_path / "o.wav", 130.81, 3), st) is False
+
+
+def test_notes_and_takes_of_one_multisample_are_not_copies(tmp_path, monkeypatch):
+    """Two notes of one multisample (another pitch) and two velocity layers that are separate
+    takes of one note pass CLAP's loose prefilter but cross-correlate well under 0.99: other
+    notes under 0.5, takes (even these idealized ones, partials alike but for their phases)
+    under 0.97."""
+    c3 = _note(tmp_path / "Qxvwzqq_C3.wav", 130.81, 1)
+    monkeypatch.setattr(C, "COPY_XCORR", 0.5)
+    for i, f0 in enumerate((138.59, 196.0, 261.63)):                   # C#3, G3, C4
+        assert C._same_recording(c3, _note(tmp_path / f"n{i}.wav", f0, 1)) is False
+    monkeypatch.setattr(C, "COPY_XCORR", 0.97)
+    for seed, bright in ((2, 0.7), (3, 0.35), (4, 0.5)):              # harder, softer, alike
+        take = _note(tmp_path / f"Qxvwzqq_C3_v{seed}.wav", 130.81, seed, bright=bright, noise=0.02)
+        assert C._same_recording(c3, take) is False
+
+
+def test_only_pairs_over_the_prefilter_are_compared():
+    """A pair under the CLAP prefilter (CROSS_COPY_COS) is never compared as audio; one over it
+    is, and the audio decides."""
+    assert 0.85 < C.CROSS_COPY_COS < 0.89
+    asked = []
+    v = np.array([1.0, 0.0], dtype="float32")
+    w = np.array([0.89, np.sqrt(1 - 0.89 ** 2)], dtype="float32")     # CLAP cosine 0.89
+    members = [("STABS", "/l/a.wav"), ("SYNTH", "/l/b.wav")]
+    vecs = {"/l/a.wav": (1, v), "/l/b.wav": (2, w)}
+    real = C._same_recording
+    try:
+        C._same_recording = lambda a, b: asked.append((a, b)) or True
+        assert C._cross_copy_pairs(members, vecs, cos=0.9) == [] and not asked
+        assert C._cross_copy_pairs(members, vecs) == [(0, 1)] and asked
+        assert C._cross_copy_pairs(members, vecs, cos=1.0) == []
+    finally:
+        C._same_recording = real
 
 
 def _master(root, picks):

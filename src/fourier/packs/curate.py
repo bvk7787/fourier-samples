@@ -169,15 +169,17 @@ QUAL_WEIGHT = _tunable("QUAL_WEIGHT", 0.06)        # medoid nudge toward higher 
 FAVOR_WEIGHT = _tunable("FAVOR_WEIGHT", 0.10)       # medoid nudge toward favored sources (curate_config.FAVORED_SOURCES)
 NEAR_DUP_COS = _tunable("NEAR_DUP_COS", 0.985)      # CLAP cosine above which two samples are treated as near-identical
 # the instrument categories (PIANO, ACOUSTIC) skip that prune, since a multisample's notes sit
-# above it; above this they're one recording under two names (a pack shipped twice), and the
-# copy goes. No copy comes back to fill a minimum.
-INSTRUMENT_COPY_COS = _tunable("INSTRUMENT_COPY_COS", 0.999)
+# above it; pairs above this are compared as audio (COPY_XCORR), and one recording under two
+# names (a pack shipped twice) drops its copy. No copy comes back to fill a minimum.
+INSTRUMENT_COPY_COS = _tunable("INSTRUMENT_COPY_COS", 0.95)
 # one recording picked by two categories under two names (a pack shipped twice, renamed):
-# picks this close in CLAP, in different categories, are compared as audio, and one copy stays
-CROSS_COPY_COS = _tunable("CROSS_COPY_COS", 0.9996)
+# picks this close in CLAP, in different categories, are compared as audio, and one copy stays.
+# Both are loose prefilters: CLAP puts one recording's editions (mono and stereo, 44.1 and
+# 48 kHz, 16 and 24 bit) as low as 0.966, so the audio decides
+CROSS_COPY_COS = _tunable("CROSS_COPY_COS", 0.88)
 # two sources are one recording when their normalized cross-correlation at the best lag, over
-# their first COPY_SECONDS, reaches COPY_XCORR (copies sit at 1.0, two chords of one pack near 0.1);
-# the instrument categories' copy prune asks the same of each pair above INSTRUMENT_COPY_COS
+# their first COPY_SECONDS, reaches COPY_XCORR (copies sit at 1.0, two chords of one pack near
+# 0.1, two notes of a multisample or two takes of one note well under 0.99)
 COPY_XCORR = _tunable("COPY_XCORR", 0.99)
 COPY_SECONDS = _tunable("COPY_SECONDS", 10.0)
 TRIM_FLOOR_DB = _tunable("TRIM_FLOOR_DB", -50.0)     # silence floor (dBFS below peak) for edge trimming
@@ -1825,18 +1827,29 @@ def _prune_near_dups(rec, emb_n, thr, keep=0, partners=None, apart=None):
 
 @lru_cache(maxsize=64)
 def _copy_signal(path):
-    """(mono float32 signal of a source's first COPY_SECONDS, its rate) for _same_recording."""
+    """(float32 frames x channels of a source's first COPY_SECONDS, its rate) for _same_recording."""
     import soundfile as sf
     sr = int(sf.info(path).samplerate)
     y, _ = sf.read(path, frames=int(COPY_SECONDS * sr), always_2d=True, dtype="float32")
-    return y.mean(axis=1), sr
+    return y, sr
+
+
+def _copy_views(y, other_channels):
+    """The signals of y (frames x channels) _same_recording compares: its mono mix, then, when
+    the other source has fewer channels (a mono edition, which may be one side of the stereo
+    rather than its sum), each channel."""
+    views = [y.mean(axis=1)]
+    if y.shape[1] > other_channels:
+        views += [y[:, k] for k in range(y.shape[1])]
+    return views
 
 
 def _same_recording(a, b):
     """True when sources a and b hold one recording: their normalized cross-correlation at the
     best lag (either polarity), over their first COPY_SECONDS at the lower of their two rates,
-    reaches COPY_XCORR. False when it doesn't; None when either can't be read or is silent.
-    Reads the sources (never the exports, which a retune or trim has changed)."""
+    reaches COPY_XCORR (mono mixes, or a mono edition against the other's mix or either side).
+    False when it doesn't; None when either can't be read or is silent. Reads the sources
+    (never the exports, which a retune or trim has changed)."""
     if a == b:
         return True
     try:
@@ -1845,20 +1858,26 @@ def _same_recording(a, b):
         return None
     from scipy.signal import fftconvolve, resample_poly
     if sx > sy:
-        x = resample_poly(x, sy, sx)
+        x = resample_poly(x, sy, sx, axis=0)
     elif sy > sx:
-        y = resample_poly(y, sx, sy)
-    nx, ny = float(np.linalg.norm(x)), float(np.linalg.norm(y))
-    if not nx or not ny:
-        return None
-    c = fftconvolve(x / nx, (y / ny)[::-1], mode="full")
-    return float(np.max(np.abs(c))) >= COPY_XCORR
+        y = resample_poly(y, sx, sy, axis=0)
+    heard = False
+    for u in _copy_views(x, y.shape[1]):
+        for v in _copy_views(y, x.shape[1]):
+            nu, nv = float(np.linalg.norm(u)), float(np.linalg.norm(v))
+            if not nu or not nv:
+                continue
+            heard = True
+            if float(np.max(np.abs(fftconvolve(u / nu, (v / nv)[::-1], mode="full")))) >= COPY_XCORR:
+                return True
+    return False if heard else None
 
 
 def _recordings_apart(a, b):
-    """For _prune_near_dups: two candidates CLAP calls copies whose audio says otherwise (two
-    chords of one pack) are kept apart. One that can't be read stays a copy, as CLAP says."""
-    return _same_recording(a["path"], b["path"]) is False
+    """For _prune_near_dups: two candidates are copies only when the audio says so; CLAP's
+    loose prefilter (INSTRUMENT_COPY_COS) also passes a multisample's notes and two chords of
+    one pack. One that can't be read stays, as nothing confirms it's a copy."""
+    return _same_recording(a["path"], b["path"]) is not True
 
 
 def _copy_vectors(srcs):
@@ -1882,11 +1901,12 @@ def _copy_vectors(srcs):
     return out
 
 
-def _cross_copy_pairs(members, vecs):
+def _cross_copy_pairs(members, vecs, cos=None):
     """[(i, j)] index pairs of members ((category, source) in two categories, two sources) that
-    are one recording: CLAP cosine at least CROSS_COPY_COS, then _same_recording. vecs is
-    _copy_vectors' {source: (id, vector)}."""
-    if CROSS_COPY_COS >= 1.0:
+    are one recording: CLAP cosine at least cos (CROSS_COPY_COS; verify passes a looser one),
+    then _same_recording. vecs is _copy_vectors' {source: (id, vector)}."""
+    cos = CROSS_COPY_COS if cos is None else cos
+    if cos >= 1.0:
         return []
     have = [k for k, (_c, src) in enumerate(members) if src in vecs]
     if len(have) < 2:
@@ -1895,7 +1915,7 @@ def _cross_copy_pairs(members, vecs):
     pairs = []
     for i0 in range(0, len(have), 1024):
         S = V[i0:i0 + 1024] @ V.T
-        for a, b in zip(*np.nonzero(S >= CROSS_COPY_COS)):
+        for a, b in zip(*np.nonzero(S >= cos)):
             i, j = have[i0 + int(a)], have[int(b)]
             (ci, si), (cj, sj) = members[i], members[j]
             if i < j and ci != cj and si != sj and _same_recording(si, sj) is True:

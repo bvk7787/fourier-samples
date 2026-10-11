@@ -376,11 +376,11 @@
  },
  "curate.INSTRUMENT_COPY_COS": {
   "type": "float",
-  "value": 0.999
+  "value": 0.95
  },
  "curate.CROSS_COPY_COS": {
   "type": "float",
-  "value": 0.9996
+  "value": 0.88
  },
  "curate.COPY_XCORR": {
   "type": "float",

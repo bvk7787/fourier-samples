@@ -35,8 +35,6 @@ DC_MAX_SHARE = 0.02          # |mean| / peak
 DC_FAIL_COUNT = 0            # export re-checks DC after the trim, so any file over is a bug
 TAIL_SLACK_S = 0.06          # instrument tail past -60 dB: pad + fade + envelope rounding
 TAIL_CHECK_DB = -63.0        # "silence" for the tail check: clearly under the -60 dB trim floor
-
-
 def _build_duration(ctx, src):
     """A source's length as the build judged it (the database's, when there is one): a
     stored length can exceed the frame count in the last digit, and a 4 s limit must fall
@@ -980,8 +978,9 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
         if audio:
             members = sorted({(c, e["src"]) for c, e in ctx.entries if e.get("src")})
             vecs = C._copy_vectors({src for _c, src in members})
-            if vecs:
-                ctx.copies = [(members[i], members[j]) for i, j in C._cross_copy_pairs(members, vecs)]
+            if vecs:        # CROSS_COPY_COS 1.0: the build keeps copies on purpose, and so does this
+                cos = C.CROSS_COPY_COS
+                ctx.copies = [(members[i], members[j]) for i, j in C._cross_copy_pairs(members, vecs, cos=cos)]
     out = []
     for fn in (check_manifest, check_sets, check_budgets, check_naming, check_ratings, check_routing, check_bands,
                *( [check_audio] if audio else [])):
