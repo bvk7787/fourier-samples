@@ -57,6 +57,8 @@ FILTER_WORDS = {
     "chord_not_stab": "chords too long or metered for a stab",
     "not_one_pitch": "not one clear pitch",
     "cross_copy": "copies of a recording another category kept",
+    "dup_source": "picked by another category too, which kept them",
+    "over_budget": "over the budget",
 }
 # the why dict's key (curate._readmit_gated) for candidates the floor readmitted past a check
 # after the CLAP gate: {sample id: [reason, detail]}; a doc's "readmitted"
@@ -165,6 +167,10 @@ def describe(reason: str, detail, doc: dict, name_of=lambda sid: str(sid), place
         tail = f"in the master: {where}" if where else "another category kept it"
         return (f"the same recording as {name_of(detail)} under another name (CLAP and the audio "
                 f"agree); one copy stays ({tail})")
+    if reason == "dup_source":
+        where = f" (it stays in {detail})" if detail else ""
+        return (f"another category picked the same file and keeps it{where}: a file goes in one "
+                f"category only")
     if reason == "twins" and detail is not None:
         where = place_of(detail) if place_of else None
         if where:

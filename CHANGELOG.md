@@ -65,6 +65,24 @@ change the CLI or the config).
 - `phrases.csv` reads a bare note letter after the name's tempo as its key ("XX_124_E_Lead")
   and "C Major" as well as "Cmaj", and never borrows a key from neighbouring files when the
   file's own name holds a note letter (14 of 15 borrowed keys in one library contradicted it).
+- A parallel build's log now has each category's own lines (its `DONE` line with failed and
+  near-silent exports, multisample notes left out, contradicted note names, pYIN roots,
+  cloud-only downloads), prefixed by the category, and each category's summary line says how
+  many exports failed. They were dropped before.
+- The why log matches the build: a source the cross-category dedupe takes out of a category is
+  recorded there (`dup_source`, with the category that kept it), the dedupe lowers the
+  category's `files` and no longer its `kept` (the candidate pool), and `counts` has
+  `over_budget` and `too_quiet` like the other reasons.
+- Folder levelling reads a wide stereo file at the level it plays (the level-keeping mono
+  downmix kits already used); the plain L+R average read such files up to 3 dB quiet (more as
+  the channels cancel), so levelling turned them up too far. Verify measures the same way.
+- Single cycles (WAVES) are no longer held by the +18 dB gain cap (`MAX_GAIN_DB`) meant for
+  noisy one-shots: a quiet cycle now reaches the -1 dBFS ceiling.
+- A one-shot whose channels cancel keeps its louder channel at the file's own peak; it could
+  sit 2 to 3 dB under it.
+- Verify checks the sets' (00_KITS, 00_SLICE) files against their `out_md5` too, and its
+  levelling check says the 4 dB it allows.
+
 - PIANO and ACOUSTIC no longer keep two copies of one recording that reach the library under
   two names (a pack shipped twice, renamed): the near-duplicate prune those categories skip, so
   a multisample's notes stay, now drops copies the audio confirms (cross-correlation 0.99 or

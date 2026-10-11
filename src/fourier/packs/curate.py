@@ -4072,10 +4072,23 @@ def _build_meta():
                 library=library)
 
 
+def _level_mono(y):
+    """A (samples, channels) file as one channel at the level it plays: the level-keeping
+    mono downmix (devices/exporter._mono_downmix), so a wide stereo file reads about its
+    channels' own level, where the plain L+R average reads it up to 3 dB quiet (more as the
+    channels cancel)."""
+    y = np.asarray(y)
+    if y.ndim == 1 or y.shape[1] == 1:
+        return y.reshape(-1)
+    from ..devices.exporter import _mono_downmix
+    return np.asarray(_mono_downmix(y.T, keep_level=True))
+
+
 def _short_term_db(y, sr, win_ms=None):
-    """Loudness as the loudest LEVEL_WINDOW_MS RMS window (dBFS), hop a third of it."""
+    """Loudness as the loudest LEVEL_WINDOW_MS RMS window (dBFS), hop a third of it, of the
+    level-keeping mono downmix (_level_mono)."""
     from .curate_config import LEVEL_WINDOW_MS
-    m = y if y.ndim == 1 else y.mean(axis=1)
+    m = _level_mono(y)
     w = max(1, int(sr * (win_ms or LEVEL_WINDOW_MS) / 1000.0))
     if len(m) <= w:
         return _rms_db(m)
@@ -4129,6 +4142,13 @@ def _fix_phase(kroot, entries, kind="oneshot", category=None):
             y1 = _trim_edges(y1, sr, False, True,
                              tail_floor_db=INSTR_TAIL_FLOOR_DB if kind == "instrument" else TRIM_FLOOR_DB,
                              fade_ms=TAIL_FADE_MS)
+            # the file was peak-normalized on both channels: the one kept goes back to that
+            # peak (a loop's louder channel is already at its RMS target or over it)
+            pk, pk1 = float(np.abs(y).max()), float(np.abs(y1).max()) if y1.size else 0.0
+            if pk1 > 0 and pk > pk1:
+                y1 = np.clip(y1 * (pk / pk1), -1.0, 1.0)
+            # ...but never over the category's RMS ceiling, which the file was held to before
+            y1 = _clamp_rms(y1, ONESHOT_RMS_CEIL_DB.get(category))
         info = sf.info(str(p))
         tmp = p.with_name(p.name + ".tmp.wav")
         sf.write(str(tmp), y1, sr, subtype=info.subtype if info.subtype.startswith("PCM") else "PCM_24")
@@ -4787,7 +4807,8 @@ def _process_audio(y, sr, kind, trim_lead, trim_tail, norm_mode, lead_floor_db=N
                 yy = _subtract_mean(yy, sr)
                 yf = yy if yf.ndim == 2 else yy[:, 0]
         y = yf
-    y = _normalize(y, norm_mode, sr=sr)
+    # a single cycle (waves) has no noise floor for the gain cap to protect: to the ceiling
+    y = _normalize(y, norm_mode, sr=sr, max_gain_db=None if exact else MAX_GAIN_DB)
     # last: a limited loop's peak comes down, so ends that were quiet beside it may not be
     return y if exact else _edge_fades(y, sr, loop=kind == "loop")
 
@@ -4843,7 +4864,8 @@ def _end_fade(y, sr, hot_db=END_HOT_DB, fade_ms=END_FADE_MS):
 
 def _normalize(y, mode, max_gain_db=MAX_GAIN_DB, sr=44100):
     """Peak- or RMS-normalize, capping amplification (so near-silent junk isn't
-    blown up) and holding the true peak at PEAK_CEILING_DB for RMS mode."""
+    blown up; max_gain_db None: no cap) and holding the true peak at PEAK_CEILING_DB for RMS
+    mode."""
     if mode is None or y.size == 0:
         return y
     peak = float(np.abs(y).max())
@@ -4859,10 +4881,12 @@ def _normalize(y, mode, max_gain_db=MAX_GAIN_DB, sr=44100):
         # a loop whose peak stops it short of LOOP_RMS_DB may have up to LOOP_LIMIT_DB of its
         # peaks limited (a peaky loop would otherwise sit well under the target)
         gain = min(_amp_from_db(LOOP_RMS_DB) / rms, ceiling / peak * _amp_from_db(LOOP_LIMIT_DB))
-        gain = min(gain, _amp_from_db(max_gain_db))
+        if max_gain_db is not None:
+            gain = min(gain, _amp_from_db(max_gain_db))
         if gain * peak > ceiling:
             return np.clip(_limit(y * gain, ceiling, sr), -1.0, 1.0)
-    gain = min(gain, _amp_from_db(max_gain_db))
+    if max_gain_db is not None:
+        gain = min(gain, _amp_from_db(max_gain_db))
     return np.clip(y * gain, -1.0, 1.0)
 
 
@@ -5584,7 +5608,9 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     _fb = _fallback(session)
     _src = {str(r["id"]): got for r in rec if r["path"] in _picked
             for got in [_resolve.recorded(r, _fb)] if got}
-    why_log.write(out_dir, category, left_out_doc(category, "built", n, floor, stats, _why,
+    # counts beside out: each reason's count, these two included
+    _counts = dict(stats, over_budget=len(_why["over_budget"]), too_quiet=len(_quiet_ids))
+    why_log.write(out_dir, category, left_out_doc(category, "built", n, floor, _counts, _why,
                                                   files=total, budget=budget, **_gate_doc,
                                                   **_clap_doc(_clap_ids, _rehomed, _sound),
                                                   **({"sources": _src} if _src else {})))
@@ -5612,22 +5638,31 @@ def _worker_init(db_path, homes, support, votes, opts):
 
 
 def _worker_build(category, out_dir, budget=None):
+    """(category, summary, entries, error, log lines): the category's log lines go back to
+    the parent, which prints them, so a parallel build logs what a serial one does."""
     from ..db.session import session_scope
     from ..safety import UnsafePath
+    lines: list[str] = []
     try:
         with session_scope() as session:
             summary, entries = build_taxonomy(
                 session, category, out_dir,
                 homes=_WORKER["homes"], support=_WORKER["support"], votes=_WORKER["votes"],
-                rebuild_index=False, return_entries=True, log=lambda m: None,
+                rebuild_index=False, return_entries=True, log=lines.append,
                 budget_override=budget, **_WORKER["opts"])
         if budget is not None:
             summary["budget"] = int(budget)
-        return (category, summary, entries, None)
+        return (category, summary, entries, None, lines)
     except (UnsafePath, TooFewSamples) as e:     # stops the build / leaves the category out
-        return (category, None, None, e)
+        return (category, None, None, e, lines)
     except Exception as e:
-        return (category, None, None, str(e))
+        return (category, None, None, str(e), lines)
+
+
+def _log_worker(log, category, lines):
+    """A worker's log lines, each prefixed by its category (once: "KICKS: x" -> "[KICKS] x")."""
+    for m in lines or ():
+        log(f"[{category}] {str(m).removeprefix(category + ': ')}")
 
 
 def _stop_on_unsafe(ex, err):
@@ -5691,7 +5726,8 @@ def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, prog
                        key=lambda c: (-BUDGETS.get(c, 0), c))
         futs = {ex.submit(_worker_build, c, out_dir): c for c in order}
         for fut in as_completed(futs):
-            category, summary, entries, err = fut.result()
+            category, summary, entries, err, lines = fut.result()
+            _log_worker(log, category, lines)
             _stop_on_unsafe(ex, err)
             if isinstance(err, TooFewSamples):
                 log(f"[{category}] left empty: {str(err).removeprefix(category + ': ')}")
@@ -5702,6 +5738,7 @@ def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, prog
             else:
                 log(f"[{category}] {summary['families']} families, {summary['files']} files"
                     + (f" (budget {summary['budget']})" if summary.get("scale") else "")
+                    + (f", {summary['failed']} failed" if summary.get("failed") else "")
                     + f", {summary.get('near_dups_pruned', 0)} near-dups pruned"
                     + (f", {summary['note_gated']} out-of-range notes dropped"
                        if summary.get('note_gated') else "")
@@ -5724,13 +5761,15 @@ def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, prog
             again = {c: ex.submit(_worker_build, c, out_dir, b) for c, b in sorted(raised.items())}
             redo = {}
             for c, fut in again.items():
-                category, summary, entries, err = fut.result()
+                category, summary, entries, err, lines = fut.result()
+                _log_worker(log, category, lines)
                 _stop_on_unsafe(ex, err)
                 if err:
                     log(f"[{category}] surplus rebuild FAILED: {err}")
                     results = [r for r in results if r[0] != category]
                 else:
-                    log(f"[{category}] {summary['files']} files (budget {summary['budget']})")
+                    log(f"[{category}] {summary['files']} files (budget {summary['budget']})"
+                        + (f", {summary['failed']} failed" if summary.get("failed") else ""))
                     redo[category] = (category, summary, entries)
             results = [redo.get(r[0], r) for r in results]
     results.sort(key=lambda r: r[0])   # stable order -> deterministic manifest
@@ -5780,15 +5819,19 @@ def _dedupe_across(out_dir, results, log=None):
     for category, summary, entries in results:
         for e in entries or []:
             where[e["src"]].append(category)
-    drop = {}
+    drop: dict = {}
+    dups: dict = {}                       # {category: {source dropped: category kept}}
     for src, cats in where.items():
         if len(set(cats)) > 1:
             win = _dup_winner(src, sorted(set(cats)), pins)
             for c in set(cats) - {win}:
                 drop.setdefault(c, set()).add(src)
+                dups.setdefault(c, {})[src] = win
     copies, vecs = _cross_copies(results, {(c, s) for c, ss in drop.items() for s in ss}, pins)
     for c, gone in copies.items():
         drop.setdefault(c, set()).update(gone)
+    if dups:
+        _why_dups(out_dir, dups)
     if copies:
         _why_copies(out_dir, copies, vecs)
         if log:
@@ -5835,11 +5878,54 @@ def _why_copies(out_dir, copies, vecs):
         ids = {str(vecs[s][0]): vecs[k[1]][0] for s, k in gone.items() if s in vecs and k[1] in vecs}
         if not ids:
             continue
-        doc.setdefault("out", {}).setdefault("cross_copy", {}).update(ids)
-        counts = doc.setdefault("counts", {})
-        counts["cross_copy"] = int(counts.get("cross_copy", 0)) + len(ids)
-        doc["kept"] = max(0, int(doc.get("kept", 0)) - len(ids))
-        why_log.write(out_dir, c, doc)
+        _why_drop(out_dir, c, doc, "cross_copy", ids)
+
+
+def _why_dups(out_dir, dups):
+    """Add each source _dup_winner took out of a category to its why log: reason "dup_source",
+    the category that kept it."""
+    srcs = {s for gone in dups.values() for s in gone}
+    sid = _sample_ids(srcs)
+    for c, gone in dups.items():
+        doc = why_log.read(out_dir, c)
+        if doc is None:
+            continue
+        ids = {str(sid[s]): win for s, win in gone.items() if s in sid}
+        if ids:
+            _why_drop(out_dir, c, doc, "dup_source", ids)
+
+
+def _why_drop(out_dir, category, doc, reason, ids):
+    """Record files the cross-category dedupe dropped after the category was built: under
+    reason in out and counts, and out of files (the exported count). kept stays the candidate
+    pool the category picked from, as everywhere else. A resumed build's second pass over a
+    category it finished before counts nothing twice."""
+    got = doc.setdefault("out", {}).setdefault(reason, {})
+    new = {k: v for k, v in ids.items() if k not in got}
+    got.update(ids)
+    counts = doc.setdefault("counts", {})
+    counts[reason] = int(counts.get(reason, 0)) + len(new)
+    if "files" in doc:
+        doc["files"] = max(0, int(doc["files"] or 0) - len(new))
+    why_log.write(out_dir, category, doc)
+
+
+def _sample_ids(srcs) -> dict:
+    """{source path: sample id} for these sources; {} without a database."""
+    from ..db.session import db_exists, session_scope
+    want = sorted(set(srcs))
+    if not want or not db_exists():
+        return {}
+    out = {}
+    try:
+        with session_scope() as s:
+            for i in range(0, len(want), 500):
+                for sid, path in s.execute(select(Sample.id, Sample.path)
+                                           .where(Sample.path.in_(want[i:i + 500]))):
+                    out[path] = int(sid)
+    except Exception:          # the why log is best effort, never a failed build
+        return {}
+    return out
 
 def _describe(clusters, category, model):
     prof = "\n".join(

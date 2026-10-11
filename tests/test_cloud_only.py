@@ -197,7 +197,7 @@ def test_a_worker_hands_the_stop_to_the_parent(monkeypatch):
     def stuck(*a, **k):
         raise CloudOnlySources(["/lib/a.wav"])
     monkeypatch.setattr(curate, "build_taxonomy", stuck)
-    cat, summary, entries, err = curate._worker_build("KICKS", "/tmp/x")
+    cat, summary, entries, err, _lines = curate._worker_build("KICKS", "/tmp/x")
     assert isinstance(err, CloudOnlySources) and summary is None
 
     class Ex:

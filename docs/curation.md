@@ -582,8 +582,9 @@ Pins removed by a cap are restored. A category whose pool still ends under its f
 is left empty, and the build says how many candidates it found and what each step took
 ("KICKS: 6 found; 5 near-duplicates, 0 over the per-vendor share; need 6"). Every build records
 per category why each candidate was left out (the cap, the near-duplicate it repeats, the gate,
-the budget) in `$FOURIER_HOME/why/` (`packs/why_log.py`), outside the master, for `fourier why
-<file>`. Stable picks (3.4) come first in every spread cap (medoids taken among them), the
+the budget, the cross-category dedupe) in `$FOURIER_HOME/why/` (`packs/why_log.py`), outside the
+master, for `fourier why <file>`: `kept` is the candidate pool the category picked from, `files`
+what it exported (less what the dedupe took out), and `counts` has each reason's count. Stable picks (3.4) come first in every spread cap (medoids taken among them), the
 vendor cap's draw and near-dup groups. A quality score (lowered by clipping, DC over 2%, RMS
 under 0.004) only breaks near-dup and medoid ties.
 
@@ -662,7 +663,8 @@ the set (same band, room under 120, the folder left keeps 15, sibling cap holds)
 
 **Cross-category dedup** (parallel `--jobs` builds, `_dup_winner`): a source picked twice stays
 in a Keep's category, else keys-named -> PIANO, stab-named -> STABS, acoustic -> ACOUSTIC, else
-the earlier category in play order.
+the earlier category in play order. The category that gives it up records it in its why log
+(`dup_source`, with the category that kept it).
 
 **One recording under two names** (`_cross_copies`): a pack shipped twice, renamed, can put one
 recording in two categories as two sources. After every category has picked, picks in different
@@ -962,7 +964,7 @@ Per kind (`_export_policy`):
 | 5. End fade | a one-shot whose last millisecond (last eighth, for a hit under 8 ms) is above -40 dB of peak gets a 10 ms squared fade (at most half the file) |
 | 6. Again | DC on the final extent, a `trim_lead_db` lead re-trimmed, end fade |
 | 7. Edge fades | a file starting above -40 dB of peak fades in over 0.5 ms (`EDGE_HOT_DB`, `EDGE_FADE_MS`); a loop fades both ends when either is hot, so FWDLOOP joins through zero |
-| 8. Normalize | gain capped at +18 dB (`MAX_GAIN_DB`). Loops: -20 dBFS RMS under the -1 dBFS peak; a loop the peak stops short may have up to 3 dB of peaks limited (`LOOP_LIMIT_DB`, a smooth 5 ms gain, `LIMIT_MS`) |
+| 8. Normalize | gain capped at +18 dB (`MAX_GAIN_DB`; not WAVES: a single cycle has no noise floor to protect, so it goes to the ceiling). Loops: -20 dBFS RMS under the -1 dBFS peak; a loop the peak stops short may have up to 3 dB of peaks limited (`LOOP_LIMIT_DB`, a smooth 5 ms gain, `LIMIT_MS`) |
 
 Then:
 
@@ -972,8 +974,8 @@ Then:
 | RMS ceiling | a one-shot's RMS is capped, gain down only (`ONESHOT_RMS_CEIL_DB`: KICKS -6, SUB/SYNTH -7, VOX -8, PADS/BLIPS -9, TOMS -9.5, FX/STABS -10, SNARES -10.5, PERC -11, CLAPS/HATS -12, PIANO/ACOUSTIC -12.5, CYMBALS -16 dBFS) |
 | Format | integer PCM depth kept (16/24/32); float sources become PCM_24 (deterministic hashes) |
 | Fallback | a file whose processing throws is copied verbatim and marked `dsp_fallback` (fails verify) |
-| Phase | a stereo file (not WAVES) whose L/R correlation is under -0.8, or that loses more than 10 dB summed to mono, keeps its louder channel (`_fix_phase`, `PHASE_FIX_CORR`, `PHASE_FIX_LOSS_DB`; entries record `phase_fix`): a clap that vanishes in mono isn't a width choice. Drums and drum loops (`PHASE_FIX_DRUM_CATS`) are held to -0.3 or 4.5 dB (`PHASE_FIX_DRUM_CORR`, `PHASE_FIX_DRUM_LOSS_DB`): a hat that thins out in mono isn't either. Elsewhere -0.8 to -0.3 warns in verify (check by ear); wider is left to the mix |
-| Leveling | per folder, `LEVEL_CATS` (SUB, SYNTH, STABS, PADS, VOX, PIANO, ACOUSTIC), 3+ files: loudness is the loudest 75 ms RMS window (`LEVEL_WINDOW_MS`); a file more than 3 dB (`LEVEL_TOL_DB`) from the folder median moves to that edge, down freely, up by at most 6 dB (`LEVEL_MAX_UP_DB`) and only to the -1 dBFS peak and the category RMS ceiling; entries record `level_db`. Drum folders (`DRUM_LEVEL_CATS`) only come down: a hit more than 3 dB over its folder's median goes to median + 3 (`DRUM_LEVEL_OVER_DB`) |
+| Phase | a stereo file (not WAVES) whose L/R correlation is under -0.8, or that loses more than 10 dB summed to mono, keeps its louder channel, a one-shot's brought back to the file's peak (a loop's already meets its RMS target) (`_fix_phase`, `PHASE_FIX_CORR`, `PHASE_FIX_LOSS_DB`; entries record `phase_fix`): a clap that vanishes in mono isn't a width choice. Drums and drum loops (`PHASE_FIX_DRUM_CATS`) are held to -0.3 or 4.5 dB (`PHASE_FIX_DRUM_CORR`, `PHASE_FIX_DRUM_LOSS_DB`): a hat that thins out in mono isn't either. Elsewhere -0.8 to -0.3 warns in verify (check by ear); wider is left to the mix |
+| Leveling | per folder, `LEVEL_CATS` (SUB, SYNTH, STABS, PADS, VOX, PIANO, ACOUSTIC), 3+ files: loudness is the loudest 75 ms RMS window (`LEVEL_WINDOW_MS`) of the level-keeping mono downmix kits use too (`curate._level_mono`: a wide stereo file reads about its channels' level, which the plain L+R average read up to 3 dB quiet, and verify measures it the same way); a file more than 3 dB (`LEVEL_TOL_DB`) from the folder median moves to that edge, down freely, up by at most 6 dB (`LEVEL_MAX_UP_DB`) and only to the -1 dBFS peak and the category RMS ceiling; entries record `level_db`. Drum folders (`DRUM_LEVEL_CATS`) only come down: a hit more than 3 dB over its folder's median goes to median + 3 (`DRUM_LEVEL_OVER_DB`) |
 | Rotation | DRUMLOOPS, at the folder tempo; see [Rotation](#rotation) |
 | Audio cache | `audiocache.py`, `~/.fourier/cache/audio`; see [Audio cache](#audio-cache) |
 
