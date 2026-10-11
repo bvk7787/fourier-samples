@@ -456,7 +456,7 @@ def _build_serial(cats, done, build_dir, progress, failed, empty, rebuild_index,
                 console.print(f"{cat}: {e}", style="red", markup=False, highlight=False)
                 failed.append(cat)
     # as the parallel path does: each source in one category, one manifest write
-    _dedupe_across(build_dir, res)
+    _dedupe_across(build_dir, res, log=lambda m: console.print(m, markup=False, highlight=False))
     merge_manifest(build_dir, res)
     return res
 

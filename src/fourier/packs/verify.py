@@ -92,6 +92,7 @@ class _Ctx:
         self.extra = None         # {src path: (chroma_concentration, harmonicity)} or None
         self.phrase = None        # {src paths that curate._is_phrase calls a phrase} or None
         self.fallback = False     # the build classified without Sononym (names read bare notes)
+        self.copies = None        # [((cat, src), (cat, src))] one recording in two categories, or None (no DB)
 
     def path(self, c, e):
         return self.root / c / e["out"]
@@ -664,6 +665,12 @@ def check_routing(ctx):
                 fh[h].add(c)
         twins += [sorted(cs) for cs in fh.values() if len(cs) > 1]
     yield Result(FAIL if twins else PASS, "no identical audio in two categories", _fmt(twins))
+    if ctx.copies is not None:
+        both = [(a, b) for a, b in ctx.copies
+                if not (ctx.pins.get(a[1]) == a[0] and ctx.pins.get(b[1]) == b[0])]   # both Keeps: as rated
+        yield Result(FAIL if both else PASS, "no recording in two categories under two names "
+                     "(CLAP, then the audio)",
+                     _fmt(f"{a[0]}/{os.path.basename(a[1])} = {b[0]}/{os.path.basename(b[1])}" for a, b in both))
     if ctx.prof is None:
         yield Result(WARN, "sample-chain guard", "skipped (no DB)")
         return
@@ -944,6 +951,11 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
         ctx.fallback = _fb
         ctx.phrase = {r.path for r in rows if r.path in srcs and C._is_phrase(r, _fb)}
         ctx.dur = {r.path: r.duration_s for r in rows if r.path in srcs and r.duration_s is not None}
+        if audio:
+            members = sorted({(c, e["src"]) for c, e in ctx.entries if e.get("src")})
+            vecs = C._copy_vectors({src for _c, src in members})
+            if vecs:
+                ctx.copies = [(members[i], members[j]) for i, j in C._cross_copy_pairs(members, vecs)]
     out = []
     for fn in (check_manifest, check_sets, check_budgets, check_naming, check_ratings, check_routing, check_bands,
                *( [check_audio] if audio else [])):

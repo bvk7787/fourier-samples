@@ -308,6 +308,9 @@ curate:
   FAVOR_WEIGHT: taste
   NEAR_DUP_COS: correctness
   INSTRUMENT_COPY_COS: correctness
+  CROSS_COPY_COS: correctness
+  COPY_XCORR: correctness
+  COPY_SECONDS: engine
   TRIM_FLOOR_DB: correctness
   TRIM_PAD_MS: correctness
   PEAK_CEILING_DB: correctness

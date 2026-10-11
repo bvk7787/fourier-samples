@@ -56,6 +56,7 @@ FILTER_WORDS = {
     "many_onsets": "not single notes (many onsets)",
     "chord_not_stab": "chords too long or metered for a stab",
     "not_one_pitch": "not one clear pitch",
+    "cross_copy": "copies of a recording another category kept",
 }
 # the why dict's key (curate._readmit_gated) for candidates the floor readmitted past a check
 # after the CLAP gate: {sample id: [reason, detail]}; a doc's "readmitted"
@@ -159,6 +160,11 @@ def describe(reason: str, detail, doc: dict, name_of=lambda sid: str(sid), place
             return f"a near-duplicate of {name_of(detail)} (CLAP), which {cat} kept (in the master: {where})"
         return (f"a near-duplicate of {name_of(detail)} (CLAP), which {cat} kept as a candidate; "
                 f"`fourier why` on it says where it went")
+    if reason == "cross_copy":
+        where = place_of(detail) if place_of else None
+        tail = f"in the master: {where}" if where else "another category kept it"
+        return (f"the same recording as {name_of(detail)} under another name (CLAP and the audio "
+                f"agree); one copy stays ({tail})")
     if reason == "twins" and detail is not None:
         where = place_of(detail) if place_of else None
         if where:
