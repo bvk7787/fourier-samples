@@ -22,7 +22,8 @@ Sources:
 The build's choices (with Sononym: exactly what curation chose before this module existed;
 without it: the fallback chain, unchanged):
 
-  tempo, a loop's  curation's chain (packs/curate._resolve_tempo): a tempo the filename states;
+  tempo, a loop's  curation's chain (packs/curate._resolve_tempo): a tempo the filename states
+                   when the length agrees (or snapped to it within 3%);
                    else the classifier's tempo (Sononym's; without Sononym the tempo written
                    in the path), else Fourier's own, each tried at x1, x2 and x0.5 and taken
                    when the loop is then whole bars; without Sononym then the WAV's ACID
@@ -129,7 +130,8 @@ def loop_tempo(r, fallback: bool) -> tuple[Reading, str | None]:
     from ..packs import curate as C
     bpm, src = C._resolve_tempo(getattr(r, "filename", None), getattr(r, "duration_s", None),
                                 getattr(r, "bpm", None), getattr(r, "tempo_bpm", None),
-                                C._fallback_tempos(r) if fallback else None)
+                                C._fallback_tempos(r) if fallback else None,
+                                path=getattr(r, "path", None))
     return Reading(bpm, tempo_source(src, fallback) if bpm is not None else None), src
 
 

@@ -342,8 +342,9 @@ Sononym had none. Nothing writes or reads it now.
 The build takes values from the resolver (`src/fourier/metadata/resolve.py`), which names each
 one's source. With Sononym it chooses exactly what curation chose before it existed:
 
-- **Loop tempo**: one the filename states, else the classifier's, else Fourier's own, each at
-  x1, x2 and x0.5 when the loop is then whole bars (snapped to its length). Without Sononym the
+- **Loop tempo**: one the filename states when the loop's length agrees with it, else the
+  classifier's, else Fourier's own, each at x1, x2 and x0.5 when the loop is then whole bars
+  (snapped to its length). Without Sononym the
   classifier's tempo is the one written in the path; a stated tempo (the WAV's ACID chunk, or a
   name's "bpm120") comes before Fourier's estimate; then the name's other tempo forms, a tempo
   folder and the loop's length are tried. The manifest's `bpm_src` keeps the chain's step names
@@ -725,20 +726,35 @@ Only categories with special rules are listed.
 
 `_resolve_tempo` takes the first that applies:
 
-1. An explicit "92bpm" in the filename, as written.
+1. An explicit "92bpm" in the filename, as written, when the loop is then a whole number of
+   beats (a 2-beat fill or a 3/4 loop still is) within 10 ms over its whole length
+   (`NAME_TEMPO_TOL_MS`, the slice grid's own 10 ms) and 0.15 beat (`_name_tempo_fits`).
+   Silence isn't length: the loop is measured from its first sound (a lead-in 60 dB under its
+   peak, `LOOP_QUIET_DB`), and a pad of digital silence at its end (under -90 dBFS,
+   `LOOP_PAD_DBFS`) may hold the bar line, unless the whole file is exactly whole bars at the
+   analyzers' tempo (then that silence is a rest). A quiet decay isn't a pad, so a break cut
+   1% long still goes to (3). A cloud drive's placeholder isn't read for this.
 2. A bare number 60-200 in the name when the loop is then 1, 2, 4, 6, 8, 12, 16 or 32 bars
-   (within 0.15 beat). Every number is tried ("X-78 Beat 120": a model number can come first).
-3. Sononym, then librosa, each at x1, x2, x0.5, accepted at 1, 2, 4, 8 or 16 bars, then snapped
+   within the same tolerance. Every number is tried ("X-78 Beat 120": a model number can come
+   first).
+3. An explicit tempo the length misses, snapped to the tempo at which the loop is one of those
+   bar counts when that is within 3% of it (`_named_snap`; source still `name`): a "96bpm"
+   break cut 1% long plays at 95.07, and is filed there.
+4. Sononym, then librosa, each at x1, x2, x0.5, accepted at 1, 2, 4, 8 or 16 bars, then snapped
    to the tempo the length implies when within 3%.
+5. A bare number snapped like (3), after the analyzers since it may be a take number.
 
-Without Sononym a stated tempo beats an estimate: after (1), (2) and the path's tempo, the
+A name the length contradicts ("100bpm" on 16 beats at 110, a take number "_072" on a 128
+BPM loop) falls through to the rest; a loop nothing gives a tempo is left out (`no_tempo`).
+
+Without Sononym a stated tempo beats an estimate: after (1)-(3) and the path's tempo, the
 tempo the WAV's ACID chunk states (or a "bpm120" in the name, first) is taken before librosa's.
 When none of those gives one (`_fallback_tempos`), in order:
 
-- "bpm120" in the name, as written;
+- "bpm120" in the name, as written when the length agrees (as in 1);
 - the WAV's ACID chunk: its tempo, else its beats over the length;
-- a number glued to a word ("Groove96", "T116") and a folder named only by a number
-  ("Loops/174/"), both at whole bars;
+- a number glued to a word ("Groove96", "T116"; within the tolerance of 2) and a folder named
+  only by a number ("Loops/174/"), both at whole bars;
 - last, the tempo the loop's length implies at 1, 2, 4, 8 or 16 bars when the analysis's tempo
   (or its half or double) is within 3% of it (`_length_tempo`, `DERIVED_BAR_COUNTS`,
   `TEMPO_DERIVE_TOL`; `bpm_src` "length", which `fourier why` shows as "tempo from length (8
@@ -758,6 +774,9 @@ Tempos fold into the top octave of the `tempo` range (`TEMPO_FOLD`: [90, 180) fo
 - A range narrower than its top octave (118-140, 70-100, 130-160) never folds a loop out of the
   range (`TEMPO_FOLD_RANGE`): a 174 BPM break in `house-techno` stays at 174.
 - `fold = "off"` (`TEMPO_FOLDING`) folds nothing.
+- A fold never leaves a loop off whole beats (`_fold_keeps_beats`): an odd number of beats
+  isn't halved (3 beats at 180 would be 1.5 at 90). A 1-bar loop halved is 2 beats, as a
+  2-beat fill is.
 
 #### Drum-loop bands
 
@@ -986,6 +1005,9 @@ Then:
   of a 16th) off the grid with 75% within 8 ms of the same offset (`ROTATE_AGREE`), is rotated
   by that offset (circular, same length) with a 1.5 ms dip through zero at the old join;
   entries record `rotate_ms`.
+- **Not** when the loop is more than 0.1 beat off whole beats at that tempo (`SLICE_BAR_ERR`),
+  its silent lead-in and end pad aside: a tempo the length doesn't fit has no grid to rotate
+  onto.
 - **Not** when the loop opens on a hit, or when a quarter or more of its on-beat hits already
   sit on the grid (`ROTATE_ON_GRID_MAX`): those loops are cut on the downbeat and the off-grid
   hits are feel (a break played ahead of the beat keeps it).
@@ -1202,8 +1224,11 @@ chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN.
 - **Stabs, VOX, waves**: chord stabs in STABS; STABS only named stabs; choir share; waves only
   in WAVES and WAVES only waves.
 - **Shape and length**: length caps; no tempo-named files in one-shot folders; sibling cap; no
-  freetempo folders; no long loop-folder files in tonal one-shots; phrases only in PHRASES and
-  PHRASES only phrases, each with a tempo; no sample chains; unprofiled files (WARN).
+  freetempo folders; drum loops and phrases whole beats at their tempo (a name's within
+  `NAME_TEMPO_TOL_MS`, its silence aside, the classifier's or the analysis's within 0.15 beat; an ACID chunk's as
+  stated) and at their folder tempo; no long loop-folder files in tonal one-shots; phrases only
+  in PHRASES and PHRASES only phrases, each with a tempo; no sample chains; unprofiled files
+  (WARN).
 
 ## 13. Known limitations
 
@@ -1218,7 +1243,14 @@ chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN.
   `har_max` and come back only through the minimum's floor (3.2, step 16).
 - **Keys from audio.** A phrase's key in `phrases.csv` is only ever the one its pack states
   (`packs/keys.py`): its file name, the nearest folder naming one, or the files beside it when
-  at least two state a key and all agree. Detected keys aren't used. On 1,425 loops whose pack
+  at least two state a key and all agree, never when its own name holds a note letter it
+  doesn't place. A bare capital letter is a key only where packs write one: after the name's
+  tempo with only numbered tokens between ("XX_124_E_Lead", "XX_126_2b_A_Lead") or as its
+  last token but a take number ("Bass 118bpm F"); before the tempo it's a word, a variant or a
+  prefix ("A_Loop_124"). On one library's 600 phrases this keyed 469 instead of 289, and the
+  bare-letter keys agreed with the loudest chroma class about as often as written keys (28%
+  against 23%; chance is 8%), while 14 of the 15 keys borrowed from neighbours contradicted
+  the file's own letter. Detected keys aren't used. On 1,425 loops whose pack
   names state a key and a mode (2026-10), the Krumhansl and Temperley profiles found that key
   at most 39% of the time over seven chroma types, profiles learned from the library 44%
   (scored one vendor at a time), essentia's EDM profiles 41% (56% for its minor-only one, the

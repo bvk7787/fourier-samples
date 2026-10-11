@@ -8236,6 +8236,18 @@
   "type": "float",
   "value": 0.03
  },
+ "curate.NAME_TEMPO_TOL_MS": {
+  "type": "float",
+  "value": 10.0
+ },
+ "curate.LOOP_QUIET_DB": {
+  "type": "float",
+  "value": -60.0
+ },
+ "curate.LOOP_PAD_DBFS": {
+  "type": "float",
+  "value": -90.0
+ },
  "naming.MUSICAL_HAR_MIN": {
   "type": "float",
   "value": 0.5

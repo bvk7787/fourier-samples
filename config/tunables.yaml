@@ -341,6 +341,9 @@ curate:
   BAR_COUNTS: correctness
   BAR_TOL_BEATS: correctness
   NAMED_BAR_COUNTS: correctness
+  NAME_TEMPO_TOL_MS: correctness
+  LOOP_QUIET_DB: correctness
+  LOOP_PAD_DBFS: correctness
   DERIVED_BAR_COUNTS: correctness
   TEMPO_DERIVE_TOL: correctness
   STICKY_SHARE: engine
