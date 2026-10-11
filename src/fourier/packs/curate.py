@@ -2386,6 +2386,42 @@ def _cap_siblings(idxs, rec, cap=SIBLING_CAP):
     return sorted(keep)
 
 
+def _one_per_retune_target(groups, rec):
+    """Notes of one multisample set (_sibling_key) that export retunes onto the same C
+    (F#2, A#2, C3, D#3 and E3 all play C3) are one sound: across a category's folders keep
+    one note per set and C: a Keep's (Keeps always stay), else the one with the smallest
+    shift, then the previous build's pick, then the set's pitch order. The kept note's other
+    layers stay for _cap_siblings to choose from, as before. Only notes the names state count
+    ("Saw Lead 02" and "Saw Lead 05" may be two patches); files not retuned are untouched.
+    RETUNE_CATS only. Returns (groups, how many left out)."""
+    by = defaultdict(list)
+    for g in groups:
+        for i in g:
+            r = rec[i]
+            if r.get("retune") is None or r.get("root_src") != "name":
+                continue              # numbered takes with a measured root may be other patches
+            # the octave the name states, as the exported name says it ("Pad_A2" +3: "Pad_C3")
+            src = _name_root_midi(os.path.basename(r["path"] or ""))
+            if src is None:
+                p = _played_note(r)
+                src = None if p is None else p - r["retune"]
+            k = _sibling_key(r["path"])
+            if k is None or src is None:
+                continue
+            by[(k, int(round((src + r["retune"]) / 12)))].append((i, int(round(src))))
+    drop = set()
+    for ids in by.values():
+        if len({n for _, n in ids}) < 2:
+            continue
+        best = min(ids, key=lambda t: (not rec[t[0]].get("pin"), round(abs(rec[t[0]]["retune"]), 3),
+                                       not rec[t[0]].get("incumbent"), rec[t[0]]["tune"] is None,
+                                       rec[t[0]]["tune"] or 0, rec[t[0]]["path"]))
+        drop |= {i for i, n in ids if n != best[1] and not rec[i].get("pin")}
+    if not drop:
+        return groups, 0
+    return [g2 for g2 in ([i for i in g if i not in drop] for g in groups) if g2], len(drop)
+
+
 def _phrase_near_text(rel_path, filename):
     """What says what a loop holds: its filename stem, the folder it sits in and any loop
     folder above ("Drum Loops", "vox loops"), with genre names ("Drum & Bass") removed.
@@ -4364,6 +4400,30 @@ def _name_root_midi(name):
     return _PC[letter] + (1 if acc in ("#", "s") else -1 if acc == "b" else 0) + (int(octv) + 1) * 12
 
 
+def _played_note(r):
+    """The MIDI note a tonal one-shot's record plays once exported: its root plus its retune
+    (a file not retuned plays its root), or None when the root isn't known. The root is the
+    measured one (Sononym's, a WAV's or pYIN's) where there is one, else the name's note."""
+    src = r.get("root_midi") if r.get("root_midi") is not None else r.get("tune")
+    if src is None:
+        src = _name_root_midi(os.path.basename(r.get("path") or ""))
+    return None if src is None else float(src) + (r.get("retune") or 0.0)
+
+
+def _folder_played_note(recs):
+    """A tonal folder's note (its lead, `c4-`, and base_note): the median of the notes its
+    files play once exported (_played_note), on the C when at least half of them are
+    retuned there; None under 5 known notes. Judged on the files the folder holds, so a
+    folder of mostly retuned files is named for its C, not for the notes they came from."""
+    heard = [(p, r.get("retune") is not None) for r in recs if (p := _played_note(r)) is not None]
+    if len(heard) < 5:
+        return None
+    med = float(np.median([p for p, _ in heard]))
+    if sum(rt for _, rt in heard) * 2 >= len(heard):
+        return float(12 * round(med / 12))
+    return med
+
+
 def _retuned_stem(stem, retune, bare=False):
     """A file name that says the note the file now plays: after retuning by `retune`
     semitones to C, its named note ("Pad_A2", "warmpadF#3", "Stab C#", "Dbmaj7", and with
@@ -4446,6 +4506,8 @@ def _retune_shift(category, filename, tune, detect=False, bare=False):
     if d > 6:
         d -= 12
     frac = (tune - round(tune)) if (tune is not None and int(round(tune)) % 12 == pc) else 0.0
+    if d == 6 and frac < 0:
+        d = -6                       # a flat F# is nearer the C below: -5.51, not +6.49
     cap = RETUNE_MAX_SEMIS.get(category)
     if cap is not None and abs(d) > cap:              # whole semitones: fine tuning never tips it
         return None, None            # a voice or acoustic this far from C keeps its pitch and note
@@ -4912,6 +4974,10 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
 
     dims = naming_dims(category, cfg)
     clusters = []
+    if category in SIBLING_CAP_CATS and category in RETUNE_CATS:
+        groups, _n_rt = _one_per_retune_target(groups, rec)
+        if _n_rt:
+            log(f"{category}: {_n_rt} notes of multisample sets left out (retuned onto a C the set already plays)")
     if category in SIBLING_CAP_CATS:
         groups = [_cap_siblings(g, rec) for g in groups]
     if not cfg.get("tempo_bands"):
@@ -4945,18 +5011,6 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
             c[key] = float(np.mean([rec[i][key] for i in idxs]))
         tv = [rec[i]["tune"] for i in idxs if rec[i]["tune"] is not None]
         c["tune"] = float(np.median(tv)) if len(tv) >= 5 else None
-        if category in RETUNE_CATS:
-            # retuned to C: the folder's register is the C its files now sit on
-            tr = []
-            for i in idxs:
-                if rec[i].get("retune") is None:
-                    continue
-                src_note = rec[i]["tune"] if rec[i]["tune"] is not None else \
-                    _name_root_midi(os.path.basename(rec[i]["path"] or ""))
-                if src_note is not None:
-                    tr.append(src_note + rec[i]["retune"])
-            if len(tr) >= 5 and len(tr) * 2 >= len(idxs):
-                c["tune"] = float(12 * round(np.median(tr) / 12))
         # medians for the envelope words' absolute gates (naming.TRAIT_GATES)
         _dv = [rec[i].get("dur") for i in idxs if rec[i].get("dur") is not None]
         c["med"] = dict(atk=float(np.median([rec[i]["atk"] for i in idxs])),
@@ -5128,6 +5182,9 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                     np.mean([bool(rx.search(t)) for t in texts]) < GENRE_SUPPORT_MIN
                     for rx in _inst_backers(phrases[q])):
                 Zp[j, q] = -np.inf
+    if category in RETUNE_CATS:
+        for c in clusters:
+            c["tune"] = _folder_played_note([rec[i] for i in c["_pick"] or c["idxs"]])
     name_families(clusters, category, cfg, Zp, phrases, clap_z=clap_z, dims=dims,
                   n_primary=len(primary))
     n_sticky = _apply_sticky_names(clusters, category, rec, cfg)

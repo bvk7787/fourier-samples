@@ -604,7 +604,12 @@ never across tempo folders or below a band's minimum. Then:
   multisample set per folder: C notes first, then the loudest velocity per note, spread across
   the register; Keeps stay. A set (`_sibling_key`) is one vendor/pack and one name with note,
   velocity, take and number tokens removed; one word plus a number counts only for a patch name,
-  not a generic word like "kick".
+  not a generic word like "kick". In the retuned categories (`RETUNE_CATS`), a set's notes that
+  retune onto the same C by the notes their names state are one sound (F#2, A#2, C3, D#3 and
+  E3 all play C3): first, across the category's folders, one note per set and C stays (a Keep's,
+  else the smallest shift, then the previous build's pick, then the lowest), with its velocity
+  layers (`_one_per_retune_target`). Numbered takes retuned by a measured root ("Saw Lead 02",
+  "Saw Lead 05") may be different patches and all stay.
 - **Small folders** (not tempo-banded): under 15 records, or given under 15 files by the budget,
   merges into its nearest same-band folder (`FOLDER_MIN_FILES`).
 - **Splits** (not tempo-banded): a folder filled to 120 from a pool of 240+ splits in two
@@ -946,7 +951,8 @@ Then:
 
 ### Retune
 
-- **Range**: resample so the root is the nearest C (-5 to +6 semitones, tape-style: length
+- **Range**: resample so the root is the nearest C, the shorter way (at most 6 semitones; an F#
+  goes up 6, or down when its fine tuning is flat: -5.51, not +6.49; tape-style: length
   changes). VOX, PIANO and ACOUSTIC move at most 3 (`RETUNE_MAX_SEMIS`; further sounds
   chipmunk or synthetic); a file further from C keeps its pitch and note name. A name with
   several notes (a sung line, "B2-D3-E2") isn't retuned. A lengthened file is cut back to
@@ -967,6 +973,11 @@ Then:
   detected pitch whose name still carries that note where the parser doesn't look (after a
   digit: `Saw2D1`) has that token renamed to the C it plays (`Saw2C1`); entries record
   `root_midi`.
+- **Folder notes**: a tonal folder's note (PIANO's `c3-`, ACOUSTIC's `string-c3-`, the
+  `_manifest.json` base note) is the median of the notes its files play once exported (the
+  measured root, else the name's, plus the retune), on the C when at least half of them are
+  retuned; judged on the files the folder holds (`_folder_played_note`; a pYIN retune comes
+  after naming and isn't counted).
 
 ### Rotation
 
