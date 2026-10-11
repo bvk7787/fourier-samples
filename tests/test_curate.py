@@ -407,14 +407,17 @@ def test_near_duplicate_partner_is_the_kept_file_it_repeats():
 
 def test_instrument_categories_drop_only_copies():
     """PIANO and ACOUSTIC skip the near-duplicate prune (a multisample's notes sit above
-    NEAR_DUP_COS) but drop one recording shipped under two names (INSTRUMENT_COPY_COS), and a
-    copy never comes back to fill a minimum."""
+    NEAR_DUP_COS) but drop one recording shipped under two names: CLAP over INSTRUMENT_COPY_COS
+    passes the notes too, and the audio (here a stand-in: 3 is 0's recording) decides. A copy
+    never comes back to fill a minimum."""
     rec = [dict(id=i, row=i, qual=1.0) for i in range(4)]
     E = np.array([[1, 0, 0], [1, .12, 0], [1, 0, .12], [1, .001, 0]], dtype="float32")
     E /= np.linalg.norm(E, axis=1, keepdims=True)
     assert float(E[0] @ E[1]) > C.NEAR_DUP_COS > float(E[0] @ E[1]) - 0.02    # notes: ~0.993
+    assert float(E[0] @ E[1]) > C.INSTRUMENT_COPY_COS                          # the prefilter passes them
     partners = {}
-    out, pruned = C._prune_near_dups(rec, E, C.INSTRUMENT_COPY_COS, keep=0, partners=partners)
+    out, pruned = C._prune_near_dups(rec, E, C.INSTRUMENT_COPY_COS, keep=0, partners=partners,
+                                     apart=lambda a, b: {a["id"], b["id"]} != {0, 3})
     assert [r["id"] for r in out] == [0, 1, 2] and pruned == 1 and partners == {3: 0}
 
 
