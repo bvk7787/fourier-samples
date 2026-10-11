@@ -14,6 +14,12 @@ change the CLI or the config).
   files beside it when they agree, with where the key came from. Keys are never guessed from
   the audio: measured on loops whose names state one, no detector tried was right often enough
   (curation.md, section 13).
+- One recording picked by two categories under two names (a pack shipped twice, renamed) now
+  stays in one: picks in different categories at a CLAP cosine of 0.9996 or more
+  (`CROSS_COPY_COS`) are compared as audio, and copies (cross-correlation 0.99 or more,
+  `COPY_XCORR`) keep one, by the rules a source picked twice already follows. `fourier why`
+  names the copy that stayed, and `fourier verify` checks the master for any left. Found by a
+  QA sweep: a piano chord in both STABS and SYNTH.
 
 ### Fixed
 
@@ -21,6 +27,8 @@ change the CLI or the config).
   two names (a pack shipped twice, renamed): the near-duplicate prune those categories skip, so
   a multisample's notes stay, now drops copies above a CLAP cosine of 0.999
   (`INSTRUMENT_COPY_COS`). Found by a QA sweep of a 246,000-sample library: 11 such pairs.
+  Each pair is now also compared as audio, so two different chords of one pack that CLAP
+  scores as near-identical both stay.
 
 ## [0.1.2] - 2026-10-07
 

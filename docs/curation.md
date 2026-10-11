@@ -565,7 +565,10 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
   additive build (`--base`) caps and prunes as before: no vendor count, no minimum.
 - The instrument categories (PIANO, ACOUSTIC) prune only copies, above 0.999
   (`INSTRUMENT_COPY_COS`): a multisample's notes sit above 0.985, but one recording shipped in
-  two packs under two names sits at 0.9996 or more. A copy never comes back to fill a minimum.
+  two packs under two names sits at 0.9996 or more. Each such pair is also compared as audio
+  (`COPY_XCORR`, as for one recording in two categories below), so two chords of one pack that
+  CLAP can't tell apart both stay; a source that can't be read is taken at CLAP's word. A copy
+  never comes back to fill a minimum.
 - `fourier why` names the kept file each pruned one repeats and where the master holds it.
 
 Pins removed by a cap are restored. A category whose pool still ends under its folder minimum
@@ -648,6 +651,16 @@ the set (same band, room under 120, the folder left keeps 15, sibling cap holds)
 **Cross-category dedup** (parallel `--jobs` builds, `_dup_winner`): a source picked twice stays
 in a Keep's category, else keys-named -> PIANO, stab-named -> STABS, acoustic -> ACOUSTIC, else
 the earlier category in play order.
+
+**One recording under two names** (`_cross_copies`): a pack shipped twice, renamed, can put one
+recording in two categories as two sources. After every category has picked, picks in different
+categories with a CLAP cosine of at least 0.9996 (`CROSS_COPY_COS`) are compared as audio: the
+sources' normalized cross-correlation at the best lag, over their first 10 s (`COPY_SECONDS`), at
+the lower of their rates. At 0.99 or more (`COPY_XCORR`) they're one recording, and one copy
+stays: a Keep's, else the one whose own name gives it its category (`_named_home`, the rules
+_dup_winner follows), else the earlier category in play order. CLAP alone isn't enough: two chords of one pack, an Em and a Cm, sat at
+0.9997 and cross-correlate at 0.1; real copies sit at 1.0. The sources are compared, never the
+exports, which a retune or trim changes. `fourier why` names the copy that stayed and where.
 
 ### 3.5 Library scale
 
@@ -1161,7 +1174,8 @@ chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN.
 
 ### Routing checks
 
-- **Homes**: PACK_HOME; one category per source; no identical audio in two categories; name
+- **Homes**: PACK_HOME; one category per source; no identical audio in two categories; no
+  recording in two categories under two names (with the database: CLAP, then the audio); name
   overrides and filters hold; no IRs or previews; mirror files (WARN).
 - **Keys and organs**: no keys-named files in SYNTH/SUB/FX/STABS or drum categories; PIANO chord
   and note folders apart; organs only in PIANO.

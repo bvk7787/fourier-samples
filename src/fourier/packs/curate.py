@@ -40,6 +40,7 @@ import shutil
 import urllib.request
 from collections import Counter, defaultdict
 from contextlib import nullcontext
+from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -170,6 +171,14 @@ NEAR_DUP_COS = _tunable("NEAR_DUP_COS", 0.985)      # CLAP cosine above which tw
 # above it; above this they're one recording under two names (a pack shipped twice), and the
 # copy goes. No copy comes back to fill a minimum.
 INSTRUMENT_COPY_COS = _tunable("INSTRUMENT_COPY_COS", 0.999)
+# one recording picked by two categories under two names (a pack shipped twice, renamed):
+# picks this close in CLAP, in different categories, are compared as audio, and one copy stays
+CROSS_COPY_COS = _tunable("CROSS_COPY_COS", 0.9996)
+# two sources are one recording when their normalized cross-correlation at the best lag, over
+# their first COPY_SECONDS, reaches COPY_XCORR (copies sit at 1.0, two chords of one pack near 0.1);
+# the instrument categories' copy prune asks the same of each pair above INSTRUMENT_COPY_COS
+COPY_XCORR = _tunable("COPY_XCORR", 0.99)
+COPY_SECONDS = _tunable("COPY_SECONDS", 10.0)
 TRIM_FLOOR_DB = _tunable("TRIM_FLOOR_DB", -50.0)     # silence floor (dBFS below peak) for edge trimming
 TRIM_PAD_MS = _tunable("TRIM_PAD_MS", 3.0)         # lead-in kept before the first non-silent sample (avoids clicks)
 PEAK_CEILING_DB = _tunable("PEAK_CEILING_DB", -1.0)    # one-shot / instrument peak-normalization target (dBFS)
@@ -1782,7 +1791,10 @@ def _prune_near_dups(rec, emb_n, thr, keep=0, partners=None, apart=None):
         if kept_vecs:
             sims = np.asarray(kept_vecs) @ v
             if apart is not None:
-                sims = np.where([apart(rec[i], rec[j]) for j in keep_idx], -1.0, sims)
+                # asked only of the pairs over thr: the only ones it can change
+                for k in np.flatnonzero(sims > thr):
+                    if apart(rec[i], rec[keep_idx[int(k)]]):
+                        sims[k] = -1.0
             if float(np.max(sims)) > thr:
                 dropped.append((i, keep_idx[int(np.argmax(sims))]))
                 continue
@@ -1802,6 +1814,132 @@ def _prune_near_dups(rec, emb_n, thr, keep=0, partners=None, apart=None):
     pruned = len(rec) - len(keep_set)
     return [r for j, r in enumerate(rec) if j in keep_set], pruned
 
+
+
+@lru_cache(maxsize=64)
+def _copy_signal(path):
+    """(mono float32 signal of a source's first COPY_SECONDS, its rate) for _same_recording."""
+    import soundfile as sf
+    sr = int(sf.info(path).samplerate)
+    y, _ = sf.read(path, frames=int(COPY_SECONDS * sr), always_2d=True, dtype="float32")
+    return y.mean(axis=1), sr
+
+
+def _same_recording(a, b):
+    """True when sources a and b hold one recording: their normalized cross-correlation at the
+    best lag (either polarity), over their first COPY_SECONDS at the lower of their two rates,
+    reaches COPY_XCORR. False when it doesn't; None when either can't be read or is silent.
+    Reads the sources (never the exports, which a retune or trim has changed)."""
+    if a == b:
+        return True
+    try:
+        (x, sx), (y, sy) = _copy_signal(a), _copy_signal(b)
+    except Exception:
+        return None
+    from scipy.signal import fftconvolve, resample_poly
+    if sx > sy:
+        x = resample_poly(x, sy, sx)
+    elif sy > sx:
+        y = resample_poly(y, sx, sy)
+    nx, ny = float(np.linalg.norm(x)), float(np.linalg.norm(y))
+    if not nx or not ny:
+        return None
+    c = fftconvolve(x / nx, (y / ny)[::-1], mode="full")
+    return float(np.max(np.abs(c))) >= COPY_XCORR
+
+
+def _recordings_apart(a, b):
+    """For _prune_near_dups: two candidates CLAP calls copies whose audio says otherwise (two
+    chords of one pack) are kept apart. One that can't be read stays a copy, as CLAP says."""
+    return _same_recording(a["path"], b["path"]) is False
+
+
+def _copy_vectors(srcs):
+    """{source path: (sample id, unit CLAP vector)} for these sources; {} without a database
+    or an index."""
+    from ..db.session import db_exists, session_scope
+    want = set(srcs)
+    if not want or not db_exists():
+        return {}
+    try:
+        ids, emb = load_index()
+    except (RuntimeError, OSError, ValueError):
+        return {}
+    row = {int(i): r for r, i in enumerate(ids)}
+    out = {}
+    with session_scope() as s:
+        for sid, path in s.execute(select(Sample.id, Sample.path)):
+            if path in want and int(sid) in row:
+                v = np.asarray(emb[row[int(sid)]], dtype="float32")
+                out[path] = (int(sid), v / (np.linalg.norm(v) + 1e-9))
+    return out
+
+
+def _cross_copy_pairs(members, vecs):
+    """[(i, j)] index pairs of members ((category, source) in two categories, two sources) that
+    are one recording: CLAP cosine at least CROSS_COPY_COS, then _same_recording. vecs is
+    _copy_vectors' {source: (id, vector)}."""
+    if CROSS_COPY_COS >= 1.0:
+        return []
+    have = [k for k, (_c, src) in enumerate(members) if src in vecs]
+    if len(have) < 2:
+        return []
+    V = np.stack([vecs[members[k][1]][1] for k in have]).astype("float32")
+    pairs = []
+    for i0 in range(0, len(have), 1024):
+        S = V[i0:i0 + 1024] @ V.T
+        for a, b in zip(*np.nonzero(S >= CROSS_COPY_COS)):
+            i, j = have[i0 + int(a)], have[int(b)]
+            (ci, si), (cj, sj) = members[i], members[j]
+            if i < j and ci != cj and si != sj and _same_recording(si, sj) is True:
+                pairs.append((i, j))
+    return pairs
+
+
+def _copy_winner(group, pins=None):
+    """Which (category, source) of one recording's copies stays: a Keep where it was rated,
+    else one in the category its own name gives it (_named_home: keys-named -> PIANO, stab- or
+    chord-named -> STABS, acoustic -> ACOUSTIC), else the earliest category in play order."""
+    from .curate_config import CATEGORY_ORDER
+    order = {c: i for i, c in enumerate(CATEGORY_ORDER)}
+    key = lambda m: (order.get(m[0], 99), m[0], m[1])      # noqa: E731
+    pinned = [m for m in group if pins and pins.get(m[1]) == m[0]]
+    if pinned:
+        return min(pinned, key=key)
+    cats = sorted({c for c, _ in group})
+    named = [m for m in group if _named_home(m[1], cats) == m[0]]
+    return min(named or group, key=key)
+
+
+def _cross_copies(results, skip=(), pins=None):
+    """({category: {source dropped: (category kept, source kept)}}, the vectors read): one
+    recording that two categories picked under two names stays in one (_cross_copy_pairs,
+    _copy_winner). skip: (category, source) pairs already on their way out."""
+    members = sorted({(c, e["src"]) for c, _s, es in results for e in es or []
+                      if e.get("src") and (c, e["src"]) not in skip})
+    if CROSS_COPY_COS >= 1.0 or len(members) < 2:
+        return {}, {}
+    vecs = _copy_vectors({src for _c, src in members})
+    pairs = _cross_copy_pairs(members, vecs)
+    parent = list(range(len(members)))
+
+    def root(k):
+        while parent[k] != k:
+            parent[k] = parent[parent[k]]
+            k = parent[k]
+        return k
+    for i, j in pairs:
+        parent[root(i)] = root(j)
+    groups = defaultdict(list)
+    for k in {k for p in pairs for k in p}:
+        groups[root(k)].append(members[k])
+    out = {}
+    for g in groups.values():
+        win = _copy_winner(g, pins)
+        for c, src in g:
+            if (c, src) != win:
+                out.setdefault(c, {})[src] = win
+    return out, vecs
 
 _NAME_OVERRIDES = [
     (tuple(s.lower() for s in ((subs,) if isinstance(subs, str) else subs)), cat)
@@ -3560,7 +3698,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         stats["pack_capped"] = _b0 - len(rec)
         _copies = {} if why is not None else None
         rec, stats["near_dup"] = _prune_near_dups(rec, emb_n, INSTRUMENT_COPY_COS, keep=0,
-                                                  partners=_copies)
+                                                  partners=_copies, apart=_recordings_apart)
         if why is not None and _copies:
             why.setdefault("near_dup", {}).update(_copies)
     if cfg["kind"] != "instrument":
@@ -5338,9 +5476,9 @@ def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, prog
                     redo[category] = (category, summary, entries)
             results = [redo.get(r[0], r) for r in results]
     results.sort(key=lambda r: r[0])   # stable order -> deterministic manifest
-    n = _dedupe_across(out_dir, results)
+    n = _dedupe_across(out_dir, results, log=log)
     if n:
-        log(f"{n} file(s) chosen by two categories kept in one (_dup_winner)")
+        log(f"{n} file(s) chosen by two categories kept in one (_dup_winner, _cross_copies)")
     merge_manifest(out_dir, results)
     return results
 
@@ -5353,6 +5491,16 @@ def _dup_winner(src, cats, pins=None):
     from .curate_config import CATEGORY_ORDER
     if pins and pins.get(src) in cats:
         return pins[src]                  # a Keep stays where it was rated
+    named = _named_home(src, cats)
+    if named:
+        return named
+    order = {c: i for i, c in enumerate(CATEGORY_ORDER)}
+    return min(cats, key=lambda c: (order.get(c, 99), c))
+
+
+def _named_home(src, cats):
+    """The category of cats a source's own name or pack gives it (keys-named -> PIANO, stab- or
+    chord-named -> STABS, an acoustic instrument -> ACOUSTIC), or None."""
     fn = os.path.basename(src or "")
     rel = library_rel(src or "")
     for c, ok in (("PIANO", bool(KEYBOARD_NAME_RE.search(fn))),
@@ -5360,13 +5508,14 @@ def _dup_winner(src, cats, pins=None):
                   ("ACOUSTIC", bool(ORCH_PACKS.search(_pack_of(rel, src)) or _acoustic_reserved(fn, (), rel)))):
         if ok and c in cats:
             return c
-    order = {c: i for i, c in enumerate(CATEGORY_ORDER)}
-    return min(cats, key=lambda c: (order.get(c, 99), c))
+    return None
 
 
-def _dedupe_across(out_dir, results):
-    """Keep a source file in one category only (_dup_winner): drop the other exported
-    copies, their manifest entries and their families' counts. Returns files dropped."""
+def _dedupe_across(out_dir, results, log=None):
+    """Keep a source file in one category only (_dup_winner), and one recording under two
+    names in one category only (_cross_copies): drop the other exported copies, their
+    manifest entries and their families' counts, and record each copy in its category's why
+    log. Returns files dropped."""
     from .ratings import keep_pins
     pins = keep_pins()
     where = defaultdict(list)
@@ -5379,6 +5528,14 @@ def _dedupe_across(out_dir, results):
             win = _dup_winner(src, sorted(set(cats)), pins)
             for c in set(cats) - {win}:
                 drop.setdefault(c, set()).add(src)
+    copies, vecs = _cross_copies(results, {(c, s) for c, ss in drop.items() for s in ss}, pins)
+    for c, gone in copies.items():
+        drop.setdefault(c, set()).update(gone)
+    if copies:
+        _why_copies(out_dir, copies, vecs)
+        if log:
+            log(f"{sum(map(len, copies.values()))} recording(s) picked by two categories under two "
+                f"names kept in one (CROSS_COPY_COS, COPY_XCORR)")
     n = 0
     for category, summary, entries in results:
         gone = drop.get(category)
@@ -5408,6 +5565,23 @@ def _dedupe_across(out_dir, results):
             pass
     return n
 
+
+
+def _why_copies(out_dir, copies, vecs):
+    """Add each copy _cross_copies dropped to its category's why log: reason "cross_copy", the
+    kept copy's sample id."""
+    for c, gone in copies.items():
+        doc = why_log.read(out_dir, c)
+        if doc is None:
+            continue
+        ids = {str(vecs[s][0]): vecs[k[1]][0] for s, k in gone.items() if s in vecs and k[1] in vecs}
+        if not ids:
+            continue
+        doc.setdefault("out", {}).setdefault("cross_copy", {}).update(ids)
+        counts = doc.setdefault("counts", {})
+        counts["cross_copy"] = int(counts.get("cross_copy", 0)) + len(ids)
+        doc["kept"] = max(0, int(doc.get("kept", 0)) - len(ids))
+        why_log.write(out_dir, c, doc)
 
 def _describe(clusters, category, model):
     prof = "\n".join(

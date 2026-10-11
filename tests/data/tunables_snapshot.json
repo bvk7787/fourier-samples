@@ -378,6 +378,18 @@
   "type": "float",
   "value": 0.999
  },
+ "curate.CROSS_COPY_COS": {
+  "type": "float",
+  "value": 0.9996
+ },
+ "curate.COPY_XCORR": {
+  "type": "float",
+  "value": 0.99
+ },
+ "curate.COPY_SECONDS": {
+  "type": "float",
+  "value": 10.0
+ },
  "curate.NOTE_CONF": {
   "type": "float",
   "value": 0.4
