@@ -536,7 +536,7 @@ def render_master_to_device(master_dir, device, out_dir, max_mb=None, log=print,
         queued.add(f.key)
         src = master / f.master
         if f.key in a.changed:
-            orig = _release_copy(lock.files[f.key])
+            orig = _release_copy(lock.files[a.locked_key(f.key)])
             if orig:
                 src, kept_orig = orig, kept_orig + 1
             else:
@@ -650,9 +650,15 @@ def device_plan(master_dir, device, lock, log=print) -> dict:
         return dict(device=device.device_id, locked=0, new=len(a.new), safe=True)
     mismatch = _lock_mismatch(lock, device)
     card_ok = mismatch is None
-    changed_lost = [k for k in a.changed if not _release_copy(lock.files[k])]
+    changed_lost = [k for k in a.changed if not _release_copy(lock.files[a.locked_key(k)])]
     retired_lost = [k for k in a.retired if not _release_copy(lock.files[k])]
-    safe = card_ok and not changed_lost and not retired_lost
+    # a new file with a retired locked file's audio in its category: a source the lock didn't
+    # follow, which would go on the card a second time under a new name
+    gone = {(lock.files[k].get("master", "").split("/")[0], lock.files[k].get("md5")) for k in a.retired}
+    by_key = {f.key: f for f in files}
+    dups = [k for k in a.new if by_key[k].md5 and (by_key[k].category, by_key[k].md5) in gone]
+    safe_paths = card_ok and not changed_lost and not retired_lost
+    safe = safe_paths and not dups
     log(f"{device.device_id}: {len(lock.files)} locked paths under {lock.card_dir or '/'}")
     log(f"  kept      : {len(a.kept)}   (same path; unchanged audio unless listed below)")
     log(f"  NEW       : {len(a.new)}   (fresh names that avoid every locked path)")
@@ -660,15 +666,21 @@ def device_plan(master_dir, device, lock, log=print) -> dict:
         f"will keep their original audio from the release they were locked from)")
     log(f"  RETIRED   : {len(a.retired)}   (gone from the master; {len(a.retired) - len(retired_lost)} "
         f"stay on the card from their release)")
+    if dups:
+        log(f"  DUPLICATE : {len(dups)}   (NEW with the audio of a RETIRED file the lock didn't follow "
+            f"to its source: a second copy under a new name, e.g. {a.paths[dups[0]]})")
     if not card_ok:
         log(f"  PROFILE   : {mismatch} -> every file on the device would change")
     for k in (changed_lost + retired_lost)[:6]:
-        log(f"       at risk: {_full(prefix, lock.files[k]['path'])} (original release copy missing)")
+        log(f"       at risk: {_full(prefix, lock.files[a.locked_key(k)]['path'])} (original release "
+            f"copy missing)")
     log("  => " + ("SAFE: every path on the device keeps its audio" if safe
-                   else "NOT SAFE: some device paths would lose or change their audio"))
+                   else "NOT SAFE: some device paths would lose or change their audio" if not safe_paths
+                   else "NOT SAFE: files already on the device would be copied again under new names"))
     return dict(device=device.device_id, locked=len(lock.files), kept=len(a.kept), new=len(a.new),
                 changed=len(a.changed), retired=len(a.retired),
-                at_risk=len(changed_lost) + len(retired_lost), card_dir_ok=card_ok, safe=safe)
+                at_risk=len(changed_lost) + len(retired_lost), duplicates=len(dups),
+                card_dir_ok=card_ok, safe=safe)
 
 
 def render_device(device_id, master_dir, out_dir, max_mb=None, log=print, release=None,
