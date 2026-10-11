@@ -471,6 +471,15 @@ def check_routing(ctx):
     prv = [(c, e["out"]) for c, e in ctx.entries if C._is_preview(_rel(e["src"]), e["src"])]
     yield Result(FAIL if prv else PASS, "no preset or kit previews", _fmt(prv))
     loopish = {c for c, cfg in CATEGORIES.items() if cfg.get("kind") == "loop"}
+
+    def drum_wins(e):
+        """The drum a one-shot's name and a classifier agree on (rules._drum_name_wins), which
+        the build homes ahead of the acoustic and organ reservations."""
+        lab = set(e.get("labels") or ())
+        if e.get("loop_row") or "class.loop" in lab or "class.oneshot" not in lab:
+            return None
+        return C._drum_name_wins(os.path.basename(e["src"]), lab, e.get("ableton"), _rel(e["src"]),
+                                 ctx.fallback)
     # loops are exempt, as in the build (_row_override): by Sononym's class (recorded as
     # loop_row) or Ableton's "Loop" tag
     ov = [(c, e["out"], C._name_override(os.path.basename(e["src"]))) for c, e in ctx.entries
@@ -522,7 +531,7 @@ def check_routing(ctx):
             and not ORCH_PACK_EXCLUDE.search(C._pack_of(_rel(e["src"]), e["src"]))
             and ((C._is_wind_named(os.path.basename(e["src"]), e.get("ableton"))
                   and not e.get("loop_row") and "Loop" not in (e.get("ableton") or ()))
-                 or C._orch_path(_rel(e["src"])) is not None)]
+                 or C._orch_path(_rel(e["src"])) is not None) and not drum_wins(e)]
     yield Result(FAIL if wind else PASS, "named wind / brass one-shots and orchestra folders only in ACOUSTIC",
                  _fmt(wind))
     from .curate_config import FX_TRANSITION_FROM, MIRROR_ROOT_RE
@@ -532,7 +541,7 @@ def check_routing(ctx):
     two = [(os.path.basename(k), "/".join(sorted(v))) for k, v in both.items() if len(v) > 1]
     yield Result(FAIL if two else PASS, "every source file in one category only", _fmt(two))
     org = [(c, e["out"]) for c, e in ctx.entries if c != "PIANO" and c not in loopish and not ctx.pinned(c, e)
-           and not e.get("loop_row") and C._is_organ_named(os.path.basename(e["src"]))]
+           and not e.get("loop_row") and C._is_organ_named(os.path.basename(e["src"])) and not drum_wins(e)]
     yield Result(FAIL if org else PASS, "named organs only in PIANO (organ stabs in STABS)", _fmt(org))
     from .curate_config import VOX_CHOIR_RE, VOX_CHOIR_SHARE, BUDGETS
     nch = sum(1 for c, e in ctx.entries if c == "VOX" and VOX_CHOIR_RE.search(_rel(e["src"])))
@@ -601,12 +610,14 @@ def check_routing(ctx):
     _msib = {(C._sibling_key(p), cat) for p, cat in ctx.misf.items() if C._sibling_key(p)}
     wrong = []
     for c, e in ctx.entries:
-        if c not in DRUM_NAME_FROM or CATEGORIES.get(c, {}).get("kind") != "oneshot" \
+        kind = CATEGORIES.get(c, {}).get("kind")
+        if not ((c in DRUM_NAME_FROM and kind == "oneshot") or kind == "instrument") \
                 or ctx.pinned(c, e) or e.get("loop_row"):
             continue
         fn = os.path.basename(e["src"])
-        want = SCRATCH_HOME if C._scratch_named(fn, _rel(e["src"])) else C._drum_named_in(
-            fn, _rel(e["src"]), ctx.fallback)
+        # (in ACOUSTIC and PIANO only a drum a classifier agrees on, as the build has it)
+        want = drum_wins(e) if kind == "instrument" else SCRATCH_HOME if C._scratch_named(
+            fn, _rel(e["src"])) else C._drum_named_in(fn, _rel(e["src"]), ctx.fallback)
         # (a name override wins, as in the build: "Kick_Cowbell_02" is a cowbell)
         if want and want != c and ctx.misf.get(e["src"]) != want \
                 and (C._sibling_key(e["src"]), want) not in _msib and C._name_override(fn) != c:

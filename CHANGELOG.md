@@ -23,6 +23,27 @@ change the CLI or the config).
 
 ### Fixed
 
+- Device path locks now follow a library that moved (another volume, a renamed library, vendor
+  or pack folder). A lock names each source by its absolute path, so after a move a render
+  found none of them: every file got a second copy on the card under a new name ("_2") beside
+  its locked twin, and `render --dry-run` still said SAFE. A source the lock doesn't know now
+  keeps the path of a locked source gone from the master when they are the same master file
+  (master path and audio) or the same library path (vendor/pack/file), one to one; rendering a
+  release re-keys the entry, and existing locks need no migration. `render --dry-run` is NOT
+  SAFE when a new file repeats a retired locked file's audio in its category (DUPLICATE). Found
+  by an audit: a library root change left 0 of 12,579 locked paths kept.
+- Routing names that misread a pack's prefix, an ID token or a mic tag. A drum abbreviation
+  glued to a number and more letters ("XX4d-...") no longer names a drum (`DRUM_NAME_RULES`,
+  the hat bands and the drum words of `STAB_NAME_EXCLUDE` and FX's name filter; "CH01" and "BD909"
+  still do), and "+OH" (an overhead mic) is no open hat. A chord quality inside a
+  random ID token ("..._C1-M93Q", "..._C4-SUS7") no longer makes a stab (`STAB_CHORD_NAME_RE`).
+  Hats named "Clsd" or "Foot" are closed (`HAT_CLOSED_RE`), and a kit's open-hat slot passes
+  over a hat named closed (`ROLE_NAME`). A one-shot named as one kind of drum that a classifier
+  also files with a drum homes in that drum category ahead of the acoustic and organ
+  reservations (a flute-named kick, an organ maker's drum machine snare), and ACOUSTIC and
+  PIANO leave it out; `fourier why` and `fourier verify` follow. `DEMO_PATH` also takes a pack's
+  "Demo <name>" folder and the renders Ableton Live writes into a set's `Samples/Processed/Crop`,
+  `Consolidate`, `Reverse` and `Freeze` folders. Found by an audit of a 246,000-sample library.
 - PIANO and ACOUSTIC no longer keep two copies of one recording that reach the library under
   two names (a pack shipped twice, renamed): the near-duplicate prune those categories skip, so
   a multisample's notes stay, now drops copies above a CLAP cosine of 0.999

@@ -27,8 +27,9 @@ PRECEDENCE = [
     ("pack_home", "a pack with a fixed home (PACK_HOME, set by a library overlay): that category only", "selection"),
     ("inst_pack", "an instrument-routed pack (INST_ROUTED_PACKS): its instrument category only", "homes"),
     ("phrase", "a musical phrase (producer-marked, whole bars): PHRASES", "homes"),
-    ("acoustic", "an acoustic instrument by tag, name or orchestra folder (ORCH_PATH_RE): ACOUSTIC", "homes"),
-    ("organ", "a named organ one-shot (not a stab): PIANO", "homes"),
+    ("acoustic", "an acoustic instrument by tag, name or orchestra folder (ORCH_PATH_RE): ACOUSTIC, "
+                 "unless a classifier agrees with a drum name", "homes"),
+    ("organ", "a named organ one-shot (not a stab): PIANO, unless a classifier agrees with a drum name", "homes"),
     ("override", "a NAME_OVERRIDES word (kalimba, cowbell, ...): that category", "selection"),
     ("sound", "the sound model (without Sononym; trained on pack makers' names and your ratings): a "
               "file no name rule recognized, or one only its pack's name or a weak word describes, "
@@ -198,11 +199,16 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
     elif _rh == PHRASES_CATEGORY:
         hit("phrase", f"a drum loop by its words or audio, but it sounds like a musical phrase: fell "
                       f"back to {PHRASES_CATEGORY} by sound (CLAP)", PHRASES_CATEGORY)
-    if not ORCH_PACK_EXCLUDE.search(pack) and (
+    # (a drum name a classifier agrees on goes ahead of both reservations, as in compute_homes)
+    drum = C._drum_name_wins(fn, C._canonical_of(r), ab, r.rel_path or r.path,
+                             act is not None and act.fallback) if oneshot else None
+    if drum and v == "misfiled" and (w.rating or {}).get("category") == drum:
+        drum = None
+    if not drum and not ORCH_PACK_EXCLUDE.search(pack) and (
             C._acoustic_tagged(ab, fn, pack) or (oneshot and C._is_acoustic_named(fn, ab))
             or (not is_loop and C._is_wind_named(fn, ab)) or C._orch_path(r.rel_path) is not None):
         hit("acoustic", "acoustic instrument by tag / name / folder", "ACOUSTIC")
-    if not is_loop and C._is_organ_named(fn):
+    if not drum and not is_loop and C._is_organ_named(fn):
         hit("organ", "organ-named", "PIANO")
     elif act is not None and act.fallback and not is_loop and C._keys_labeled(r) and "PIANO" in CATEGORIES:
         hit("keys", "named as keys (rhodes, wurli, e-piano, organ, piano: the path label \"keys\"): "
