@@ -182,12 +182,10 @@ def kit_level_db(y, sr):
     """A kit slot's level as it plays: the loudest window of a level-keeping mono downmix
     (for stereo, about the channels' own level). The plain L+R average reads a wide hat or
     crash up to 3 dB quiet, so its slot would play over its role on a mono device."""
-    from ..devices.exporter import _mono_downmix
-    from .curate import _short_term_db
+    from .curate import _short_term_db          # (its downmix: curate._level_mono)
     if not y.size:
         return float("-inf")
-    m = _mono_downmix(np.asarray(y).T, keep_level=True) if y.ndim == 2 and y.shape[1] > 1 else y.reshape(-1)
-    return _short_term_db(np.asarray(m), sr)
+    return _short_term_db(np.asarray(y), sr)
 
 
 def kit_gain_db(y, sr, role):

@@ -290,8 +290,9 @@ def test_wide_kit_slot_levelled_as_the_m8_plays_it(tmp_path):
     env = np.exp(-np.arange(n) / 4000.0)
     l, r = (np.clip(rng.normal(0, 0.3, n), -0.99, 0.99) * env for _ in range(2))   # uncorrelated: wide
     y = np.stack([l, r], axis=1)
-    assert S.kit_level_db(y, SR) - _short_term_db(y, SR) > 1.0
-    assert _short_term_db(y, SR) < S.KIT_LEVEL_DB["hat_closed"] < S.kit_level_db(y, SR)   # the old read let it through
+    avg = _short_term_db(y.mean(axis=1), SR)          # the plain L+R average
+    assert S.kit_level_db(y, SR) - avg > 1.0
+    assert avg < S.KIT_LEVEL_DB["hat_closed"] < S.kit_level_db(y, SR)   # the old read let it through
     src, dst = tmp_path / "hat.wav", tmp_path / "kit" / "hat.wav"
     sf.write(str(src), y, SR, subtype="PCM_24")
     g = S._write_kit_file(src, dst, "hat_closed")

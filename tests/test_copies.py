@@ -157,7 +157,7 @@ def test_one_recording_in_two_categories_stays_in_one(tmp_path, monkeypatch):
     out = tmp_path / "master.next"
     _master(out, [("STABS", "qb-x", "a.wav"), ("STABS", "qb-x", "c.wav"),
                   ("SYNTH", "qc-x", "b.wav"), ("PIANO", "qa-x", "d.wav")])
-    why_log.write(out, "SYNTH", {"category": "SYNTH", "kept": 1, "out": {}, "counts": {}})
+    why_log.write(out, "SYNTH", {"category": "SYNTH", "kept": 1, "files": 1, "out": {}, "counts": {}})
     picks = [("PIANO", {"files": 1}, [{"family": "qa-x", "out": "qa-x/d.wav", "src": b2}]),
              ("STABS", {"files": 2}, [{"family": "qb-x", "out": "qb-x/a.wav", "src": a1},
                                       {"family": "qb-x", "out": "qb-x/c.wav", "src": b1}]),
@@ -171,7 +171,8 @@ def test_one_recording_in_two_categories_stays_in_one(tmp_path, monkeypatch):
     assert json.loads((out / "SYNTH" / "_manifest.json").read_text())[0]["copied"] == 0
     assert said and "two names" in said[0]
     doc = why_log.read(out, "SYNTH")
-    assert doc["out"]["cross_copy"] == {"2": 1} and doc["counts"]["cross_copy"] == 1 and doc["kept"] == 0
+    assert doc["out"]["cross_copy"] == {"2": 1} and doc["counts"]["cross_copy"] == 1
+    assert doc["files"] == 0 and doc["kept"] == 1                # kept: the candidate pool
     line = why_log.describe("cross_copy", 1, doc, name_of=lambda i: f"#{i}",
                             place_of=lambda i: "STABS/qb-x/a.wav")
     assert "same recording" in line and "STABS/qb-x/a.wav" in line

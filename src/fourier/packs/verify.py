@@ -130,7 +130,8 @@ def check_manifest(ctx):
     yield Result(FAIL if (miss or extra) else PASS, "manifest matches disk",
                  f"{len(listed)} files" + (f"; missing {_fmt(miss)}" if miss else "")
                  + (f"; unlisted {_fmt(extra)}" if extra else ""))
-    bad = [f"{c}/{e['out']}" for c, e in ctx.entries if e.get("out_md5") and ctx.path(c, e).exists()
+    bad = [f"{c}/{e['out']}" for c, e in ctx.entries + ctx.set_entries   # the sets' copies too
+           if e.get("out_md5") and ctx.path(c, e).exists()
            and hashlib.md5(ctx.path(c, e).read_bytes()).hexdigest() != e["out_md5"]]
     yield Result(FAIL if bad else PASS, "out_md5 matches every file", _fmt(bad))
     nomd5 = [f"{c}/{e['out']}" for c, e in ctx.entries if not e.get("out_md5")]
@@ -853,7 +854,7 @@ def check_audio(ctx):
                 if _end > pk * 10 ** (END_HOT_DB / 20):
                     ends.append((c, e["out"], round(20 * np.log10(_end / pk), 1)))
         if c in LEVEL_CATS and x.size and not ctx.pinned(c, e):
-            _v = C._short_term_db(x.mean(axis=1), sr)
+            _v = C._short_term_db(x, sr)           # as the build measured it
             _rr = float(np.sqrt(np.mean(np.square(x))))
             _rdb = 20 * np.log10(_rr) if _rr > 0 else -120.0
             # room to lift: under the peak ceiling and the category's RMS ceiling
@@ -935,13 +936,14 @@ def check_audio(ctx):
                 stale.append((c, e["out"]))
     yield Result(FAIL if stale else PASS, "retuned files named for the note they play (C)", _fmt(stale))
     far = []
+    tol = LEVEL_TOL_DB + 1.0          # 1 dB over the build's: levelling moves the median it levels to
     for (c, fam), vs in st.items():
         if len(vs) < 3:
             continue
         med = float(np.median([v for _, v, _ in vs]))
         far += [(c, o, round(v - med, 1)) for o, v, room in vs
-                if v > med + LEVEL_TOL_DB + 1.0 or (v < med - LEVEL_TOL_DB - 1.0 and room)]
-    yield Result(WARN if far else PASS, f"melodic folders levelled (within {LEVEL_TOL_DB:.0f} dB of the "
+                if v > med + tol or (v < med - tol and room)]
+    yield Result(WARN if far else PASS, f"melodic folders levelled (within {tol:g} dB of the "
                  "folder median, short-term loudness)", _fmt(far, 5))
     fb = [(c, e["out"]) for c, e in ctx.entries if e.get("dsp_fallback")]
     yield Result(FAIL if fb else PASS, "every file went through export processing (no verbatim fallbacks)",
