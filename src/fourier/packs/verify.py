@@ -907,7 +907,7 @@ def check_audio(ctx):
     rt = [(c, e["out"], e.get("retune")) for c, e in ctx.entries if c in RETUNE_CATS and not e.get("loop_row")
           and (e.get("retune") is None and not e.get("pitch_conflict")
                and C._retune_shift(c, os.path.basename(e["src"]), None, bare=ctx.fallback)[0] is not None
-               or (e.get("retune") is not None and abs(e["retune"]) > 6.5))]
+               or (e.get("retune") is not None and abs(e["retune"]) > 6.0 + 1e-6))]
     yield Result(FAIL if rt else PASS, "tonal one-shots with a named root retuned to C (at most 6 semitones)",
                  _fmt(rt))
     stale = [(c, e["out"]) for c, e in ctx.entries if c in RETUNE_CATS and e.get("retune") is not None

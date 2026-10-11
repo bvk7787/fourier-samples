@@ -44,6 +44,12 @@ change the CLI or the config).
   PIANO leave it out; `fourier why` and `fourier verify` follow. `DEMO_PATH` also takes a pack's
   "Demo <name>" folder and the renders Ableton Live writes into a set's `Samples/Processed/Crop`,
   `Consolidate`, `Reverse` and `Freeze` folders. Found by an audit of a 246,000-sample library.
+- Retune to C: an F# whose fine tuning is flat goes down to the C below (-5.51) instead of
+  up 6.49, so no shift is over 6 semitones (verify now holds that at 6). Notes of one
+  multisample set that retune onto the same C count as one in the retuned categories (one
+  note per set and C across the category's folders, the smallest shift first), so a folder no
+  longer holds several copies of one chord at C3. A tonal folder's note (`c3-`, `mallet-c4-`)
+  is the median of the notes its files play after the retune, judged on the files it holds.
 - PIANO and ACOUSTIC no longer keep two copies of one recording that reach the library under
   two names (a pack shipped twice, renamed): the near-duplicate prune those categories skip, so
   a multisample's notes stay, now drops copies above a CLAP cosine of 0.999
