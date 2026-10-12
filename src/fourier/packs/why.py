@@ -231,7 +231,8 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
     for t in ab:
         ab_cats |= tag2cats.get(t, set())
     w.votes, w.labels = _credit(r, act, son_cats, ab_cats)
-    cand = son_cats | ab_cats
+    # (an FX folder's file the classifier hears as FX only is no pad, as compute_homes has it)
+    cand = C._fx_folder_veto(son_cats | ab_cats, C._canonical_of(r), r.rel_path or library_rel(r.path or ""))
     snd = _sound_homed(r.id, why_docs) if act is not None and act.fallback else None
     if snd and w.decided is None:
         hit("sound", f"sound model: {snd[0]} {snd[1]:.2f}, "
@@ -246,7 +247,7 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
         hit("scratch", "scratch-named", SCRATCH_HOME)
     if not is_loop and not scr and cand & FX_TRANSITION_FROM and C._is_fx_transition(fn):
         hit("fx_transition", "riser / downlifter / sweep by name", "FX")
-    dn = C._drum_named_in(fn, r.rel_path or r.path, act is not None and act.fallback) \
+    dn = C._drum_named_in(fn, r.rel_path or r.path, act is not None and act.fallback, C._canonical_of(r), ab) \
         if (oneshot and not scr) else None
     if dn and "VOX" not in cand and cand & DRUM_NAME_FROM:
         hit("drum_name", f"named as {dn}", dn)

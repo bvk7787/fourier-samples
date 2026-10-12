@@ -48,11 +48,12 @@ INSTRUMENT_LABELS_EXTRA = _tunable("INSTRUMENT_LABELS_EXTRA", [])   # library: [
 # Pack demo/preview/jam files, identified by path. Kept out of every category but the
 # instrument ones (they are full/busy, not clean hits). A pack's "Demo <name>" folder is a demo too,
 # and so are the files Ableton Live writes into a Live Set's Samples/Processed folders when a
-# clip is cut to its crop, consolidated, reversed or frozen: renders of the set, not library samples.
+# clip is cut to its crop, consolidated, reversed or frozen, and its Samples/Recorded takes:
+# renders and recordings of the set, not library samples.
 DEMO_PATH = _tunable("DEMO_PATH", _re.compile(
     r"(ableton folder info/previews|/demos?/|[/ _-]demo[s]?[ _.)\-]|\bpreview\b|"
     r"full[ _-]?(mix|track|song)|construction[ _-]?kit"
-    r"|(?:^|/)samples/processed/(?:crop|consolidate|reverse|freeze)/)", _re.I))
+    r"|(?:^|/)samples/processed/(?:crop|consolidate|reverse|freeze)/|(?:^|/)samples/recorded/)", _re.I))
 
 # Cap any single source folder (a vendor's pack folder) to this share of a
 # category, so no one vendor's aesthetic dominates.
@@ -538,9 +539,36 @@ STRING_NAME_RE = _tunable("STRING_NAME_RE", _re.compile(r"violin|viola|cello|con
 # would crowd the 140-150 BPM breaks and tops). A style preset for those styles names only
 # the folders below (config/presets/: balanced, trap, ...).
 DRUMLOOP_STYLE_EXCLUDE = _tunable("DRUMLOOP_STYLE_EXCLUDE", _re.compile(
-    r"(?<![a-z])(?:fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])", _re.I))
-# (folders that hold no drum loops: "FX Loops", "Impact FX", "Synth Bass"; preset
-# breaks-acid also leaves out dubstep, trap and future bass folders)
+    r"(?<![a-z])(?:fx[ _-]?loops?|impact[ _-]?fx|synth[ _-]?bass|brass[ _-]?stab)(?![a-z])", _re.I))
+# (folders that hold no drum loops: "FX Loops", "Impact FX", "Synth Bass", spaced, "_" or "-";
+# preset breaks-acid also leaves out dubstep, trap and future bass folders)
+# Loops that are no drum loops whatever Live's "Drum Loop" tag says (rules._not_drum_loop): a
+# loop whose name says a key and a bass (DRUMLOOP_KEY_NAME_RE, DRUMLOOP_BASS_NAME_RE:
+# "Vqx_166_E_Bass_7"), one from a folder of bass, music or synth loops (DRUMLOOP_MUSIC_DIR_RE)
+# whose name says either (such a folder in a drum & bass pack may hold breaks, which don't), and
+# one from an FX folder (FX_FOLDER_RE) that names no drums. A loop's own folder decides.
+DRUMLOOP_MUSIC_DIR_RE = _tunable("DRUMLOOP_MUSIC_DIR_RE", _re.compile(
+    r"(?<![a-z])(?:bass|music(?:al)?|melod(?:y|ic|ies)|synths?|chords?|keys|leads?|pads?|vocals?|vox)"
+    r"[ _-]*loops?(?![a-z])", _re.I))
+DRUMLOOP_KEY_NAME_RE = _tunable("DRUMLOOP_KEY_NAME_RE", _re.compile(
+    r"(?<![A-Za-z0-9#])[A-G](?:#|b)?(?i:major|minor|maj|min|m)?(?![A-Za-z0-9#])"))
+DRUMLOOP_BASS_NAME_RE = _tunable("DRUMLOOP_BASS_NAME_RE", _re.compile(
+    r"(?<![a-z])(?:sub ?)?bass(?:lines?|loops?)?(?![a-z])(?! ?drum)", _re.I))
+# A folder of sound effects, by its words ("FX", "Effects", "Risers", "Noise"): with nothing
+# but FX from the classifier (or nothing), a file under one isn't a pad, whatever Live's
+# "Atmosphere" tag says (FX_FOLDER_NOT: curate.compute_homes), and a loop in one that names no
+# drums isn't a drum loop (above).
+FX_FOLDER_RE = _tunable("FX_FOLDER_RE", _re.compile(
+    r"(?<![a-z])(?:s?fx|effects?|sound ?design|risers?|uplifters?|downlifters?|sweeps?|lasers?|lazers?"
+    r"|whoosh(?:es)?|noises?|impacts?|transitions?)(?![a-z])", _re.I))
+FX_FOLDER_NOT = _tunable("FX_FOLDER_NOT", {"PADS"})
+# Sample chains (grid files: evenly spaced one-shots end to end, made for a sampler's slice
+# grid) are no grooves or phrases: out of the loop categories (and so 00_SLICE), by a folder
+# ("Slice Grid", "Grid", "Sliced Library", "Sample Chains") or a grid token in the name
+# ("Qzv_g16").
+SAMPLE_CHAIN_PATH_RE = _tunable("SAMPLE_CHAIN_PATH_RE", _re.compile(
+    r"(?<![a-z])(?:slice[ _-]?grids?|sliced[ _-]?librar(?:y|ies)|sample[ _-]?chains?)(?![a-z])"
+    r"|(?:^|/)grids?/|(?<![a-z0-9])g(?:16|32|64)(?![a-z0-9])", _re.I))
 # A drum loop's longest length and its CLAP gate's minimum: 16 s holds 8 bars at 120 BPM
 # and 4 bars down to 60; a style with slow 8-bar loops (hip hop at 85 BPM: 22.6 s) raises it.
 DRUMLOOP_DUR_MAX = _tunable("DRUMLOOP_DUR_MAX", 16.0)
@@ -1047,7 +1075,8 @@ SCRATCH_FROM = _tunable("SCRATCH_FROM", {"KICKS", "SNARES", "CLAPS", "HATS", "CY
 # CamelCase drum words count ("LowKick_1", "hiCymb_1"), an abbreviated cymbal counts
 # ("Cymb 01"), and "RS" opening a name is a rimshot ("RS 01", as drum machines abbreviate it).
 # Rims live in SNARES. An abbreviation glued to a number and more letters is a pack's prefix
-# (_ABBR_END: "XX4d-Qzv_05" names no hat), and "+OH" is an overhead mic, not an open hat.
+# (_ABBR_END: "XX4d-Qzv_05" names no hat), and "+OH" is an overhead mic, not an open hat;
+# an open hat is "OH" or "oh", never the word "Oh" ("Qzv_Oh_Vqx_D4", a vocal "Vqx_Oh_2").
 DRUM_NAME_RULES = _tunable("DRUM_NAME_RULES", [
     (_re.compile(r"(?<![a-z])(?:kicks?|kiks?|bass ?drums?)(?![a-z])|(?<![a-z])bds?" + _ABBR_END
                  + r"|(?<![a-z])bass(?= ?sds ?800)|(?-i:(?<=[a-z])Kick)", _re.I), "KICKS"),
@@ -1055,7 +1084,7 @@ DRUM_NAME_RULES = _tunable("DRUM_NAME_RULES", [
                  r"|(?<![a-z])(?:snrs?|sd)" + _ABBR_END + r"|^rs(?= )|(?-i:(?<=[a-z])Snare)", _re.I), "SNARES"),
     (_re.compile(r"(?<![a-z])(?:clap|claps|handclap|snaps?|finger ?snaps?)(?![a-z])", _re.I), "CLAPS"),
     (_re.compile(r"hi-?hats?|hihats?|(?<![a-z])(?:hat|hats|shakers?|tambourines?)(?![a-z])"
-                 r"|(?<![a-z])(?:hh|ch)" + _ABBR_END + r"|(?<![a-z+])oh" + _ABBR_END, _re.I), "HATS"),
+                 r"|(?<![a-z])(?:hh|ch)" + _ABBR_END + r"|(?<![a-z+])(?-i:OH|oh)" + _ABBR_END, _re.I), "HATS"),
     (_re.compile(r"(?<![A-Za-z])(?:Tom|tom|Toms|toms)(?![a-z])"), "TOMS"),
     (_re.compile(r"cymbal|(?<![a-z])(?:crash|ride|splash|china)(?![a-z])|(?<![a-z])(?:cy|cymbs?)" + _ABBR_END
                  + r"|(?-i:(?<=[a-z])Cymb)", _re.I), "CYMBALS"),
@@ -1065,6 +1094,18 @@ DRUM_NAME_RULES = _tunable("DRUM_NAME_RULES", [
 ])
 DRUM_NAME_FROM = _tunable("DRUM_NAME_FROM", {"KICKS", "SNARES", "CLAPS", "HATS", "CYMBALS", "TOMS", "PERC", "SUB", "SYNTH",
                   "FX", "BLIPS", "PADS"})
+# Where the name alone misleads (rules._drum_named_in):
+# - a two-letter drum abbreviation, "_" and a letters+digits code opening a name ("sd_qz030")
+#   is a pack's prefix: when the file's folder names a drum ("Vqx Toms"), the folder decides;
+# - a name that names its drum only by such an abbreviation, in a folder named for voices
+#   (DRUM_ABBR_NOT_FOLDER_RE: "Speech/oh 7"), is a word, not a drum;
+# - a drum word beside a tonal sound's word (DRUM_NAME_TONAL_RE: "Qzv_D3_Clap_Bass", a
+#   track title "Vqx String Snares") decides nothing when the name also carries a note, or
+#   when Live's tags and the classifier both speak and neither files it with the drums.
+DRUM_ABBR_NOT_FOLDER_RE = _tunable("DRUM_ABBR_NOT_FOLDER_RE", _re.compile(
+    r"(?<![a-z])(?:speech|spoken|vocals?|vox|voices?|acapellas?|words|dialog(?:ue)?s?)(?![a-z])", _re.I))
+DRUM_NAME_TONAL_RE = _tunable("DRUM_NAME_TONAL_RE", _re.compile(
+    r"(?<![a-z])(?:bass(?:line)?s?|pads?|strings?|leads?|chords?)(?![a-z])", _re.I))
 
 # Near-silent one-shots: a peak-normalized one-shot whose RMS stays under this is mostly
 # silence (an empty file, a faint brushes sweep). Not exported.

@@ -639,7 +639,8 @@ def check_routing(ctx):
         fn = os.path.basename(e["src"])
         # (in ACOUSTIC and PIANO only a drum a classifier agrees on, as the build has it)
         want = drum_wins(e) if kind == "instrument" else SCRATCH_HOME if C._scratch_named(
-            fn, _rel(e["src"])) else C._drum_named_in(fn, _rel(e["src"]), ctx.fallback)
+            fn, _rel(e["src"])) else C._drum_named_in(fn, _rel(e["src"]), ctx.fallback, e.get("labels"),
+                                                       e.get("ableton"))
         # (a name override wins, as in the build: "Kick_Cowbell_02" is a cowbell)
         if want and want != c and ctx.misf.get(e["src"]) != want \
                 and (C._sibling_key(e["src"]), want) not in _msib and C._name_override(fn) != c:

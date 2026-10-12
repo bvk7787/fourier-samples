@@ -23,7 +23,7 @@ categories:
   BLIPS: 0.6
   WAVES: 0.5
 advanced:
-  DRUMLOOP_STYLE_EXCLUDE: '(?<![a-z])(?:fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])'
+  DRUMLOOP_STYLE_EXCLUDE: '(?<![a-z])(?:fx[ _-]?loops?|impact[ _-]?fx|synth[ _-]?bass|brass[ _-]?stab)(?![a-z])'
   DRUMLOOP_DUR_MAX: 28.0
   DRUMLOOP_HAR_MAX: 0.78      # lo-fi drums (filtered, under a chord) read more tonal
   PHRASE_DUR: [1.0, 28.0]

@@ -138,6 +138,12 @@ curate_config:
   ORCH_PATH_INSTRUMENT_RE: rules
   STRING_NAME_RE: rules
   DRUMLOOP_STYLE_EXCLUDE: taste
+  DRUMLOOP_MUSIC_DIR_RE: rules
+  DRUMLOOP_KEY_NAME_RE: rules
+  DRUMLOOP_BASS_NAME_RE: rules
+  FX_FOLDER_RE: rules
+  FX_FOLDER_NOT: rules
+  SAMPLE_CHAIN_PATH_RE: rules
   DRUMLOOP_DUR_MAX: taste
   DRUMLOOP_BREAK_MIN: taste
   DRUMLOOP_HAR_MAX: taste
@@ -215,6 +221,8 @@ curate_config:
   SCRATCH_FROM: rules
   DRUM_NAME_RULES: rules
   DRUM_NAME_FROM: rules
+  DRUM_ABBR_NOT_FOLDER_RE: rules
+  DRUM_NAME_TONAL_RE: rules
   QUIET_RMS_DB: correctness
   RETUNE_CATS: knob:retune
   RETUNE_DETECT_CATS: knob:retune

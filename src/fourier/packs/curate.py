@@ -89,7 +89,7 @@ from .curate_config import (FOLDER_TARGET_FILES, FOLDER_MIN, NAME_TOPK, NAME_SUP
                             MIRROR_ROOT_RE, FX_TRANSITION_FROM,
                             MACHINE_SHARE, DRUM_MACHINES, DRUM_MACHINE_CATS, SYNTH_MACHINES,
                             SYNTH_MACHINE_CATS)
-from .curate_config import DEMO_PATH, INST_ROUTED_PACKS, CURATION_SEED
+from .curate_config import DEMO_PATH, INST_ROUTED_PACKS, CURATION_SEED, SAMPLE_CHAIN_PATH_RE
 from . import why_log
 from . import vendors as _vendors
 from .curate_config import POOL_SURPLUS, VENDOR_MAX_SHARE, BUDGETS, FAVORED_SOURCES, NAME_OVERRIDES, NAME_OVERRIDE_SKIP, NAME_OVERRIDE_VETO, OVERRIDE_MAX_SHARE, INSTRUMENT_PACK_MAX_SHARE, ORCH_PACK_EXCLUDE, TEMPO_BAND_MIN
@@ -100,7 +100,7 @@ from .rules import (  # noqa: F401  (re-exported: verify, why, tests and callers
     _acoustic_band, _is_plucked, _is_synth_tagged, _is_mallet_named, _is_acoustic_named, _is_organ_named,
     _is_wind_named, _perc_sourced, _orch_path, _acoustic_reserved, _plucked_label, _is_keys,
     _is_chord, _is_stab, _stab_named, _is_named_stab, _scratch_named, _drum_named, _drum_named_in,
-    _drum_name_wins,
+    _drum_name_wins, _not_drum_loop, _fx_folder_veto,
     _keys_candidates, _acoustic_label, _is_ir, _is_preview, _name_reserved, _is_loop_row,
 )
 
@@ -990,6 +990,11 @@ def compute_homes(session, emb_n, id2row, log=print):
             cand = cand - {"FX"}
             if not cand:
                 continue
+        # a laser, an uplifter or tape noise from an FX folder that the classifier hears as FX
+        # only (or not at all) isn't a pad, whatever Live's "Atmosphere" tag says
+        cand = _fx_folder_veto(cand, _canonical_of(r), r.rel_path or library_rel(r.path or ""))
+        if not cand:
+            continue
         # keys never home in SYNTH/SUB/FX; a keys chord one-shot may home in STABS
         _keyz = False
         if cand & KEYS_EXCLUDE:
@@ -1021,7 +1026,8 @@ def compute_homes(session, emb_n, id2row, log=print):
             cand = {"FX"}
             ab_cats = ab_cats | {"FX"}
         # a file named as exactly one kind of drum homes in that drum category
-        _dn = _drum_named_in(_fn, r.rel_path or r.path, fallback) if (_oneshot and not _scr) else None
+        _dn = _drum_named_in(_fn, r.rel_path or r.path, fallback, _canonical_of(r), ab_tags) \
+            if (_oneshot and not _scr) else None
         if _dn and "VOX" not in cand and cand & DRUM_NAME_FROM and _dn not in misfiled.categories(
                 r.path, emb_n[id2row[r.id]]):
             if cand != {_dn}:
@@ -3728,12 +3734,20 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             stats["chain_gated"] = stats.get("chain_gated", 0) + 1
             _out(r, "chain_gated")
             continue
+        # a loop category: a sample chain by its folder or name (a grid of evenly spaced
+        # one-shots made for slicing, SAMPLE_CHAIN_PATH_RE) is no groove or phrase
+        if cfg["kind"] == "loop" and SAMPLE_CHAIN_PATH_RE.search(r.rel_path or r.path or ""):
+            stats["chain_gated"] = stats.get("chain_gated", 0) + 1
+            _out(r, "chain_gated")
+            continue
         # drum-loop categories: require Ableton drum evidence (drops bassline/lead/
         # vocal/FX loops that Sononym only calls a generic "Loop")
-        # (without Sononym, the drums its loop vote needed: _drum_loop_evidence)
-        if cfg.get("drum_tag_required") and not _has_drum_tag(_as_list(r.ableton_tags)) and not (
-                fallback and (_drum_loop_evidence(r, _as_list(r.ableton_tags), cfg)
-                              or (clap_homed and r.id in clap_homed))):
+        # (without Sononym, the drums its loop vote needed: _drum_loop_evidence), and never a
+        # bass, music or FX loop Live tags "Drum Loop" (_not_drum_loop)
+        if cfg.get("drum_tag_required") and (_not_drum_loop(r.rel_path or library_rel(r.path or "")) or (
+                not _has_drum_tag(_as_list(r.ableton_tags)) and not (
+                    fallback and (_drum_loop_evidence(r, _as_list(r.ableton_tags), cfg)
+                                  or (clap_homed and r.id in clap_homed))))):
             stats["nondrum_gated"] += 1
             _out(r, "nondrum_gated")
             continue
@@ -3778,7 +3792,8 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             continue
         # named as another drum, or as a scratch: it belongs there (unless rated Misfiled there)
         if category in DRUM_NAME_FROM and cfg["kind"] == "oneshot":
-            _dn = SCRATCH_HOME if _scratch_named(r.filename, rel) else _drum_named_in(r.filename, rel, fallback)
+            _dn = SCRATCH_HOME if _scratch_named(r.filename, rel) else _drum_named_in(
+                r.filename, rel, fallback, _canonical_of(r), _as_list(r.ableton_tags))
             if _dn and _dn != category and _dn not in misfiled.categories(r.path, emb_n[id2row[r.id]]):
                 stats["named_elsewhere"] = stats.get("named_elsewhere", 0) + 1
                 _out(r, "named_elsewhere", _dn)
@@ -5095,7 +5110,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                                          (category == "STABS" and _stab_named(r.filename))
                                          or (category == SCRATCH_HOME and _scratch_named(r.filename, r.rel_path))
                                          or _drum_named_in(r.filename, r.rel_path or r.path,
-                                                           _fallback(session)) == category)},
+                                                           _fallback(session), _canonical_of(r),
+                                                           _as_list(r.ableton_tags)) == category)},
                                      clap_homed=_clap_ids | _rehomed | set(_sound), rehomed=_rehomed,
                                      exclude_ids=exclude_ids,
                                      wave_hashes=_wave_hashes(session),

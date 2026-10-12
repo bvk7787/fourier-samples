@@ -465,7 +465,7 @@ Then the rules below decide, first match wins. `fourier why <name>` replays them
 | 11 | sound model | without Sononym, a sample whose own name and folder hold no strong category word (its pack's name or a weak word gave it one): the sound model's category when it is at least `SOUND_MODEL_OVERRIDE_MIN` and disagrees (2.2) |
 | 12 | keys | keyboard-named, or CLAP piano anchor beats anti by `KEYS_CLAP_MARGIN` 0.10 with harmonicity >= 0.5: never SYNTH, SUB, FX, STABS (`KEYS_EXCLUDE`) or a drum category; without Sononym a file the path words call keys and nothing else is PIANO's |
 | 13 | scratch | `SCRATCH_NAME_RE` one-shot (file or folder): FX, its scratch band |
-| 14 | transition | riser / downlifter / sweep-named one-shot from PADS, SYNTH, BLIPS, SUB, VOX, STABS: FX ("sweep pad" excluded) |
+| 14 | transition | riser / downlifter / sweep-named one-shot from PADS, SYNTH, BLIPS, SUB, VOX, STABS: FX ("sweep pad" excluded); before it, a file under an FX folder (`FX_FOLDER_RE`) the classifier labels FX only, or not at all, loses PADS (`FX_FOLDER_NOT`): a laser or tape noise Live tags "Atmosphere" isn't a pad |
 | 15 | drum name | named as exactly one drum kind (`DRUM_NAME_RULES`): that category, unless VOX is a candidate |
 | 16 | percussion source | a SYNTH candidate from a drum or percussion folder or an acoustic-percussion / found-object pack (the packs by the library overlay): PERC, unless named synth (`PERC_SOURCE_RE`) |
 | 17 | stab | STABS dropped unless stab-named; a short single-hit chord- or stab-named one-shot moves from SYNTH/SUB/FX/BLIPS/PADS/PERC to STABS (bass and vocal stabs stay; chords always move) |
@@ -483,9 +483,20 @@ a drum machine's name) -> TOMS; cymbal / crash / ride / splash / china, or the a
 Cymb and CY -> CYMBALS; conga / bongo / cowbell / clave / woodblock / timbale / agogo -> PERC;
 zap -> BLIPS. CamelCase words count. An abbreviation (BD, SD, SNR, HH, OH, CH, CY, Cymb) may be followed by
 a number ("CH01", "BD909") but not by a number glued to more letters, which is a pack's prefix
-("XX4d-..." names no hat), and "+OH" is an overhead mic, not an open hat. Two kinds decide
+("XX4d-..." names no hat), and "+OH" is an overhead mic, not an open hat; an open hat is "OH" or
+"oh", never the word "Oh". Two kinds decide
 nothing, except hat plus cymbal words (HATS when a hat, HH, OH or CH word is present, else
 CYMBALS). Other keys-named files lose the drum categories.
+
+The name is read with its folder and the classifiers (`rules._drum_named_in`; the build, verify
+and `fourier why` alike): an abbreviation, "_" and a letters+digits code opening a name (a pack
+prefix like `xx_yy000`) yields to a folder that names a drum ("sd_qz030" in a toms folder is a
+tom); a name that names its drum only by an abbreviation, in a folder named for voices
+(`DRUM_ABBR_NOT_FOLDER_RE`: speech, vocals, vox ...), names none; and a drum word beside a
+tonal sound's word (`DRUM_NAME_TONAL_RE`: bass, pad, string, lead, chord, outside the drum's own
+words) names none when the name also carries a note ("..._C2_..._Clap_Bass") or when Live's
+tags and the classifier both speak and neither files it with the drums (a track title "Qzv
+String Snares" Live tags Pad).
 
 ### 3.2 Selection gates
 
@@ -493,8 +504,9 @@ CYMBALS). Other keys-named files lose the drum categories.
 
 1. Category `noise` filename filter; mirror copy; `path_exclude` (DRUMLOOPS:
    `DRUMLOOP_STYLE_EXCLUDE`, in breaks-acid dubstep, brostep, trap, future bass, FX loops,
-   impact FX, synth bass, brass stabs; `balanced`, `hiphop-lofi` and `trap` keep only the
-   folders that hold no drum loops; `fourier why` says "an off-style loop"). A Keep skips these.
+   impact FX, synth bass, brass stabs, spaced or joined by "_" or "-"; `balanced`, `hiphop-lofi`
+   and `trap` keep only the folders that hold no drum loops; `fourier why` says "an off-style
+   loop"). A Keep skips these.
 2. Soft layer: source peak under -19 dBFS while a sibling peaks 6+ dB louder (Keeps exempt).
 3. Impulse response, preview or long wavetable; clipped or over 60 s; rated Drop.
 4. Already in the base release (additive builds; still claims its dedup slot).
@@ -509,11 +521,19 @@ CYMBALS). Other keys-named files lose the drum categories.
    onsets with a reliable tempo; TOMS/PERC/CYMBALS need both.
 10. Sample-chain guard (`fourier tools analyze --only events`): strict (drums, SUB, SYNTH,
     STABS, PADS, PIANO, ACOUSTIC) drops 2+ silence-separated events that aren't an echo;
-    regular (VOX, FX) drops 3+ events with spacing CV < 0.2. Unprofiled files pass.
+    regular (VOX, FX) drops 3+ events with spacing CV < 0.2. Unprofiled files pass. The loop
+    categories drop a sample chain by its path (`SAMPLE_CHAIN_PATH_RE`: a "Slice Grid", "Grid",
+    "Sliced Library" or "Sample Chains" folder, a g16 / g32 / g64 token in the name), so none
+    reaches 00_SLICE.
 11. DRUMLOOPS needs a Live drum tag (without Live, a `NAME_TAGS` path word stands in; without
-    Sononym, the drum evidence its vote needed, 2.2); `DEMO_PATH` (demo, preview and full-mix
-    folders, a "Demo <name>" folder, and Live's own renders under a set's
-    `Samples/Processed/Crop|Consolidate|Reverse|Freeze`) out of non-instrument categories; `PACK_HOME`; waves (and byte-identical copies of them) only in WAVES.
+    Sononym, the drum evidence its vote needed, 2.2), and no tag makes a drum loop of a loop
+    whose name says a key and a bass (`DRUMLOOP_KEY_NAME_RE`, `DRUMLOOP_BASS_NAME_RE`), one in a
+    folder of bass, music or synth loops (`DRUMLOOP_MUSIC_DIR_RE`) whose name says either (a drum
+    & bass pack's "Bass Loops" may hold breaks, which don't), or one in an FX folder
+    (`FX_FOLDER_RE`) that, with the folder above, names no drums (`rules._not_drum_loop`; genre
+    names aren't read); `DEMO_PATH` (demo, preview and full-mix
+    folders, a "Demo <name>" folder, and Live's own renders and recordings under a set's
+    `Samples/Processed/Crop|Consolidate|Reverse|Freeze` and `Samples/Recorded`) out of non-instrument categories; `PACK_HOME`; waves (and byte-identical copies of them) only in WAVES.
 12. SUB/SYNTH/PADS/STABS/VOX: a file over 4 s from a loop folder is out.
 13. `DUR_CAP`; `BPM_NAME_GUARD` (a tempo in the name, or tempo-then-key like "120_Amin", keeps a
     file out of every one-shot category but FX); STABS stab-named only; drum categories drop
