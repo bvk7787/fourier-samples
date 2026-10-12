@@ -91,6 +91,7 @@ class _Ctx:
         self.phrase = None        # {src paths that curate._is_phrase calls a phrase} or None
         self.fallback = False     # the build classified without Sononym (names read bare notes)
         self.copies = None        # [((cat, src), (cat, src))] one recording in two categories, or None (no DB)
+        self.hat_s = None         # {src path: how long it sounds (rules._hat_seconds)} or None (no DB)
 
     def path(self, c, e):
         return self.root / c / e["out"]
@@ -726,11 +727,19 @@ def _src_frames(src):
         return None, None
 
 
+def _out_frames(path):
+    import soundfile as sf
+    try:
+        i = sf.info(str(path))
+        return i.frames, i.samplerate
+    except Exception:
+        return None, None
+
+
 def check_bands(ctx):
     """Band categories (HATS closed/open, FX types, DRUMLOOPS full/tops, WAVES cycle/table,
     PIANO note/chord): every folder holds one band, leads with it, and each file's band
     recomputed from the manifest (name, length, Sononym labels, Ableton tags) agrees."""
-    import soundfile as sf
     from . import curate as C
     from .curate_config import CATEGORIES
     for cat, cfg in CATEGORIES.items():
@@ -786,19 +795,26 @@ def check_bands(ctx):
         wrong = []
         for e in ents:
             fn = os.path.basename(e["src"])
-            if bt in ("hat", "wave"):
+            if bt == "hat":
+                hs = (ctx.hat_s or {}).get(e["src"])
+                if hs is not None:          # as the build judged it; on the boundary either way
+                    lo, hi = hs, hs
+                else:                       # no DB: it sounds between the trimmed export's length and the source's
+                    ds = []
+                    for fr, sr in (_src_frames(e["src"]), _out_frames(ctx.root / cat / e["out"])):
+                        if fr is not None:
+                            ds.append(fr / sr)
+                    if not ds:
+                        continue
+                    lo, hi = min(ds), max(ds)
+                got = {C._hat_band(fn, lo - 0.02), C._hat_band(fn, hi + 0.02)}
+            elif bt == "wave":
                 fr, sr = _src_frames(e["src"])
                 if fr is None:
-                    try:
-                        i = sf.info(str(ctx.root / cat / e["out"]))
-                        fr, sr = i.frames, i.samplerate
-                    except Exception:
+                    fr, sr = _out_frames(ctx.root / cat / e["out"])
+                    if fr is None:
                         continue
-                d = fr / sr
-                if bt == "wave":
-                    got = {C._wave_band(d, sr)}
-                else:                       # a file on the length boundary may read either way
-                    got = {C._hat_band(fn, d - 0.02), C._hat_band(fn, d + 0.02)}
+                got = {C._wave_band(fr / sr, sr)}
             elif bt == "fx":
                 if not e.get("sononym") and not e.get("ableton"):
                     continue                # no labels recorded (pinned / re-homed)
@@ -979,11 +995,13 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
         rows = C._with_name_tags(session, fetch(session, sample_select(      # as the build saw them
             "path", "rel_path", "filename", "duration_s", "ableton_tags",
             "classes", "categories", "bpm", "tempo_bpm", "harmonicity", "onset_rate_hz",
-            session=session)))
+            "attack_time_ms", "decay_time_ms", session=session)))
         _fb = C._fallback(session)
         ctx.fallback = _fb
         ctx.phrase = {r.path for r in rows if r.path in srcs and C._is_phrase(r, _fb)}
         ctx.dur = {r.path: r.duration_s for r in rows if r.path in srcs and r.duration_s is not None}
+        ctx.hat_s = {r.path: C._hat_seconds(r.duration_s, r.attack_time_ms, r.decay_time_ms)
+                     for r in rows if r.path in srcs}
         if audio:
             members = sorted({(c, e["src"]) for c, e in ctx.entries if e.get("src")})
             vecs = C._copy_vectors({src for _c, src in members})

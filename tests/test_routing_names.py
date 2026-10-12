@@ -75,8 +75,8 @@ def test_the_open_hat_slot_skips_a_hat_named_closed():
     names = lambda cs: [os.path.basename(ce[1]["src"]) for ce in cs]
     for closed in ("Hat Closed Qz", "Hat Clsd 3", "Hat CL 4", "CHH Qz", "Hat CH 5"):
         assert names(S._slot_candidates("hat_open", [H(closed), H("Hat Open Qz")])) == ["Hat Open Qz.wav"], closed
-    # nothing else: any file of the role
-    assert names(S._slot_candidates("hat_open", [H("Hat Closed Qz")])) == ["Hat Closed Qz.wav"]
+    # nothing else: never the other hat (a required role), so the kit has no open hat
+    assert names(S._slot_candidates("hat_open", [H("Hat Closed Qz")])) == []
 
 
 # --- Live's renders and demo folders -----------------------------------------------------------

@@ -96,7 +96,7 @@ from .curate_config import POOL_SURPLUS, VENDOR_MAX_SHARE, BUDGETS, FAVORED_SOUR
 from .rules import (  # noqa: F401  (re-exported: verify, why, tests and callers use the curate names)
     _has_any_tag, _pack_of, _is_nameable_vendor, _as_list, _labels_for, _canonical_of,
     _classifier_votes, _is_wave, _is_long_wavetable, _is_fx_transition, _wave_source, _wave_band, _cymbal_band,
-    _hat_band, _fx_band, _fx_drum_leak, _mallet_label, _acoustic_tagged, _loop_band,
+    _hat_band, _hat_seconds, _fx_band, _fx_drum_leak, _mallet_label, _acoustic_tagged, _loop_band,
     _acoustic_band, _is_plucked, _is_synth_tagged, _is_mallet_named, _is_acoustic_named, _is_organ_named,
     _is_wind_named, _perc_sourced, _orch_path, _acoustic_reserved, _plucked_label, _is_keys,
     _is_chord, _is_stab, _stab_named, _is_named_stab, _scratch_named, _drum_named, _drum_named_in,
@@ -3340,7 +3340,7 @@ def _kit_source_pins(rec, category):
     """Pin one file a kit role (two toms, two percs) from each acoustic kit pack
     (sets.KIT_ACOUSTIC_PACKS) into this category, so the kit can be built from the curated files.
     Chosen as sets._kits chooses: files whose names say the role, spread by name."""
-    from .sets import KIT_ACOUSTIC_PACKS, KIT_PER_ROLE, _role, _slot_candidates
+    from .sets import KIT_ACOUSTIC_PACKS, KIT_PER_ROLE, _role, _slot_candidates, _spread_pick
     by = defaultdict(list)
     for j, d in enumerate(rec):
         pk = _pack_key2(d["path"])
@@ -3355,9 +3355,8 @@ def _kit_source_pins(rec, category):
         c = _slot_candidates(r, [(category, dict(src=rec[j]["path"], j=j)) for j in js
                                  if not rec[j].get("pin")])
         c = sorted(c, key=lambda ce: (os.path.basename(ce[1]["src"]).lower(), ce[1]["src"]))
-        step = max(1, len(c) // (k + 1))
-        for i in range(min(k, len(c))):
-            rec[c[min(len(c) - 1, step * (i + 1))][1]["j"]]["pin"] = "kit"   # a selection pin only; export gates still apply
+        for ce in _spread_pick(c, k):
+            rec[ce[1]["j"]]["pin"] = "kit"   # a selection pin only; export gates still apply
             n += 1
     return n
 
@@ -3425,7 +3424,10 @@ def _mkrec(r, pack, rel, category, support, id2row, fallback=False):
     if _cfg.get("kind") == "waves":
         d["wave_src"] = _wave_source(rel)
     if _cfg.get("band"):
-        d["band"] = _band_of(_cfg["band"], r.filename, r.duration_s, getattr(r, "sample_rate", None),
+        # a hat's band goes by how long it sounds, not by the silence its file carries after it
+        _bd = _hat_seconds(r.duration_s, getattr(r, "attack_time_ms", None), getattr(r, "decay_time_ms", None)) \
+            if _cfg["band"] == "hat" else r.duration_s
+        d["band"] = _band_of(_cfg["band"], r.filename, _bd, getattr(r, "sample_rate", None),
                              _as_list(getattr(r, "categories", None)), _as_list(r.ableton_tags),
                              getattr(r, "chroma_concentration", None), getattr(r, "harmonicity", None),
                              _cfg.get("min_chroma", 1.6), pack=pack, rel=rel)

@@ -850,7 +850,7 @@ keeps drum-named hits out.
 
 | Category | Rule |
 |---|---|
-| HATS | band `open` when named open / OH / sizzle / washy, `closed` when named closed / clsd / CH / pedal / PH / foot / tight, else open at 0.35 s or longer (`HAT_OPEN_MIN_S`); an overhead-mic "+OH" says neither |
+| HATS | band `open` when named open / OH / sizzle / washy, `closed` when named closed / clsd / CH / cl hat ("cl_hat", "ClHH") / pedal / PH / foot / tight, else open when it sounds 0.35 s or longer (`HAT_OPEN_MIN_S`): its attack plus its decay to -40 dB from Fourier's own analysis, within the file's length (`rules._hat_seconds`; the file's length when it has no decay), so a 0.1 s hat in a 1.4 s file, whose silence the export trims, is closed; an overhead-mic "+OH" says neither |
 | CYMBALS | band by name (ride, rd; crash, splash, china), then Sononym's ride/crash label, then Ableton's Ride/Crash tag, else `cymbal`. A HATS or CYMBALS folder can't take the other band's phrase words. |
 | STABS | only stab-named files: a chord (`STAB_CHORD_NAME_RE`: "chord", maj7, sus4, Dbmaj7; not a bare key like "Fm", nor a quality inside a random ID token such as "...-M93Q" or "...-SUS7") or a stab / tonal hit (`STAB_NAME_RE`: stab, stb, orch hit, synth/brass/string/organ/choir/chord/rave hit, hoover), with no drum word. Vocal chords stay in VOX, keys chords in PIANO. |
 | PIANO | all keys, notes and chord stabs, plus named organs (an organ stab stays in STABS). Pool: piano packs, keys-labeled Sononym one-shots, anything under an instrument collection's top folder (`INSTRUMENT_ROOTS`, set by a library overlay; empty by default), organ-named files. Gates: at most 2 onsets; chords must be stabs (one event, <= 4 s, not a progression or tempo phrase); notes need chroma >= 1.6; 30 s max; orchestral and mallet Ableton tags out unless named keyboard or organ; accepted from a piano pack, keys- or organ-named, or CLAP piano anchor beats anti and >= 0.30. Bands `note` / `chord`: note folders lead with their C (`c3-...`), chord folders with `chord`. |
@@ -1146,8 +1146,13 @@ sets below it.
 - **Roles** (`KIT_ROLES`): kick, snare, clap, closed hat, open hat, cymbal, two toms, two percs,
   picked across the pack by name. A slot takes a file whose name says the role when the pack has
   one (`ROLE_NAME`: no tom as the kick, no tambourine or shaker as a hat, no hat named closed as
-  the open hat, no rim as the snare, no reversed cymbal). A kit needs kick, snare, closed and open hat (`KIT_REQUIRED`) and 6 of the 8
-  roles.
+  the open hat, no rim as the snare, no reversed cymbal; a pack prefix like `XX4d` and an
+  overhead-mic "+OH" say neither hat), else any of the role's files, except that a required
+  role never takes one its name rules out (a closed hat as the open hat): a pack without one has
+  no such slot. A kit needs kick, snare, closed and open hat (`KIT_REQUIRED`) and 6 of the 8
+  roles. The second tom (perc) isn't another take of the first, a name that differs only in its
+  last number (`KIT_TAKE_RE`: "_4" / "_7", "_p2" / "_f2", a velocity layer or round robin), when
+  the pack has a tom of another name.
 - **Leveling**: each slot is turned down to its role's loudness (`KIT_LEVEL_DB`: kick -9, snare
   -13, clap -14, closed hat -16, open hat -15, cymbal -16, tom -11, perc -15 dBFS), so every kit
   plays at one level with one balance. Loudness is the loudest 75 ms window of the slot's

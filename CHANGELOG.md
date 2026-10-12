@@ -46,6 +46,15 @@ change the CLI or the config).
   reversed shout and a cowbell were retuned by a pitch read off part of them.
 - FX keeps at most 2 notes of one multisample set a folder (`SIBLING_CAP_BY_CAT`): 106 FX files
   were notes of 38 patches.
+- Hats are banded open or closed by how long they sound, not by the length of their file: a
+  hat no name calls open or closed was open from 0.35 s of source, silence included, so a
+  10 ms tick or a 0.1 s closed hat in a 1.4 s file landed in an open-hat folder and could
+  play a kit's open hat. The length is now the hat's attack plus its decay to -40 dB (Fourier's
+  own analysis), within the file. "cl_hat" / "ClHH" names a closed hat. A required kit slot no
+  longer falls back to a file its name rules out (a closed hat as the open hat; a kit without an
+  open hat drops out), "+OH" and a pack prefix like `XX4d` no longer read as a hat word there,
+  and a kit's two toms (two percs) aren't two takes of one drum ("_p2" / "_f2") when the pack
+  has another.
 
 - Device path locks now follow a library that moved (another volume, a renamed library, vendor
   or pack folder). A lock names each source by its absolute path, so after a move a render
