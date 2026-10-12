@@ -969,7 +969,15 @@ ACOUSTIC_SOURCE_MIN = _tunable("ACOUSTIC_SOURCE_MIN", 0.4)
 # multisample set (curate._sibling_key: same pack and name once note, velocity and
 # number tokens are removed), spread across its register. A Keep is always kept.
 SIBLING_CAP = _tunable("SIBLING_CAP", 3)
-SIBLING_CAP_CATS = _tunable("SIBLING_CAP_CATS", {"SUB", "SYNTH", "PADS", "STABS", "VOX", "BLIPS", "PIANO", "ACOUSTIC"})
+SIBLING_CAP_CATS = _tunable("SIBLING_CAP_CATS", {"SUB", "SYNTH", "PADS", "STABS", "VOX", "BLIPS", "PIANO", "ACOUSTIC",
+                                                 "FX"})
+# ...fewer in these categories: an effect played at another note is mostly the same effect
+SIBLING_CAP_BY_CAT = _tunable("SIBLING_CAP_BY_CAT", {"FX": 2})
+
+
+def sibling_cap(category):
+    """How many files of one multisample set a folder of this category keeps."""
+    return SIBLING_CAP_BY_CAT.get(category, SIBLING_CAP)
 
 # Note leads ("d2-", "as1-") sorted by name, not pitch, and a folder's median note says
 # little about a folder clustered by sound: only PIANO keeps one (ACOUSTIC's band lead

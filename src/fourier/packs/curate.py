@@ -80,7 +80,7 @@ from .naming import (  # noqa: F401  (re-exported: tests and callers use the cur
 from .curate_config import CATEGORIES, NAMEABLE_EXTRA, INSTRUMENT_PACKS, INSTRUMENT_CAP
 from .curate_config import (FOLDER_TARGET_FILES, FOLDER_MIN, NAME_TOPK, NAME_SUPPORT_MIN,
                             GENRE_SUPPORT_MIN, GENRE_WORDS, INSTRUMENT_WORDS, ACOUSTIC_SOURCE_MIN,
-                            SIBLING_CAP, SIBLING_CAP_CATS,
+                            SIBLING_CAP, SIBLING_CAP_CATS, sibling_cap,
                             LOOP_DIR_ONESHOT_CATS, LOOP_DIR_ONESHOT_MAX_S,
                             STAB_CHORD_FROM, SCRATCH_FROM,
                             SCRATCH_HOME, FX_SCRATCH_PHRASES,
@@ -2560,13 +2560,14 @@ def _one_per_retune_target(groups, rec):
     one note per set and C: a Keep's (Keeps always stay), else the one with the smallest
     shift, then the previous build's pick, then the set's pitch order. The kept note's other
     layers stay for _cap_siblings to choose from, as before. Only notes the names state count
-    ("Saw Lead 02" and "Saw Lead 05" may be two patches); files not retuned are untouched.
-    RETUNE_CATS only. Returns (groups, how many left out)."""
+    ("Saw Lead 02" and "Saw Lead 05" may be two patches; a measured root counts when the name
+    states a note the root parser doesn't read, "Pad_f#34b00ff"); files not retuned are
+    untouched. RETUNE_CATS only. Returns (groups, how many left out)."""
     by = defaultdict(list)
     for g in groups:
         for i in g:
             r = rec[i]
-            if r.get("retune") is None or r.get("root_src") != "name":
+            if r.get("retune") is None or (r.get("root_src") != "name" and not _states_note(r["path"])):
                 continue              # numbered takes with a measured root may be other patches
             # the octave the name states, as the exported name says it ("Pad_A2" +3: "Pad_C3")
             src = _name_root_midi(os.path.basename(r["path"] or ""))
@@ -3042,6 +3043,9 @@ def _cluster_by_tempo(P, bpms, edges, floor, kmax=30, kmin=8, kdiv=800, files=No
 # (SIBLING_COS: real siblings span a wide range of CLAP similarity, so the name carries
 # the decision and CLAP only stops an unrelated sound).
 _SIB_NOTE = re.compile(r"^[a-g](?:#|b|s)?-?\d$")
+# a note with a sampler's hex code after it, ending the name ("Pad_f#34b00ff")
+_SIB_NOTE_CODE = re.compile(r"^[a-g](?:#|b|s)?\d(?=[0-9a-f]*[a-f])[0-9a-f]{4,8}$")
+_SIB_MARK = "\x00"                    # where _sibling_key found a note (_NOTE_TOKEN)
 _SIB_VAR = re.compile(r"^(?:v|vel|rr|take|layer)?\d+$|^(?:ppp|pp|p|mp|mf|f|ff|fff)$")
 _SIB_GENERIC = set("""kick kicks snare snares hihat hihats clap claps perc percs cymbal crash ride shaker
 conga bongo snap drum drums beat break glitch zap blip click impact riser sweep whoosh texture drone
@@ -3054,7 +3058,7 @@ SIBLING_COS = _tunable("SIBLING_COS", 0.75)
 def _gather_sets(clusters, rec, ceil, min_left=None, set_cap=None):
     """Move a sample set's stragglers (curate._sibling_key) into the folder holding most of
     the set, within one band, while it has room (ceil), holds fewer than set_cap of the set
-    (SIBLING_CAP where that applies) and the folder left keeps min_left files
+    (sibling_cap where that applies) and the folder left keeps min_left files
     (FOLDER_MIN_FILES). Updates each cluster's _pick and idxs; returns files moved."""
     from .curate_config import FOLDER_MIN_FILES
     min_left = FOLDER_MIN_FILES if min_left is None else min_left
@@ -3089,17 +3093,41 @@ def _gather_sets(clusters, rec, ceil, min_left=None, set_cap=None):
     return moved
 
 
+def _sib_note(t):
+    """A token of _sibling_key's that is a note: one _NOTE_TOKEN marked, or "c3", "g#1"."""
+    return t == _SIB_MARK or bool(_SIB_NOTE.match(t.lower()))
+
+
+def _sib_tokens(path):
+    """_sibling_key's tokens of a file name (lowercase) and which of them are notes."""
+    stem = os.path.splitext(os.path.basename(path or ""))[0]
+    # a note the name states isn't the name, glued to it ("warmpadF#2") or below octave 0
+    # ("A-1", which the split below would cut at the dash): _NOTE_TOKEN marks it first
+    raw = [t for t in re.split(r"[\s_\-]+", _NOTE_TOKEN.sub(f" {_SIB_MARK} ", stem.replace("_", " "))) if t]
+    # nor is a pack's 4-character ID ending the name after its note, or after the note and
+    # a velocity ("Pad_F#3-XQ1Z", "Pad-C3-127-86XQ"): judged before a MIDI number glued to
+    # the name comes off, so "86XQ" is still one token
+    if len(raw) > 2 and re.fullmatch(r"[A-Za-z0-9]{4}", raw[-1]) and re.fullmatch(r"\d{2,3}", raw[-2]) \
+            and _sib_note(raw[-3]) or len(raw) > 1 and re.fullmatch(r"[A-Z0-9]{4}", raw[-1]) and _sib_note(raw[-2]):
+        raw = raw[:-1]
+    # a MIDI note number glued to the name ("60Pad_Chord_C3") isn't the name
+    toks = [re.sub(r"^\d+(?=[a-z])", "", t.lower()) for t in raw]
+    if not any(map(_sib_note, toks)):
+        # without a note, any 4-character token after a velocity-like number is taken for an
+        # ID, as it always was ("Pad 127 X1Y2")
+        toks = [t for i, t in enumerate(toks)
+                if not (i and re.fullmatch(r"[a-z0-9]{4}", t) and re.fullmatch(r"\d{2,3}", toks[i - 1]))]
+    note = [_sib_note(t) or (i == len(toks) - 1 and bool(_SIB_NOTE_CODE.match(t)))
+            for i, t in enumerate(toks)]
+    return toks, note
+
+
 def _sibling_key(path):
     """(pack, name minus note/velocity/number tokens), or None if the remaining name
     is too generic to identify a set ("Kick 01" -> "kick")."""
-    stem = os.path.splitext(os.path.basename(path or ""))[0].lower()
-    # a MIDI note number glued to the name ("60Pad_Chord_C3") isn't the name
-    toks = [re.sub(r"^\d+(?=[a-z])", "", t) for t in re.split(r"[\s_\-]+", stem) if t]
-    # nor is a trailing ID token after a velocity
-    toks = [t for i, t in enumerate(toks)
-            if not (i and re.fullmatch(r"[a-z0-9]{4}", t) and re.fullmatch(r"\d{2,3}", toks[i - 1]))]
-    kept = [t for t in toks if not _SIB_NOTE.match(t) and not _SIB_VAR.match(t)]
-    had_note = any(_SIB_NOTE.match(t) for t in toks)
+    toks, note = _sib_tokens(path)
+    kept = [t for t, n in zip(toks, note) if not n and not _SIB_VAR.match(t)]
+    had_note = any(note)
     if not kept:
         return None
     if len(kept) < 2 and not had_note:
@@ -3112,6 +3140,11 @@ def _sibling_key(path):
     # across subfolders are one set; outside the library fall back to the folder
     scope = _pack_key2(path) if in_library(path) else os.path.dirname(path or "")
     return (scope, " ".join(kept))
+
+
+def _states_note(path):
+    """True when a file name states a note (_sib_tokens): its set's notes are told apart by name."""
+    return any(_sib_tokens(path)[1])
 
 
 class _MisfiledIndex:
@@ -5193,8 +5226,9 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         groups, _n_rt = _one_per_retune_target(groups, rec)
         if _n_rt:
             log(f"{category}: {_n_rt} notes of multisample sets left out (retuned onto a C the set already plays)")
+    _scap = sibling_cap(category)
     if category in SIBLING_CAP_CATS:
-        groups = [_cap_siblings(g, rec) for g in groups]
+        groups = [_cap_siblings(g, rec, cap=_scap) for g in groups]
     if not cfg.get("tempo_bands"):
         # a folder under FOLDER_MIN_FILES merges into the nearest folder of its band
         _gb = [Counter(rec[i].get("band") for i in g).most_common(1)[0][0] if g else None for g in groups]
@@ -5219,7 +5253,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     for idxs in groups:
         if category in SIBLING_CAP_CATS:
             _before = len(idxs)
-            idxs = _cap_siblings(idxs, rec)
+            idxs = _cap_siblings(idxs, rec, cap=_scap)
             n_sib += _before - len(idxs)
         c = dict(idxs=idxs)
         for key in ["br", "atk", "dec", "sub", "noi", "har", "cr"]:
@@ -5274,7 +5308,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
             c["source"] = None
         clusters.append(c)
     if n_sib:
-        log(f"{category}: {n_sib} extra notes of multisample sets left out (at most {SIBLING_CAP} a set a folder)")
+        log(f"{category}: {n_sib} extra notes of multisample sets left out (at most {_scap} a set a folder)")
     _rank_traits(clusters, dims, cfg["kind"])
 
     # CLAP distinctive-phrase anchoring (z-scored across clusters). The category's
@@ -5358,7 +5392,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
             f"({_avail} still in the pool, {_infold} in folders, {_slots} with a slot)")
     if category not in SET_TOGETHER_SKIP:
         _n_set = _gather_sets(clusters, rec, ceil, min_left=_fmin,
-                              set_cap=SIBLING_CAP if category in SIBLING_CAP_CATS else None)
+                              set_cap=sibling_cap(category) if category in SIBLING_CAP_CATS else None)
         if _n_set:
             log(f"{category}: {_n_set} set member(s) moved to their set's folder")
     # a drum folder is named for its drum machine when most of its files come from one
@@ -5500,6 +5534,9 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         _nc = _check_name_pitches([i for c in clusters for i in c["_pick"]], rec)
         if _nc:
             log(f"{category}: {_nc} file(s) whose named note the audio contradicts keep their pitch and name")
+        _nd = _check_detected_roots([i for c in clusters for i in c["_pick"]], rec)
+        if _nd:
+            log(f"{category}: {_nd} file(s) with a detected root but no steady voiced note keep their pitch")
         _nf = _fill_roots(category, [i for c in clusters for i in c["_pick"]], rec)
         if _nf:
             log(f"{category}: {_nf} file(s) with no named or Sononym root retuned by their pYIN pitch")
@@ -6057,13 +6094,35 @@ def _check_name_pitches(idxs, rec):
     return n
 
 
-def _fill_roots(category, idxs, rec):
-    """A picked tonal one-shot with no root yet (no note in its name, nothing Sononym was
-    sure of) is retuned by a clear pYIN pitch, within the category's cap. Returns how
-    many."""
-    if os.environ.get("FOURIER_NO_PITCH_CHECK") or category not in RETUNE_CATS:
+def _check_detected_roots(idxs, rec):
+    """A picked file retuned by a detected root (Sononym's, `root_src: detect`) keeps its
+    pitch unless pYIN hears a steady voiced note, the bar a pYIN root clears (_detect_pitch:
+    PITCH_VOICED_MIN of the frames voiced, spread under PITCH_SPREAD_MAX): a sung phrase, a
+    noise or a hit isn't retuned by a pitch read off part of it. Returns how many."""
+    if os.environ.get("FOURIER_NO_PITCH_CHECK"):
         return 0
     n = 0
+    for i in idxs:
+        r = rec[i]
+        if r.get("root_src") != "detect" or r.get("retune") is None or not r.get("path"):
+            continue
+        if _detect_pitch(r["path"]) is None:
+            r["retune"], r["root_src"] = None, None
+            n += 1
+    return n
+
+
+def _fill_roots(category, idxs, rec):
+    """A picked tonal one-shot with no root yet (no note in its name, nothing Sononym was
+    sure of) is retuned by a clear pYIN pitch, within the category's cap, smallest shift
+    first; never onto a C another note of its set already plays here (names that state
+    their notes, as _one_per_retune_target: that note keeps its pitch). Returns how many."""
+    if os.environ.get("FOURIER_NO_PITCH_CHECK") or category not in RETUNE_CATS:
+        return 0
+    taken = {(_sibling_key(rec[i]["path"]), int(round(p / 12))) for i in idxs
+             if rec[i].get("retune") is not None and rec[i].get("path") and _states_note(rec[i]["path"])
+             and (p := _played_note(rec[i])) is not None}
+    cand = []
     for i in idxs:
         r = rec[i]
         if r.get("retune") is not None or r.get("pitch_conflict") or r.get("name_pc") is not None \
@@ -6077,8 +6136,16 @@ def _fill_roots(category, idxs, rec):
             continue
         rt, _src = _retune_shift(category, name, midi, detect=True)
         if rt is not None:
-            r["retune"], r["root_src"], r["root_midi"] = rt, "pyin", midi
-            n += 1
+            cand.append((abs(rt), r["path"], i, rt, midi))
+    n = 0
+    for _a, path, i, rt, midi in sorted(cand):
+        c = (_sibling_key(path), int(round((midi + rt) / 12))) if _states_note(path) else (None, 0)
+        if c[0] is not None:
+            if c in taken:
+                continue                # its set plays this C already: this note keeps its pitch
+            taken.add(c)
+        rec[i]["retune"], rec[i]["root_src"], rec[i]["root_midi"] = rt, "pyin", midi
+        n += 1
     return n
 
 
