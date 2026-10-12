@@ -2978,7 +2978,7 @@
        "kick"
       ],
       "out": "kick/Kick_05.wav",
-      "out_md5": "c6be9956066f04d4aae2ead8182afdf4",
+      "out_md5": "41a03ac9048baddb270ab34330675242",
       "son_cats": [
        "KICKS"
       ],
@@ -3000,7 +3000,7 @@
        "kick"
       ],
       "out": "kick/Kick_09.wav",
-      "out_md5": "37db4d52a3b0c59253af0eefa4833f2a",
+      "out_md5": "7fb7ed508dfc47f084cfa629ed78e8fc",
       "son_cats": [
        "KICKS"
       ],
@@ -3022,7 +3022,7 @@
        "kick"
       ],
       "out": "kick/Hot_Start_Kick.wav",
-      "out_md5": "bf086c29a3eb0d87c3ef455b618d601f",
+      "out_md5": "9b7e5607777b01d0906d25341e3d511f",
       "son_cats": [
        "KICKS"
       ],
@@ -3066,7 +3066,7 @@
        "kick"
       ],
       "out": "kick/Kick_06.wav",
-      "out_md5": "2ecfdc49d0de6d2624f0c12f7446540e",
+      "out_md5": "bf217e7152d1f4fb2c999c7c78e73201",
       "son_cats": [
        "KICKS"
       ],
@@ -3088,7 +3088,7 @@
        "kick"
       ],
       "out": "kick/Kick_10.wav",
-      "out_md5": "06a6a5387c0b14ae3445fe94cbf286fa",
+      "out_md5": "beb59321771624a466994b6b57880875",
       "son_cats": [
        "KICKS"
       ],
@@ -3132,7 +3132,7 @@
        "kick"
       ],
       "out": "kick/Kick_07.wav",
-      "out_md5": "43e1b1a0c6ed7434448bc7fd8e98bb7a",
+      "out_md5": "3fb79e637f4952c60ef169f1210e7cbb",
       "son_cats": [
        "KICKS"
       ],
@@ -3154,7 +3154,7 @@
        "kick"
       ],
       "out": "kick/Kick_11.wav",
-      "out_md5": "3c4de1c1ff93594e8ea3fa51ea72531a",
+      "out_md5": "44ebbb53f8935604f200486dc43e047e",
       "son_cats": [
        "KICKS"
       ],
@@ -3198,7 +3198,7 @@
        "kick"
       ],
       "out": "kick/Kick_08.wav",
-      "out_md5": "44b83305190848067b14d5f2884dea8c",
+      "out_md5": "163814b441f68cf2c737548d8a136e61",
       "son_cats": [
        "KICKS"
       ],
@@ -3220,7 +3220,7 @@
        "kick"
       ],
       "out": "kick/Kick_12.wav",
-      "out_md5": "178597acf46e71400e7f25f958aad6d8",
+      "out_md5": "f5237402816a2690ac8347466eb16fe0",
       "son_cats": [
        "KICKS"
       ],
@@ -3311,7 +3311,7 @@
        "pad"
       ],
       "out": "pad/Long_Tail_Pad.wav",
-      "out_md5": "6d173b0d8fb2947eb351b898b0cd4d05",
+      "out_md5": "69d7ecc1bd8a70892210559dbe1315df",
       "son_cats": [
        "PADS"
       ],
@@ -3331,8 +3331,8 @@
        "pad"
       ],
       "out": "pad/Phase_Flipped_Pad.wav",
-      "out_md5": "75cc38d4cbc100f978f1596cfa312c3c",
-      "phase_fix": "left",
+      "out_md5": "a84fa54e43abd27d2840f8885e30c6b2",
+      "phase_fix": "right",
       "son_cats": [
        "PADS"
       ],
@@ -3563,7 +3563,7 @@
        "perc.wood"
       ],
       "out": "perc/Wood_Hit_05.wav",
-      "out_md5": "50ee4ed20aa230c6498a5dd00ed9213c",
+      "out_md5": "4dbb05306f9c5f124e3ca1a72dbfd000",
       "son_cats": [
        "PERC"
       ],
@@ -3583,7 +3583,7 @@
        "perc.wood"
       ],
       "out": "perc/Wood_Hit_09.wav",
-      "out_md5": "490eb9820e1bf79c77c8e87d9c620fe0",
+      "out_md5": "ef12830a1387a963a4e0fd436bcdbf40",
       "son_cats": [
        "PERC"
       ],
@@ -3623,7 +3623,7 @@
        "perc.wood"
       ],
       "out": "perc/Wood_Hit_06.wav",
-      "out_md5": "049b05acba0db23a33d85d6b0d8e7ef1",
+      "out_md5": "a77ba98b381b645770948f45c0876ce2",
       "son_cats": [
        "PERC"
       ],
@@ -3643,7 +3643,7 @@
        "perc.wood"
       ],
       "out": "perc/Wood_Hit_10.wav",
-      "out_md5": "895cfee8977cbdc0b9d16c816a424ce9",
+      "out_md5": "e18a22ba57c586158371fb4a6d36737b",
       "son_cats": [
        "PERC"
       ],
@@ -3683,7 +3683,7 @@
        "perc.wood"
       ],
       "out": "perc/Wood_Hit_07.wav",
-      "out_md5": "64223c952fc955407d77ab10b6cbed20",
+      "out_md5": "06d8e34397f53a3d52aaab6c0ac12f87",
       "son_cats": [
        "PERC"
       ],
@@ -3703,7 +3703,7 @@
        "perc.wood"
       ],
       "out": "perc/Wood_Hit_11.wav",
-      "out_md5": "09167ade0e88eb6f6a6aadff4b81b1e5",
+      "out_md5": "38c23a6aeec70be9ea76c47dde929aae",
       "son_cats": [
        "PERC"
       ],
@@ -3743,7 +3743,7 @@
        "perc.wood"
       ],
       "out": "perc/Wood_Hit_08.wav",
-      "out_md5": "9da70593b02978234f060ee86887c599",
+      "out_md5": "3274e3a08786bbcfd2894e4f7cf27b87",
       "son_cats": [
        "PERC"
       ],
@@ -3763,7 +3763,7 @@
        "perc.wood"
       ],
       "out": "perc/Wood_Hit_12.wav",
-      "out_md5": "b3c72a875fa3228c13b2ce303fdcb2b1",
+      "out_md5": "1d5348a22a628b721ab20c8ec856db5c",
       "son_cats": [
        "PERC"
       ],
@@ -6332,11 +6332,18 @@
    }
   },
   "clap_model": "laion/clap-htsat-unfused",
-  "code_hash": "32e9212c6e5e0a9e",
-  "config_hash": "2ecf60f00cd715b0",
-  "fourier_manifest": 2,
+  "code_hash": "bee1e0a620fbade5",
+  "config_hash": "3ad71cdf97ebb52e",
+  "fourier_manifest": 3,
+  "fourier_version": "0.1.2",
   "generated": "2000-01-01T00:00:00Z",
   "git_sha": "",
+  "library": {
+   "folders": [
+    "<lib>/SampleLibrary"
+   ],
+   "names": []
+  },
   "overrides": {
    "curate_config.BUDGETS": {
     "$dict": [
@@ -6417,7 +6424,42 @@
       24
      ]
     ]
-   }
+   },
+   "curate_config.DRUMLOOP_STYLE_EXCLUDE": {
+    "$re": "(?<![a-z])(?:dubstep|brostep|trap|future[ _-]?bass|fx[ _-]?loops?|impact[ _-]?fx|synth[ _-]?bass|brass[ _-]?stab)(?![a-z])",
+    "flags": 34
+   },
+   "curate_config.LIBRARY_SCALE": false,
+   "curate_config.POOL_SURPLUS": false,
+   "curate_config.TEMPO_BANDS": {
+    "$tuple": [
+     60,
+     75,
+     85,
+     90,
+     95,
+     100,
+     105,
+     110,
+     115,
+     120,
+     125,
+     130,
+     135,
+     140,
+     145,
+     150,
+     155,
+     160,
+     165,
+     170,
+     175,
+     180,
+     190,
+     201
+    ]
+   },
+   "curate_config.VENDORS": "first-folder"
   },
   "providers": [
    "sononym",
@@ -6431,9 +6473,9 @@
      {
       "came_from": "KICKS/kick/Kick_05.wav",
       "family": "kit-synth-drums-a",
-      "gain_db": -2.96,
+      "gain_db": -3.14,
       "out": "kit-synth-drums-a/Kick_05.wav",
-      "out_md5": "f337610b604ff2939615f979a3458b11",
+      "out_md5": "cd912551d7395f348da2dd366151e708",
       "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Kicks/Kick 05.wav"
      },
      {
@@ -6493,25 +6535,25 @@
      {
       "came_from": "PERC/perc/Wood_Hit_05.wav",
       "family": "kit-synth-drums-a",
-      "gain_db": -2.54,
+      "gain_db": -2.48,
       "out": "kit-synth-drums-a/Wood_Hit_05.wav",
-      "out_md5": "c523e11d36ddf745790099acc6173dff",
+      "out_md5": "67339346ca958c939e9948fd66b31042",
       "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Percussion/Wood Hit 05.wav"
      },
      {
       "came_from": "PERC/perc/Wood_Hit_09.wav",
       "family": "kit-synth-drums-a",
-      "gain_db": -2.82,
+      "gain_db": -1.97,
       "out": "kit-synth-drums-a/Wood_Hit_09.wav",
-      "out_md5": "c1172cbd892e40d8139db9b41af2c88b",
+      "out_md5": "dd621b2d40e3ca42403519dc7ff6e13c",
       "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Percussion/Wood Hit 09.wav"
      },
      {
       "came_from": "KICKS/kick/Kick_06.wav",
       "family": "kit-synth-drums-b",
-      "gain_db": -3.5,
+      "gain_db": -3.48,
       "out": "kit-synth-drums-b/Kick_06.wav",
-      "out_md5": "ad98adc8e988ad6a46f7840dbda87900",
+      "out_md5": "b3a7c45e0e055fdcc7526db40508d50c",
       "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Kicks/Kick 06.wav"
      },
      {
@@ -6572,25 +6614,25 @@
      {
       "came_from": "PERC/perc/Wood_Hit_06.wav",
       "family": "kit-synth-drums-b",
-      "gain_db": -2.64,
+      "gain_db": -2.79,
       "out": "kit-synth-drums-b/Wood_Hit_06.wav",
-      "out_md5": "2b0411e7c762b798f7920e5eb22ff1d6",
+      "out_md5": "24d9b1dd0b5fae05d552afb16f5dd009",
       "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Percussion/Wood Hit 06.wav"
      },
      {
       "came_from": "PERC/perc/Wood_Hit_10.wav",
       "family": "kit-synth-drums-b",
-      "gain_db": -2.54,
+      "gain_db": -2.57,
       "out": "kit-synth-drums-b/Wood_Hit_10.wav",
-      "out_md5": "6c0c24bf355ae4eb3eefe6cc42202a5e",
+      "out_md5": "0c593da0528ba18a15b2bf453071e444",
       "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Percussion/Wood Hit 10.wav"
      },
      {
       "came_from": "KICKS/kick/Kick_07.wav",
       "family": "kit-synth-drums-c",
-      "gain_db": -3.64,
+      "gain_db": -3.63,
       "out": "kit-synth-drums-c/Kick_07.wav",
-      "out_md5": "307841c9b003059ac7798f520e526b3f",
+      "out_md5": "cf10e7e03ddba684a9a3e6c3a56973a0",
       "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Kicks/Kick 07.wav"
      },
      {
@@ -6650,25 +6692,25 @@
      {
       "came_from": "PERC/perc/Wood_Hit_07.wav",
       "family": "kit-synth-drums-c",
-      "gain_db": -2.52,
+      "gain_db": -2.77,
       "out": "kit-synth-drums-c/Wood_Hit_07.wav",
-      "out_md5": "e11d9dbd5e7221cfbf85eb2e843ea2be",
+      "out_md5": "ae50161606cd5c81fd17eeccf5880fb6",
       "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Percussion/Wood Hit 07.wav"
      },
      {
       "came_from": "PERC/perc/Wood_Hit_11.wav",
       "family": "kit-synth-drums-c",
-      "gain_db": -2.18,
+      "gain_db": -2.19,
       "out": "kit-synth-drums-c/Wood_Hit_11.wav",
-      "out_md5": "9187084eb0e57fc8151233f716455142",
+      "out_md5": "c65f77433efbecba636dc4b0219a45a4",
       "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Percussion/Wood Hit 11.wav"
      },
      {
       "came_from": "KICKS/kick/Kick_08.wav",
       "family": "kit-synth-drums-d",
-      "gain_db": -3.7,
+      "gain_db": -3.66,
       "out": "kit-synth-drums-d/Kick_08.wav",
-      "out_md5": "fbbd694a6fb8d19a58f82b423d8c117d",
+      "out_md5": "f390bed77a2e4b506c3757392a93276b",
       "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Kicks/Kick 08.wav"
      },
      {
@@ -6728,17 +6770,17 @@
      {
       "came_from": "PERC/perc/Wood_Hit_08.wav",
       "family": "kit-synth-drums-d",
-      "gain_db": -2.6,
+      "gain_db": -2.41,
       "out": "kit-synth-drums-d/Wood_Hit_08.wav",
-      "out_md5": "4de951c064e978c58c4f65b9ab089628",
+      "out_md5": "6a7c8c1e9b8b55606e2066cd3da3d58b",
       "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Percussion/Wood Hit 08.wav"
      },
      {
       "came_from": "PERC/perc/Wood_Hit_12.wav",
       "family": "kit-synth-drums-d",
-      "gain_db": -2.14,
+      "gain_db": -2.62,
       "out": "kit-synth-drums-d/Wood_Hit_12.wav",
-      "out_md5": "f03b5ea352d726a9d8874d3e68593b87",
+      "out_md5": "dcbffffa22cde938f99e2690ea7552cf",
       "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Percussion/Wood Hit 12.wav"
      }
     ]
@@ -6846,6 +6888,6 @@
     ]
    }
   },
-  "tunables_hash": "320163706054fa80"
+  "tunables_hash": "84021a5b1a524532"
  }
 }

@@ -321,6 +321,11 @@ curate:
   CROSS_COPY_COS: correctness
   COPY_XCORR: correctness
   COPY_SECONDS: engine
+  COPY_SHARE: correctness
+  CATEGORY_COPY_COS: correctness
+  COPY_GATE_XCORR: engine
+  COPY_GATE_SECONDS: engine
+  COPY_GATE_RATE: engine
   TRIM_FLOOR_DB: correctness
   TRIM_PAD_MS: correctness
   PEAK_CEILING_DB: correctness

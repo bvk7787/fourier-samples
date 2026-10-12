@@ -154,7 +154,7 @@ def test_three_same_named_files_in_one_family_all_exported(monkeypatch, tmp_path
         name = "Kick 01.wav" if i < 3 else f"Kick {i:02d} x.wav"
         p = src_root / vendor / "Pack" / name
         p.parent.mkdir(parents=True, exist_ok=True)
-        sf.write(str(p), np.full(64, 0.01 * (i + 1)), 44100, subtype="PCM_16")
+        sf.write(str(p), 0.1 * rng.standard_normal(64), 44100, subtype="PCM_16")   # three recordings
         rec.append(dict(id=i, row=i, path=str(p), pack=vendor, clip=0, br=0.5, atk=10.0,
                         dec=300.0, sub=0.1, noi=0.3, har=0.7, cr=4.0, tune=None,
                         bpm=None, bpm_src=None, bpm_fold=None, sup=1, qual=1.0, fav=0,
