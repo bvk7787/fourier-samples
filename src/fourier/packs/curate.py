@@ -2100,6 +2100,15 @@ NAME_TEMPO_TOL_MS = _tunable("NAME_TEMPO_TOL_MS", 10.0)
 # hit dies away inside its bar, so a 1%-long break still takes its length's tempo.
 LOOP_QUIET_DB = _tunable("LOOP_QUIET_DB", -60.0)
 LOOP_PAD_DBFS = _tunable("LOOP_PAD_DBFS", -90.0)
+# A loop that is mostly silence (an ending take, a fill that stops after a bar, a 4-bar loop
+# whose last bar is empty, one note and then nothing) plays that silence on a sampler, and
+# its 00_SLICE copy is empty slices. Its silent share: the time before its first and after
+# its last sample within LOOP_SILENT_DB of its peak, plus its longest run of 20 ms frames
+# 10 dB further down between frames 10 dB above it. Over LOOP_SILENT_SHARE_MAX of its length,
+# it is left out (_silent_share; `fourier why`: mostly_silent). A sparse groove's rests (an
+# offbeat hat's eighth before the first hit, a half-time break's space) stay well under it.
+LOOP_SILENT_SHARE_MAX = _tunable("LOOP_SILENT_SHARE_MAX", 0.45)
+LOOP_SILENT_DB = _tunable("LOOP_SILENT_DB", -40.0)
 
 
 def _beats_off(dur, bpm):
@@ -2161,6 +2170,57 @@ def _quiet_ends(path):
     if platforms.cloud_only(path):
         return 0.0, 0.0
     return _quiet_ends_of(str(path), (st.st_size, st.st_mtime_ns))
+
+
+@lru_cache(maxsize=65536)
+def _silent_share_of(path, _stamp):
+    try:
+        import soundfile as sf
+        y, sr = sf.read(path, dtype="float32", always_2d=True)
+    except Exception:
+        return 0.0
+    a = np.abs(y).max(axis=1)
+    pk = float(a.max()) if len(a) else 0.0
+    if pk <= 0:
+        return 1.0
+    on = np.nonzero(a >= pk * 10 ** (LOOP_SILENT_DB / 20.0))[0]
+    ends = int(on[0]) + (len(a) - 1 - int(on[-1]))
+    fl = max(1, int(sr * 0.02))
+    n = len(a) // fl
+    gap = 0
+    if n >= 3:
+        pw = np.square(y[:n * fl].astype("float64")).mean(axis=1).reshape(n, fl).mean(axis=1)
+        db = 10.0 * np.log10(pw / pk ** 2 + 1e-30)
+        loud = np.nonzero(db >= LOOP_SILENT_DB + 10.0)[0]
+        if len(loud) >= 2:
+            q = np.concatenate(([0], (db[loud[0]:loud[-1] + 1] < LOOP_SILENT_DB - 10.0).astype(int), [0]))
+            d = np.diff(q)
+            runs = np.nonzero(d == -1)[0] - np.nonzero(d == 1)[0]
+            gap = int(runs.max()) * fl if len(runs) else 0
+    return min(1.0, (ends + gap) / len(a))
+
+
+def _silent_share(path):
+    """The share of a loop that is silence (LOOP_SILENT_DB): before its first and after its last
+    sound, and its longest silent stretch inside. 0.0 when it can't be read here or is a cloud
+    drive's placeholder (never downloaded for this)."""
+    from .. import platforms
+    try:
+        st = os.stat(path)
+    except (OSError, TypeError, ValueError):
+        return 0.0
+    if platforms.cloud_only(path):
+        return 0.0
+    return _silent_share_of(str(path), (st.st_size, st.st_mtime_ns))
+
+
+def _mostly_silent(r, cfg):
+    """[silent share, LOOP_SILENT_SHARE_MAX] for a loop category's candidate that is more
+    silence than LOOP_SILENT_SHARE_MAX allows (_silent_share), else None."""
+    if cfg.get("kind") != "loop" or not getattr(r, "path", None):
+        return None
+    s = _silent_share(r.path)
+    return [round(s, 3), LOOP_SILENT_SHARE_MAX] if s > LOOP_SILENT_SHARE_MAX else None
 
 
 def _sounding_span(dur, path, pad=True):
@@ -3515,6 +3575,8 @@ def _readmit_gated(rec, held, floor, category, support, id2row, seen_hash, seen_
             break
         if r.file_hash and r.file_hash in seen_hash:
             continue
+        if _mostly_silent(r, CATEGORIES.get(category, {})):
+            continue                     # never back past the silence check either
         ck = _content_key(pack, r.filename, r.duration_s)
         if ck in seen_ck:
             continue
@@ -3688,6 +3750,12 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                     and _exported_seconds(r.path, category) > _cap + _DUR_CAP_SLACK_S:
                 stats["too_long"] = stats.get("too_long", 0) + 1
                 _out(r, "too_long", _cap)
+                continue
+            # ...nor a loop that is mostly silence
+            _ms = None if _pin else _mostly_silent(r, cfg)
+            if _ms:
+                stats["mostly_silent"] = stats.get("mostly_silent", 0) + 1
+                _out(r, "mostly_silent", _ms)
                 continue
             if r.file_hash and r.file_hash in seen_hash:
                 _twin(r, seen_hash, stats, _out)
@@ -3909,6 +3977,12 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                         and _gate_belongs(r, cfg):
                     held.append((sb - sa, r, pack, rel, reason))
                 continue
+        # a loop that is mostly silence (an ending take, a fill that stops, an empty last bar)
+        _ms = _mostly_silent(r, cfg)
+        if _ms:
+            stats["mostly_silent"] = stats.get("mostly_silent", 0) + 1
+            _out(r, "mostly_silent", _ms)
+            continue
         if r.file_hash and r.file_hash in seen_hash:
             _twin(r, seen_hash, stats, _out)
             continue
@@ -4267,10 +4341,12 @@ def _level_folder(kroot, entries, tol_db=None, rms_ceil_db=None, up=True):
     return n
 
 
-def _grid_offset(y, sr, bpm):
+def _grid_offset(y, sr, bpm, head_only=False):
     """Seconds a loop's hits sit off its 16th grid (+ late, - early), when they agree
     (ROTATE_AGREE of them within ROTATE_TOL_MS) and it's ROTATE_MIN_MS-ROTATE_MAX_MS;
-    else 0.0. Only the even 16ths count, so swing can't read as an offset."""
+    else 0.0. Only the even 16ths count, so swing can't read as an offset. `head_only`: only
+    a quiet lead-in before the downbeat counts (a swung loop or a fill, whose hits off the
+    grid are its feel)."""
     from .curate_config import (ROTATE_AGREE, ROTATE_MAX_MS, ROTATE_MAX_SIXTEENTH, ROTATE_MIN_MS,
                                 ROTATE_ON_GRID_MAX, ROTATE_PREROLL_MS, ROTATE_TOL_MS)
     from .sets import _onsets
@@ -4295,6 +4371,8 @@ def _grid_offset(y, sr, bpm):
         lead = a - ROTATE_PREROLL_MS / 1000
         if ROTATE_MIN_MS / 1000 <= lead <= ROTATE_MAX_MS / 1000 and _quiet_head(m, sr, a):
             return lead
+    if head_only:
+        return 0.0
     # a loop that opens on a hit is cut on its downbeat: hits off the grid are its feel
     # (rotating a break played ahead of the beat would move its downbeat too), and so is
     # a loop where many hits sit on the grid and many don't
@@ -4363,10 +4441,11 @@ def _gridded(path, bpm, m0):
 
 
 def _rotate_and_slice(path, bpm, src):
-    """Rotate an off-grid drum loop onto its grid (_grid_offset; not fills, rolls, swung
-    loops or loops more than SLICE_BAR_ERR beats off whole beats), then its slice metrics.
-    A rotated file is written anew (it may be a cache hardlink) and keeps its length.
-    Returns the manifest fields."""
+    """Rotate an off-grid drum loop onto its grid (_grid_offset; not loops more than
+    SLICE_BAR_ERR beats off whole beats, and of fills, rolls and swung loops only a quiet
+    lead-in), then its slice metrics. A rotated file is written anew (it may be a cache
+    hardlink) and keeps its length, but a quiet lead-in the loop is whole beats without (and
+    not with) is cut. Returns the manifest fields."""
     import soundfile as sf
     from .curate_config import ROTATE_SKIP_RE
     from .sets import SWING_FLAG
@@ -4374,15 +4453,27 @@ def _rotate_and_slice(path, bpm, src):
     try:
         m0 = _slice_fields(path, bpm)
         # (a loop that isn't whole beats at its tempo, its silent ends aside, has no grid to
-        # rotate onto)
-        if bpm and not ROTATE_SKIP_RE.search(os.path.basename(src or "")) \
-                and (m0.get("swing") or 50.0) < SWING_FLAG and _gridded(path, bpm, m0):
+        # rotate onto; a fill's or a swung loop's hits off the grid are its feel, but silence
+        # before its downbeat is a late cut all the same)
+        if bpm and _gridded(path, bpm, m0):
+            feel = bool(ROTATE_SKIP_RE.search(os.path.basename(src or ""))) \
+                or (m0.get("swing") or 50.0) >= SWING_FLAG
             info = sf.info(str(path))
             y, sr = sf.read(str(path), always_2d=False)
-            off = _grid_offset(np.asarray(y, dtype="float64"), sr, bpm)
-            if off:
+            off = _grid_offset(np.asarray(y, dtype="float64"), sr, bpm, head_only=feel)
+            sh = int(round(off * sr))
+            if off > 0 and not _whole_beats(len(y) / sr, bpm, NAME_TEMPO_TOL_MS) \
+                    and _whole_beats((len(y) - sh) / sr, bpm, NAME_TEMPO_TOL_MS):
+                # whole beats without its lead-in only: rotated, the loop would stay that
+                # much long; cut, it is whole beats from its downbeat
+                y2 = _edge_fades(np.asarray(y[sh:], dtype="float64"), sr, loop=True)
+                tmp = Path(str(path) + ".tmp.wav")
+                sf.write(str(tmp), y2, sr, subtype=info.subtype if info.subtype.startswith("PCM") else "PCM_24")
+                os.replace(tmp, path)
+                out["trim_ms"] = round(off * 1000, 1)
+                m0 = _slice_fields(path, bpm)
+            elif off:
                 from .curate_config import ROTATE_SEAM_MS
-                sh = int(round(off * sr))
                 y2 = np.roll(y, -sh, axis=0)
                 # the file's old start/end join now sits inside the loop: dip through zero
                 # there so a hard cut can't click
@@ -5614,8 +5705,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                     # a mirror-folder file here has no twin elsewhere (its twins were left out)
                     **({"mirror_only": True} if MIRROR_ROOT_RE.search(library_rel(src)) else {}),
                 ))
-                if file_entries[-1].get("rotate_ms"):
-                    file_entries[-1]["out_md5"] = _md5(outp)      # rotated after its hash
+                if file_entries[-1].get("rotate_ms") or file_entries[-1].get("trim_ms"):
+                    file_entries[-1]["out_md5"] = _md5(outp)      # rotated or cut after its hash
             except Exception:
                 failed += 1
         if category != WAVES_CATEGORY:

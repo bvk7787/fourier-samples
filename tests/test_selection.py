@@ -426,10 +426,15 @@ def test_grid_offset_and_rotation(tmp_path):
     out = _rotate_and_slice(p, bpm, "/lib/SampleLibrary/V/Break 120.wav")
     assert 20 < out["rotate_ms"] < 30 and sf.info(str(p)).frames == n
     assert abs(_grid_offset(sf.read(str(p))[0], sr, bpm)) == 0.0
-    # a fill is left alone
+    # a fill's hits off the grid are its feel: left alone when it opens on a ringing tail...
     q = tmp_path / "fill.wav"
-    sf.write(str(q), y * 0.5, sr, subtype="PCM_16")
+    z = y.copy()
+    z[:int(0.025 * sr)] += 0.3 * np.sin(np.arange(int(0.025 * sr)) * 0.05)
+    sf.write(str(q), z * 0.5, sr, subtype="PCM_16")
     assert "rotate_ms" not in _rotate_and_slice(q, bpm, "/lib/SampleLibrary/V/Snare Fill 120.wav")
+    # ...but silence before its downbeat is a late cut all the same
+    sf.write(str(q), y * 0.5, sr, subtype="PCM_16")
+    assert 20 < _rotate_and_slice(q, bpm, "/lib/SampleLibrary/V/Snare Fill 120.wav")["rotate_ms"] < 30
 
 
 def test_thin_tempo_band_joins_the_nearer_tempo():

@@ -29,6 +29,7 @@ FILTER_WORDS = {
     "excluded": "sounded like another category",
     "twins": "duplicate copies",
     "too_long": "over the length cap",
+    "mostly_silent": "loops that are mostly silence",
     "duration": "outside {cat}'s length window",
     "note_gated": "outside the note range",
     "loop_gated": "loops in a one-shot category",
@@ -192,6 +193,10 @@ def describe(reason: str, detail, doc: dict, name_of=lambda sid: str(sid), place
                 f"candidates (budget {doc.get('budget', '?')}); the folders' spread picks chose others")
     if reason == "too_long" and detail:
         return f"over {cat}'s length cap ({detail} s)"
+    if reason == "mostly_silent" and detail:
+        return (f"mostly silence: {detail[0]:.0%} of the loop is silent (before its first and after "
+                f"its last sound, and its longest gap), over {cat}'s {detail[1]:.0%} "
+                f"(LOOP_SILENT_SHARE_MAX)")
     if reason == "note_gated" and detail:
         return f"its note is outside {cat}'s range (MIDI {detail[0]} to {detail[1]})"
     if reason == "duration" and detail:

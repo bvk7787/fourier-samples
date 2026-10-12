@@ -8321,6 +8321,14 @@
   "type": "float",
   "value": -90.0
  },
+ "curate.LOOP_SILENT_SHARE_MAX": {
+  "type": "float",
+  "value": 0.45
+ },
+ "curate.LOOP_SILENT_DB": {
+  "type": "float",
+  "value": -40.0
+ },
  "naming.MUSICAL_HAR_MIN": {
   "type": "float",
   "value": 0.5

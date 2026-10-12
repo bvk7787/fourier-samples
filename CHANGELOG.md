@@ -67,6 +67,18 @@ change the CLI or the config).
   the style exclusions read "Synth_Bass" and "FX_LOOPS" as well as "Synth Bass". A file under an
   FX folder the classifier labels FX only, or not at all, is no pad on Live's "Atmosphere" tag
   (`FX_FOLDER_NOT`), and a Live Set's `Samples/Recorded` takes are demo paths.
+- Loops that are mostly silence are left out of DRUMLOOPS and PHRASES (and so of 00_SLICE):
+  nothing checked how much of a loop sounds, so ending takes, fills that stop after a bar,
+  4-bar loops with an empty last bar and one note followed by seconds of silence were picked.
+  A loop whose silence before its first and after its last sound, plus its longest silent
+  stretch inside, is over 45% of its length (`LOOP_SILENT_SHARE_MAX`, `LOOP_SILENT_DB`) is
+  left out (`fourier why`: mostly silence). Found by an audit: 34 master loops at least 30%
+  silent, the worst 83%.
+- Named fills and rolls and swung drum loops that start late behind silence are now rotated to
+  their downbeat: the quiet-head rule ran only after the name and swing checks, which skip
+  rotation because such loops' off-grid hits are feel. A late start the loop is whole beats
+  without (and not with) is cut instead of rotated, so it no longer runs long each time round
+  (`trim_ms`). Found by an audit: 7 drum loops starting 16-27 ms late.
 - Device path locks now follow a library that moved (another volume, a renamed library, vendor
   or pack folder). A lock names each source by its absolute path, so after a move a render
   found none of them: every file got a second copy on the card under a new name ("_2") beside
