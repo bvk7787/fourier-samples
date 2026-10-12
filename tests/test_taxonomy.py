@@ -747,10 +747,13 @@ def test_verify_checks_backed_names_note_leads_and_sets(tmp_path):
     fails = _fails(tmp_path, files)[1]
     assert "genre and drum-machine words in names are backed by the files" in fails
     assert "note leads only in PIANO" in fails
-    assert "at most 3 notes of one multisample set a folder" in fails
+    assert "at most 3 notes of one multisample set a folder (FX 2)" in fails
     ok = _clean() + [("KICKS", "909-dark", "BD 1.wav", _hit(), "V1/909 Kit/BD 1.wav")]
     fails = _fails(tmp_path / "ok", ok)[1]
     assert not {f for f in fails if "genre" in f or "note leads" in f or "multisample" in f}, fails
+    fx = [("FX", "zap-bright", f"Qzv Zap C{o}.wav", _hit(), f"V1/P/Qzv Zap C{o}.wav") for o in range(2, 5)]
+    assert "at most 3 notes of one multisample set a folder (FX 2)" in _fails(tmp_path / "fx", ok + fx)[1]
+    assert "at most 3 notes of one multisample set a folder (FX 2)" not in _fails(tmp_path / "fx2", ok + fx[:2])[1]
     # a weakly supported naming phrase, a freetempo DRUMLOOPS folder, a long loop in PADS
     files = _clean() + [("DRUMLOOPS", "freetempo-bright", "L.wav", _hit(2.0), "V1/P/L.wav"),
                         ("PADS", "warm", "Music Loop 3.wav", _hit(6.0), "V1/Music Loops/Music Loop 3.wav")]

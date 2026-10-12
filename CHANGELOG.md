@@ -33,6 +33,20 @@ change the CLI or the config).
   cycles (6 ms "kicks" and "hats" in a drum-kit folder, which kept them out of WAVES) now goes
   to WAVES: a file of 12 ms or less (`WAVE_KIT_CYCLE_MAX_S`) in such a folder is a cycle,
   while the kit's real hits still home as drums.
+- Notes of one multisample patch are now one set however the name states the note: glued to
+  the patch name ("warmpadF#2"), below octave 0 ("A-1"), before a pack's 4-character ID
+  ("Pad_F#3-XQ1Z", "Pad-C3-127-86XQ") or with a sampler's hex code after it ("Pad_f#34b00ff").
+  Before, each such note looked like a set of its own, so the one-note-per-C rule and the
+  sibling cap never fired: up to 8 notes of one patch sat in a folder, and notes retuned onto
+  one C in a category stayed side by side (an audit found 35 such groups). A detected root
+  counts for the one-note-per-C rule when the name states the note, and a pYIN root never
+  retunes a note onto a C its set already plays.
+- A file retuned by Sononym's detected root now needs a steady voiced note in pYIN, as a pYIN
+  root does (half the frames voiced, spread under 0.5 semitone); sung phrases, an unvoiced
+  reversed shout and a cowbell were retuned by a pitch read off part of them.
+- FX keeps at most 2 notes of one multisample set a folder (`SIBLING_CAP_BY_CAT`): 106 FX files
+  were notes of 38 patches.
+
 - Device path locks now follow a library that moved (another volume, a renamed library, vendor
   or pack folder). A lock names each source by its absolute path, so after a move a render
   found none of them: every file got a second copy on the card under a new name ("_2") beside

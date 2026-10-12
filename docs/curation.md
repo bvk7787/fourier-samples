@@ -610,16 +610,23 @@ categories cluster inside tempo bands (section 4). `FOLDER_MAX` is 12 folders pe
 (DRUMLOOPS 32); overshoot merges a band's smallest folder into its nearest same-band folder,
 never across tempo folders or below a band's minimum. Then:
 
-- **Sibling cap** (SUB, SYNTH, PADS, STABS, VOX, BLIPS, PIANO, ACOUSTIC): at most 3 files of one
-  multisample set per folder: C notes first, then the loudest velocity per note, spread across
+- **Sibling cap** (SUB, SYNTH, PADS, STABS, VOX, BLIPS, PIANO, ACOUSTIC, FX): at most 3 files of
+  one multisample set per folder (FX 2, `SIBLING_CAP_BY_CAT`: an effect at another note is mostly
+  the same effect): C notes first, then the loudest velocity per note, spread across
   the register; Keeps stay. A set (`_sibling_key`) is one vendor/pack and one name with note,
   velocity, take and number tokens removed; one word plus a number counts only for a patch name,
-  not a generic word like "kick". In the retuned categories (`RETUNE_CATS`), a set's notes that
+  not a generic word like "kick". A note counts wherever the root parser finds one (glued to the
+  name, "warmpadF#2", or below octave 0, "A-1"), and so does a lowercase note with a sampler's hex
+  code after it ending the name ("Pad_f#34b00ff"); a pack's 4-character ID (capitals and digits)
+  ending the name right after the note, or after the note and a velocity ("Pad_F#3-XQ1Z",
+  "Pad-C3-127-86XQ"), isn't part of the name. In the retuned categories (`RETUNE_CATS`), a set's notes that
   retune onto the same C by the notes their names state are one sound (F#2, A#2, C3, D#3 and
   E3 all play C3): first, across the category's folders, one note per set and C stays (a Keep's,
   else the smallest shift, then the previous build's pick, then the lowest), with its velocity
-  layers (`_one_per_retune_target`). Numbered takes retuned by a measured root ("Saw Lead 02",
-  "Saw Lead 05") may be different patches and all stay.
+  layers (`_one_per_retune_target`; a detected root counts when the name states the note).
+  Numbered takes retuned by a measured root ("Saw Lead 02", "Saw Lead 05") may be different
+  patches and all stay. The same note of one patch picked by two categories (a SUB and a PADS
+  organ both on C3) isn't caught: each category is built on its own.
 - **Small folders** (not tempo-banded): under 15 records, or given under 15 files by the budget,
   merges into its nearest same-band folder (`FOLDER_MIN_FILES`).
 - **Splits** (not tempo-banded): a folder filled to 120 from a pool of 240+ splits in two
@@ -998,14 +1005,19 @@ Then:
   capital, so a model code like "ZA7" or the letters of a vendor code aren't notes), else a
   chord root ("Dbmaj7"), else a bare key with an accidental ("Stab C#"), else the detected
   pitch in SYNTH, PIANO, VOX only (`RETUNE_DETECT_CATS`, confidence > 0.4). A detected pitch
-  that agrees with the name adds its fine tuning.
+  that agrees with the name adds its fine tuning. A picked file retuned by a detected root
+  keeps its pitch unless pYIN hears a steady voiced note there too (the bar below: half the
+  frames voiced, spread under 0.5 semitone; `_check_detected_roots`): a sung phrase, a noise or
+  a hit isn't retuned by a pitch read off part of it.
 - **Contradicted names**: a picked file whose named note (with an octave) the audio clearly
   contradicts keeps its pitch and name: pYIN on the steady part (half the frames voiced, spread
   under 0.5 semitone, cached in `~/.fourier/cache/pitch`) 2+ semitones off, not a fourth or
   fifth. The entry records `pitch_conflict` (a patch name can look like a note, and a pack can
   be mislabeled).
 - **No root**: a picked file with no root (no note in its name, no sure Sononym reading) is
-  retuned by a clear pYIN pitch within the same caps (`root_src: pyin`). A file retuned by a
+  retuned by a clear pYIN pitch within the same caps (`root_src: pyin`), smallest shift first,
+  never onto a C another note of its set already plays in the category (names that state their
+  notes: that note keeps its pitch). A file retuned by a
   detected pitch whose name still carries that note where the parser doesn't look (after a
   digit: `Saw2D1`) has that token renamed to the C it plays (`Saw2C1`); entries record
   `root_midi`.

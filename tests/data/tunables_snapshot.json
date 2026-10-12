@@ -6481,12 +6481,24 @@
    "$set": [
     "ACOUSTIC",
     "BLIPS",
+    "FX",
     "PADS",
     "PIANO",
     "STABS",
     "SUB",
     "SYNTH",
     "VOX"
+   ]
+  }
+ },
+ "curate_config.SIBLING_CAP_BY_CAT": {
+  "type": "dict",
+  "value": {
+   "$dict": [
+    [
+     "FX",
+     2
+    ]
    ]
   }
  },

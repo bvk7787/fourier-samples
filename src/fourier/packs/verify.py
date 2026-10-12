@@ -591,12 +591,13 @@ def check_routing(ctx):
     # one note of an instrument is enough: at most SIBLING_CAP files of a multisample set
     # a folder (a Keep is exempt), in the categories where it applies
     from .curate_config import (LOOP_DIR_ONESHOT_CATS, LOOP_DIR_ONESHOT_MAX_S, SIBLING_CAP,
-                                SIBLING_CAP_CATS)
+                                SIBLING_CAP_BY_CAT, SIBLING_CAP_CATS, sibling_cap)
     sets = Counter((c, e["family"], C._sibling_key(e["src"])) for c, e in ctx.entries
                    if c in SIBLING_CAP_CATS and not ctx.pinned(c, e) and C._sibling_key(e["src"]))
-    many = [(c, f, k[1], n) for (c, f, k), n in sets.items() if n > SIBLING_CAP]
-    yield Result(FAIL if many else PASS, f"at most {SIBLING_CAP} notes of one multisample set a folder",
-                 _fmt(many))
+    many = [(c, f, k[1], n) for (c, f, k), n in sets.items() if n > sibling_cap(c)]
+    _by = ", ".join(f"{c} {n}" for c, n in sorted(SIBLING_CAP_BY_CAT.items()) if c in SIBLING_CAP_CATS)
+    yield Result(FAIL if many else PASS, f"at most {SIBLING_CAP} notes of one multisample set a folder"
+                 + (f" ({_by})" if _by else ""), _fmt(many))
     # (a rated Keep still lands there: pins win over require_tempo, as the build has it)
     unpinned = {(c, e["family"]) for c, e in ctx.entries if not ctx.pinned(c, e)}
     free = [(c, f["family"]) for c, fl in ctx.fams.items() for f in fl

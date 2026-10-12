@@ -201,6 +201,7 @@ curate_config:
   ACOUSTIC_SOURCE_MIN: engine
   SIBLING_CAP: taste
   SIBLING_CAP_CATS: taste
+  SIBLING_CAP_BY_CAT: taste
   NOTE_LEAD_CATS: taxonomy
   LOOP_DIR_ONESHOT_CATS: rules
   STAB_CHORD_NAME_RE: rules
