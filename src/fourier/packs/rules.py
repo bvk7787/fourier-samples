@@ -159,8 +159,19 @@ def _cymbal_band(filename, son_labels=(), ab_tags=()):
     return "cymbal"
 
 
+def _hat_seconds(duration, attack_ms=None, decay_ms=None):
+    """How long a hat sounds: its attack plus its decay to -40 dB (Fourier's own analysis),
+    within the file's length; the file's length when it has no decay. The export trims the
+    silence after the sound, so a 0.1 s closed hat in a 1.4 s file plays 0.1 s."""
+    if decay_ms is None:
+        return duration
+    s = ((attack_ms or 0.0) + decay_ms) / 1000.0
+    return s if duration is None else min(duration, s)
+
+
 def _hat_band(filename, duration):
-    """'open' or 'closed': the name decides when it says so, else the length."""
+    """'open' or 'closed': the name decides when it says so, else the length it sounds
+    (_hat_seconds)."""
     stem = os.path.splitext(filename or "")[0]
     if HAT_OPEN_RE.search(stem):
         return "open"

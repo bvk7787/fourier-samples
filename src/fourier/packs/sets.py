@@ -259,10 +259,10 @@ ROLE_NAME = _tunable("ROLE_NAME", {
     "kick": (_W(r"kick|(?<![a-z])bd|bass ?drum"), _W(r"(?<![a-z])(lt|mt|ht|tom|toms)(?![a-z])|low ?tune")),
     "snare": (_W(r"snare|(?<![a-z])sd(?![a-z])|(?<![a-z])sn"), _W(r"rim|(?<![a-z])rs(?![a-z])|stick|perc")),
     "clap": (_W(r"clap|(?<![a-z])cp(?![a-z])|handclap"), None),
-    "hat_closed": (_W(r"hat|(?<![a-z])(hh|ch|chh)(?![a-z])|closed"), _W(r"tamb|shak|marac|cabasa|open|(?<![a-z])oh")),
+    "hat_closed": (_W(r"hat|(?<![a-z])(hh|ch|chh)(?![a-z])|closed"), _W(r"tamb|shak|marac|cabasa|open|(?<![a-z+])oh")),
     # (an open-hat band from a long tail or a mic tag: a hat its name calls closed isn't the open hat)
     "hat_open": (_W(r"hat|(?<![a-z])(oh|ohh)(?![a-z])|open"),
-                 _W(r"tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])")),
+                 _W(r"tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])(?!\d+[a-z])")),
     "cymbal": (_W(r"crash|ride|cym"), _W(r"(?<![a-z])rev|reverse")),
     "tom": (_W(r"tom"), None),
     "perc": (None, _W(r"fx|synth|flute|pad")),
@@ -270,11 +270,40 @@ ROLE_NAME = _tunable("ROLE_NAME", {
 
 
 def _slot_candidates(role, cands):
-    """The candidates whose names fit the slot (ROLE_NAME), else all of them."""
+    """The candidates whose names fit the slot (ROLE_NAME), else all of them; for a required
+    role (KIT_REQUIRED) never one whose name the slot avoids (a closed hat as the open hat),
+    so a kit without one has no such slot."""
     want, avoid = ROLE_NAME.get(role, (None, None))
     fn = lambda ce: os.path.splitext(os.path.basename(ce[1]["src"]))[0].replace("_", " ")
     ok = [ce for ce in cands if (want is None or want.search(fn(ce))) and not (avoid and avoid.search(fn(ce)))]
-    return ok or cands
+    if ok or not avoid or role not in KIT_REQUIRED:
+        return ok or cands
+    return [ce for ce in cands if not avoid.search(fn(ce))]
+
+
+# a name's last token when it numbers a take, velocity or round robin ("_4", "_p2", "_t3", " v2"):
+# a kit's two toms (two percs) aren't two takes of one drum when the pack has another
+KIT_TAKE_RE = _tunable("KIT_TAKE_RE", re.compile(r"[ _.-]+[a-z]{0,2}\d+$", re.I))
+
+
+def _stem(ce):
+    return KIT_TAKE_RE.sub("", os.path.splitext(os.path.basename(ce[1]["src"]))[0]).lower()
+
+
+def _spread_pick(c, k):
+    """k of the name-sorted candidates c, evenly spaced; a later pick that is another take of
+    an earlier one (same name but its number: a velocity layer of the same drum) moves to the
+    nearest candidate of another stem, when there is one."""
+    step = max(1, len(c) // (k + 1))
+    out: list = []
+    for i in range(min(k, len(c))):
+        j = min(len(c) - 1, step * (i + 1))
+        taken = {_stem(x) for x in out}
+        if c[j] not in out and _stem(c[j]) in taken:
+            alt = sorted((q for q in range(len(c)) if _stem(c[q]) not in taken), key=lambda q: (abs(q - j), q))
+            j = alt[0] if alt else j
+        out.append(c[j])
+    return out
 
 
 def _kits(man):
@@ -294,18 +323,16 @@ def _kits(man):
                 groups[key][r].append((cat, e))
     kits = []
     for (pack, mach), roles in groups.items():
-        if not all(roles.get(r) for r in KIT_REQUIRED):
+        slots = {r: sorted(_slot_candidates(r, roles.get(r, [])), key=lambda ce: os.path.basename(ce[1]["out"]).lower())
+                 for r in KIT_ROLES}
+        if not all(slots.get(r) for r in KIT_REQUIRED):
             continue
-        have = [r for r in KIT_ROLES if roles.get(r)]
+        have = [r for r in KIT_ROLES if slots[r]]
         if len(have) < 6:
             continue
         pick = []
         for r in KIT_ROLES:
-            c = sorted(_slot_candidates(r, roles.get(r, [])), key=lambda ce: os.path.basename(ce[1]["out"]).lower())
-            k = KIT_PER_ROLE.get(r, 1)
-            if c:
-                step = max(1, len(c) // (k + 1))
-                pick += [c[min(len(c) - 1, step * (i + 1))] for i in range(min(k, len(c)))]
+            pick += _spread_pick(slots[r], KIT_PER_ROLE.get(r, 1))
         kits.append((len(have), sum(len(v) for v in roles.values()), pack, mach, pick))
     kits.sort(key=lambda t: (-t[0], -t[1], t[2], t[3] or ""))
     acoustic = [t for t in kits if not t[3] and KIT_ACOUSTIC_PACKS.search(t[2])][:KIT_ACOUSTIC_MAX]

@@ -398,3 +398,4 @@ sets:
   KIT_LEVEL_TOL_DB: correctness
   ONSET_MIN_RISE_DB: correctness
   ROLE_NAME: taste
+  KIT_TAKE_RE: taste

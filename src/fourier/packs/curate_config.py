@@ -410,16 +410,17 @@ PHRASE_DIMS = _tunable("PHRASE_DIMS", [("br", ("dark", "bright")), ("noi", ("cle
 # put open and closed hats, or impacts and foley, in one folder.
 #   wave  WAVES: cycle (one frame) / table (several)
 #   chord PIANO: note / chord
-#   hat   HATS: closed / open (name first, then length)
+#   hat   HATS: closed / open (name first, then its sounding length)
 #   fx    FX: the source library's own FX types
 #   loop  DRUMLOOPS: full kits / tops (hat and percussion loops, for layering)
+# (judged on attack + decay, rules._hat_seconds: a short hat in a long file is closed)
 HAT_OPEN_MIN_S = _tunable("HAT_OPEN_MIN_S", 0.35)
-# "+OH" is a recording's overhead-mic tag ("Closed Hat +OH 3"), not an open hat; "Clsd"
-# and a foot (pedal) hat are closed.
+# "+OH" is a recording's overhead-mic tag ("Closed Hat +OH 3"), not an open hat; "Clsd",
+# "cl_hat" / "ClHH" and a foot (pedal) hat are closed.
 HAT_OPEN_RE = _tunable("HAT_OPEN_RE", _re.compile(r"open|(?<![a-z+])o\.?h(?:h)?" + _ABBR_END + r"|sizzl|washy", _re.I))
 HAT_CLOSED_RE = _tunable("HAT_CLOSED_RE", _re.compile(
-    r"closed|clsd|(?<![a-z])c\.?h(?:h)?" + _ABBR_END + r"|pedal|(?<![a-z])p\.?h" + _ABBR_END
-    + r"|(?<![a-z])foot(?![a-z])|tight", _re.I))
+    r"closed|clsd|(?<![a-z])c\.?h(?:h)?" + _ABBR_END + r"|(?<![a-z])cl[ _.-]?(?:hi[ _-]?)?(?:hat|hh)"
+    + r"|pedal|(?<![a-z])p\.?h" + _ABBR_END + r"|(?<![a-z])foot(?![a-z])|tight", _re.I))
 FX_BANDS = _tunable("FX_BANDS", [("Explosions & Shots", "impact"), ("Whooshes & Whips", "whoosh"),
             ("Sweeps & Lasers", "sweep"), ("Noise & Distortion", "noise"),
             ("Nature & Athmospheric", "ambience"), ("Cracks & Rustle", "foley")])

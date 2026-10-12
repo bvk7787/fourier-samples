@@ -4214,7 +4214,7 @@
  "curate_config.HAT_CLOSED_RE": {
   "type": "Pattern",
   "value": {
-   "$re": "closed|clsd|(?<![a-z])c\\.?h(?:h)?(?![a-z])(?!\\d+[a-z])|pedal|(?<![a-z])p\\.?h(?![a-z])(?!\\d+[a-z])|(?<![a-z])foot(?![a-z])|tight",
+   "$re": "closed|clsd|(?<![a-z])c\\.?h(?:h)?(?![a-z])(?!\\d+[a-z])|(?<![a-z])cl[ _.-]?(?:hi[ _-]?)?(?:hat|hh)|pedal|(?<![a-z])p\\.?h(?![a-z])(?!\\d+[a-z])|(?<![a-z])foot(?![a-z])|tight",
    "flags": 34
   }
  },
@@ -8037,7 +8037,7 @@
         "flags": 34
        },
        {
-        "$re": "tamb|shak|marac|cabasa|open|(?<![a-z])oh",
+        "$re": "tamb|shak|marac|cabasa|open|(?<![a-z+])oh",
         "flags": 34
        }
       ]
@@ -8052,7 +8052,7 @@
         "flags": 34
        },
        {
-        "$re": "tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])",
+        "$re": "tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])(?!\\d+[a-z])",
         "flags": 34
        }
       ]
@@ -8317,5 +8317,12 @@
  "curate_config.SOUND_KEEP_MIN_HELD": {
   "type": "int",
   "value": 200
+ },
+ "sets.KIT_TAKE_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "[ _.-]+[a-z]{0,2}\\d+$",
+   "flags": 34
+  }
  }
 }
