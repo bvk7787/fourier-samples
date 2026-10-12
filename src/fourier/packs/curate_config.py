@@ -277,6 +277,14 @@ if WAVE_PATH_WORDS:
 # A drum kit shipped inside a wavetable pack isn't waves: a "Drumkit/" folder holds drum
 # hits, which home like any other drum.
 WAVE_NOT_PATH_RE = _tunable("WAVE_NOT_PATH_RE", _re.compile(r"(?:^|/)drum ?kits?(?:/|$)", _re.I))
+# ...unless the file is a single small cycle: a wavetable pack's kit of 256-sample frames
+# (a "kick" of 6 ms) plays as a click, not a drum. 12 ms holds a 512-sample frame at 44.1
+# kHz and a 256 at 22.05; of a master's ~3,900 drum hits 0.15% are that short (clicks),
+# where 93 ms (WAVE_SINGLE_MAX_SAMPLES) would take 6% of them, 12% of the hats.
+WAVE_KIT_CYCLE_MAX_S = _tunable("WAVE_KIT_CYCLE_MAX_S", 0.012)
+# Longer files in a wave folder are wavetables for a wavetable synth (a common format is 2048
+# samples a frame, up to 256 frames): out of scope like impulse responses, in no category
+# (rules._is_long_wavetable), since a sampler plays one as a frame-stepped buzz.
 WAVE_MAX_DUR = _tunable("WAVE_MAX_DUR", 1.0)
 WAVE_MIN_SAMPLES = _tunable("WAVE_MIN_SAMPLES", 256)          # shorter cycles are too coarse to use
 WAVE_SINGLE_MAX_SAMPLES = _tunable("WAVE_SINGLE_MAX_SAMPLES", 4097)     # up to one 4096-sample frame: "cycle"; longer: "table"

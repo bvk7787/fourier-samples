@@ -92,6 +92,12 @@ A library overlay can add its own categories ([Adding a category](#adding-a-cate
 are numbered after these, from 20, in the order it adds them, so adding or removing one never
 renumbers another's device folder.
 
+Out of scope, in no category (Keeps included): reverb impulse responses, preset and kit
+previews, and wavetables longer than `WAVE_MAX_DUR` (1 s) under a wavetable / single-cycle
+folder. Those are files for a convolution reverb, a demo, and a wavetable synth (a common
+table format is up to 256 frames of 2048 samples); a sampler plays a wavetable as a buzz
+stepping through its frames. Their frames of 1 s or less are WAVES'.
+
 Retired names are categories earlier versions merged into others (BELLS, ORCHESTRAL, MALLETS
 -> ACOUSTIC; SCRATCHES -> FX, as its scratch band). `RENAMED_CATEGORIES` maps them, so a rating
 such as `Move-MALLETS` still lands in the right category, and verify fails on a folder with an
@@ -449,7 +455,7 @@ Then the rules below decide, first match wins. `fourier why <name>` replays them
 | 1 | Drop | out of every category |
 | 2 | Keep / Move pin | in the pinned category, whatever follows |
 | 3 | mirror | a copy under a mirror folder (`MIRROR_ROOT_RE`, set by the library overlay) whose bytes live elsewhere: no home, the original counts |
-| 4 | IR / preview | `IR_PATH_RE` (folders IRs, Impulse Responses, Impulses, Convolution Reverb) or `PREVIEW_PATH_RE`: no home, Keeps included |
+| 4 | IR / preview / long wavetable | `IR_PATH_RE` (folders IRs, Impulse Responses, Impulses, Convolution Reverb), `PREVIEW_PATH_RE`, or a wave-folder file over `WAVE_MAX_DUR` (`rules._is_long_wavetable`): no home, Keeps included |
 | 5 | pack home | `PACK_HOME`: a pack that belongs to one category (set by the library overlay) |
 | 6 | instrument pack | `INST_ROUTED_PACKS` (a user's piano, keys and orchestral section packs, set in their overlay): its instrument category only |
 | 7 | phrase | a musical phrase homes in PHRASES ahead of every vote (unless rated Misfiled there or name-reserved elsewhere) |
@@ -490,7 +496,7 @@ CYMBALS). Other keys-named files lose the drum categories.
    impact FX, synth bass, brass stabs; `balanced`, `hiphop-lofi` and `trap` keep only the
    folders that hold no drum loops; `fourier why` says "an off-style loop"). A Keep skips these.
 2. Soft layer: source peak under -19 dBFS while a sibling peaks 6+ dB louder (Keeps exempt).
-3. Impulse response or preview; clipped or over 60 s; rated Drop.
+3. Impulse response, preview or long wavetable; clipped or over 60 s; rated Drop.
 4. Already in the base release (additive builds; still claims its dedup slot).
 5. Rated Misfiled here, itself or a sibling (a Keep on the file itself wins); name-reserved
    elsewhere; phrase mismatch (phrases only in PHRASES, PHRASES only phrases).
@@ -842,7 +848,7 @@ keeps drum-named hits out.
 | STABS | only stab-named files: a chord (`STAB_CHORD_NAME_RE`: "chord", maj7, sus4, Dbmaj7; not a bare key like "Fm", nor a quality inside a random ID token such as "...-M93Q" or "...-SUS7") or a stab / tonal hit (`STAB_NAME_RE`: stab, stb, orch hit, synth/brass/string/organ/choir/chord/rave hit, hoover), with no drum word. Vocal chords stay in VOX, keys chords in PIANO. |
 | PIANO | all keys, notes and chord stabs, plus named organs (an organ stab stays in STABS). Pool: piano packs, keys-labeled Sononym one-shots, anything under an instrument collection's top folder (`INSTRUMENT_ROOTS`, set by a library overlay; empty by default), organ-named files. Gates: at most 2 onsets; chords must be stabs (one event, <= 4 s, not a progression or tempo phrase); notes need chroma >= 1.6; 30 s max; orchestral and mallet Ableton tags out unless named keyboard or organ; accepted from a piano pack, keys- or organ-named, or CLAP piano anchor beats anti and >= 0.30. Bands `note` / `chord`: note folders lead with their C (`c3-...`), chord folders with `chord`. |
 | ACOUSTIC | pool: `ORCH_PACKS`, `ACOUSTIC_ABLETON_TAGS` (strings, winds, brass, guitars, harp, sitar, timpani, gong, mallets; the catch-alls Misc Plucked/Strings/Woodwind/Mallets, Bell Chromatic and Chime need an instrument name or pack), and files reserved by name or orchestra folder (`ORCH_PATH_RE`). Out: synth / drum-machine emulation packs (`ORCH_PACK_EXCLUDE`), names with keyboard, fm, synth, saw, square, pwm, 303, moog, juno. At most 2.5 onsets, 30 s max. Bands (name, orchestra folder, Ableton tag, pack, default string): `string` 0.30, `wind` 0.20, `plucked` 0.25, `mallet` 0.25, at least 2 folders each. Folders read band-note-instrument (`string-c3-cello-dark`); an instrument word (orchestra folder, specific Ableton tag, name word, catch-all tag) names a folder only if 40% of its files are that instrument. |
-| WAVES | a file of 1 s or less under a wavetable / single-cycle folder, or one named for a single-cycle waveform collection (`WAVE_PATH_RE`, plus `WAVE_PATH_WORDS` from the library overlay; folders only, not a drum-kit folder). At least 256 samples (`WAVE_MIN_SAMPLES`; shorter cycles are too coarse). Bands `cycle` (<= 4097 samples) and `table`. Folders named by source (the folder under a WAVETABLES directory, else the pack) when half the files share it. Never trimmed, exact DC removal, no near-dup prune; renders keep every sample. |
+| WAVES | a file of 1 s or less (`WAVE_MAX_DUR`) under a wavetable / single-cycle folder, or one named for a single-cycle waveform collection (`WAVE_PATH_RE`, plus `WAVE_PATH_WORDS` from the library overlay; folders only). Not from a drum-kit folder inside one (`WAVE_NOT_PATH_RE`: its hits home as drums), except a file of 12 ms or less (`WAVE_KIT_CYCLE_MAX_S`: a 512-sample frame at 44.1 kHz), a kit of single cycles that would play as clicks. A longer file under such a folder is a multi-frame wavetable for a wavetable synth: in no category (out of scope, section 1.1). At least 256 samples (`WAVE_MIN_SAMPLES`; shorter cycles are too coarse). Bands `cycle` (<= 4097 samples) and `table`. Folders named by source (the folder under a WAVETABLES directory, else the pack) when half the files share it. Never trimmed, exact DC removal, no near-dup prune; renders keep every sample. |
 | VOX | choirs and synth voices (`VOX_CHOIR_RE`: choir, choral, aah, ooh, VP-330, vox pad, plus a library overlay's `VOX_CHOIR_EXTRA`) <= 25% of the VOX budget |
 | Length caps | `DUR_CAP` (s): KICKS 4, SNARES 3, CLAPS 3, HATS 4, TOMS 5, PERC 4, CYMBALS 12, SUB 8, SYNTH 10, STABS 4, PADS 20, VOX 20, BLIPS 3, FX 30; PIANO and ACOUSTIC use `dur_max` 30 |
 
@@ -1224,7 +1230,7 @@ chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN.
 
 - **Homes**: PACK_HOME; one category per source; no identical audio in two categories; no
   recording in two categories under two names (with the database: CLAP, then the audio); name
-  overrides and filters hold; no IRs or previews; mirror files (WARN).
+  overrides and filters hold; no IRs, previews or wavetables over `WAVE_MAX_DUR`; mirror files (WARN).
 - **Keys and organs**: no keys-named files in SYNTH/SUB/FX/STABS or drum categories; PIANO chord
   and note folders apart; organs only in PIANO.
 - **Acoustic**: no acoustic percussion, plucked strings or tuned percussion in SYNTH; ACOUSTIC

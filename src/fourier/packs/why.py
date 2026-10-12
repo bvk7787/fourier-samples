@@ -23,7 +23,8 @@ PRECEDENCE = [
     ("drop", "rated Drop: out of every category", "selection"),
     ("pin", "rated Keep in X, or Move-X: in X, whatever the rules below say", "selection"),
     ("mirror", "a copy in a mirror folder (a pack reorganised into another folder): left out, the original counts", "homes"),
-    ("ir_preview", "a reverb impulse response or a preset preview: left out", "homes"),
+    ("ir_preview", "a reverb impulse response, a preset preview or a wavetable over WAVE_MAX_DUR "
+                   "(for a wavetable synth): left out", "homes"),
     ("pack_home", "a pack with a fixed home (PACK_HOME, set by a library overlay): that category only", "selection"),
     ("inst_pack", "an instrument-routed pack (INST_ROUTED_PACKS): its instrument category only", "homes"),
     ("phrase", "a musical phrase (producer-marked, whole bars): PHRASES", "homes"),
@@ -185,6 +186,8 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
         hit("mirror", "a mirror-folder copy")
     if C._is_ir(r.rel_path, r.path) or C._is_preview(r.rel_path, r.path):
         hit("ir_preview", "impulse response or preview")
+    elif C._is_long_wavetable(r.rel_path or library_rel(r.path or ""), r.duration_s):
+        hit("ir_preview", f"a wavetable longer than {C.WAVE_MAX_DUR:g} s (WAVE_MAX_DUR): for a wavetable synth")
     if pack in PACK_HOME:
         hit("pack_home", f"pack {pack}", PACK_HOME[pack])
     if INST_ROUTED_PACKS.search(pack):
@@ -350,7 +353,7 @@ PLAIN = {
     "drop": "you rated it Drop",
     "pin": "you rated it Keep there (or moved it there)",
     "mirror": "it's a copy of a file in another folder, and the original counts",
-    "ir_preview": "it's a reverb impulse response or a preset preview",
+    "ir_preview": "it's a reverb impulse response, a preset preview or a long wavetable (not a sample to play)",
     "pack_home": "its pack always goes there (your overlay or the sources setting)",
     "inst_pack": "its pack is sorted by instrument",
     "phrase": "it's a musical phrase: a loop marked as one, in whole bars",

@@ -6939,6 +6939,10 @@
    }
   ]
  },
+ "curate_config.WAVE_KIT_CYCLE_MAX_S": {
+  "type": "float",
+  "value": 0.012
+ },
  "curate_config.WAVE_MAX_DUR": {
   "type": "float",
   "value": 1.0

@@ -95,7 +95,7 @@ from . import vendors as _vendors
 from .curate_config import POOL_SURPLUS, VENDOR_MAX_SHARE, BUDGETS, FAVORED_SOURCES, NAME_OVERRIDES, NAME_OVERRIDE_SKIP, NAME_OVERRIDE_VETO, OVERRIDE_MAX_SHARE, INSTRUMENT_PACK_MAX_SHARE, ORCH_PACK_EXCLUDE, TEMPO_BAND_MIN
 from .rules import (  # noqa: F401  (re-exported: verify, why, tests and callers use the curate names)
     _has_any_tag, _pack_of, _is_nameable_vendor, _as_list, _labels_for, _canonical_of,
-    _classifier_votes, _is_wave, _is_fx_transition, _wave_source, _wave_band, _cymbal_band,
+    _classifier_votes, _is_wave, _is_long_wavetable, _is_fx_transition, _wave_source, _wave_band, _cymbal_band,
     _hat_band, _fx_band, _fx_drum_leak, _mallet_label, _acoustic_tagged, _loop_band,
     _acoustic_band, _is_plucked, _is_synth_tagged, _is_mallet_named, _is_acoustic_named, _is_organ_named,
     _is_wind_named, _perc_sourced, _orch_path, _acoustic_reserved, _plucked_label, _is_keys,
@@ -876,7 +876,8 @@ def compute_homes(session, emb_n, id2row, log=print):
         if r.id not in id2row or r.path in mirrors:
             continue
         pack = _pack_of(r.rel_path, r.path)
-        if INST_ROUTED_PACKS.search(pack) or _is_ir(r.rel_path, r.path) or _is_preview(r.rel_path, r.path):
+        if INST_ROUTED_PACKS.search(pack) or _is_ir(r.rel_path, r.path) or _is_preview(r.rel_path, r.path) \
+                or _is_long_wavetable(r.rel_path or library_rel(r.path or ""), r.duration_s):
             continue
         # a musical phrase homes in PHRASES ahead of every one-shot vote (and of the acoustic
         # reservation: a guitar riff is a phrase), unless it was rated Misfiled there
@@ -1366,7 +1367,8 @@ def unrecognized(session) -> list:
         fn = os.path.basename(r.path or "")
         pack = _pack_of(r.rel_path, r.path)
         ab = _as_list(r.ableton_tags)
-        if (_is_wave(rel, r.duration_s) or _is_ir(r.rel_path, r.path) or _is_preview(r.rel_path, r.path)
+        if (_is_wave(rel, r.duration_s) or _is_long_wavetable(rel, r.duration_s)
+                or _is_ir(r.rel_path, r.path) or _is_preview(r.rel_path, r.path)
                 or INST_ROUTED_PACKS.search(pack) or _is_phrase(r, True)):
             continue
         if (_acoustic_tagged(ab, fn, pack) or _is_acoustic_named(fn, ab) or _is_wind_named(fn, ab)
@@ -1416,7 +1418,8 @@ def placed_nowhere(session, master_dir) -> list | None:
                 or (r.file_hash and r.file_hash in held):
             continue
         rel = r.rel_path or library_rel(r.path or "")
-        if (_is_wave(rel, r.duration_s) or _is_ir(r.rel_path, r.path) or _is_preview(r.rel_path, r.path)
+        if (_is_wave(rel, r.duration_s) or _is_long_wavetable(rel, r.duration_s)
+                or _is_ir(r.rel_path, r.path) or _is_preview(r.rel_path, r.path)
                 or INST_ROUTED_PACKS.search(_pack_of(r.rel_path, r.path))):
             continue
         labels = sorted(c for c in _canonical_of(r) if not c.startswith("class."))
@@ -3586,6 +3589,9 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         if _is_preview(r.rel_path, r.path):
             stats["previews"] = stats.get("previews", 0) + 1
             continue                     # a preset / kit preview render: a demo, not a sample
+        if _is_long_wavetable(r.rel_path or library_rel(r.path or ""), r.duration_s):
+            stats["long_wavetables"] = stats.get("long_wavetables", 0) + 1
+            continue                     # a wavetable for a wavetable synth: never a sample to play
         # hygiene: drop clipped samples and corrupt multi-minute files
         if r.is_clipped or (r.duration_s and r.duration_s > 60):
             continue
