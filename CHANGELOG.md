@@ -25,6 +25,14 @@ change the CLI or the config).
 
 ### Fixed
 
+- Wavetables longer than 1 s (`WAVE_MAX_DUR`) under a wavetable / single-cycle folder no
+  longer land in SUB, FX, PADS, SYNTH, STABS or ACOUSTIC, where a sampler played them as a
+  buzz stepping through their frames: like impulse responses they are out of scope, in no
+  category (Keeps included; `fourier why` says so, and verify fails on one). An audit found 35
+  in a master, from a library holding about 1,300 more. And a wavetable pack's kit of single
+  cycles (6 ms "kicks" and "hats" in a drum-kit folder, which kept them out of WAVES) now goes
+  to WAVES: a file of 12 ms or less (`WAVE_KIT_CYCLE_MAX_S`) in such a folder is a cycle,
+  while the kit's real hits still home as drums.
 - Device path locks now follow a library that moved (another volume, a renamed library, vendor
   or pack folder). A lock names each source by its absolute path, so after a move a render
   found none of them: every file got a second copy on the card under a new name ("_2") beside

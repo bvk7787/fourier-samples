@@ -572,6 +572,12 @@ def check_routing(ctx):
     wout = [(c, e["out"]) for c, e in ctx.entries if c != C.WAVES_CATEGORY and not ctx.pinned(c, e)
             and C._is_wave(_rel(e["src"]), (durs[(c, e["out"])] or 0) + 0.01)]
     yield Result(FAIL if wout else PASS, "no waves outside WAVES", _fmt(wout))
+    # a wave-folder file over the cap is a wavetable for a wavetable synth: in no category
+    # (the master's length: trimming only shortens, so one over the cap had a source over it)
+    wlong = [(c, e["out"], round(durs[(c, e["out"])], 2)) for c, e in ctx.entries
+             if durs[(c, e["out"])] and C._is_long_wavetable(_rel(e["src"]), durs[(c, e["out"])])]
+    yield Result(FAIL if wlong else PASS, f"no wavetables longer than {C.WAVE_MAX_DUR:g} s (out of scope)",
+                 _fmt(wlong))
     if C.WAVES_CATEGORY in ctx.cats:
         nonw = [e["out"] for c, e in ctx.entries if c == C.WAVES_CATEGORY and not C.WAVE_PATH_RE.search(os.path.dirname(e["src"]))]
         yield Result(FAIL if nonw else PASS, "WAVES holds only waves", _fmt(nonw))

@@ -191,7 +191,7 @@ def training_label(rel_path: str, duration_s=None) -> tuple:
     from ..packs.curate import _name_tags
     from .shadow import near_labels, shape_labels, shape_scope
     rel = rel_path or ""
-    if R._is_ir(rel, rel) or R._is_preview(rel, rel):
+    if R._is_ir(rel, rel) or R._is_preview(rel, rel) or R._is_long_wavetable(rel, duration_s):
         return None, None
     shapes = shape_labels(rel)
     shape = next(iter(shapes)) if len(shapes) == 1 else None

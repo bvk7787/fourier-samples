@@ -20,7 +20,8 @@ from .curate_config import (
     ORCH_PATH_RE, ORGAN_NAME_RE, PERC_SOURCE_NOT_RE, PERC_SOURCE_RE, PHRASES_CATEGORY,
     PLUCKED_NAME_RE, PREVIEW_PATH_RE, SCRATCH_NAME_EXCLUDE, SCRATCH_NAME_RE,
     STAB_CHORD_NAME_RE, STAB_MOVE_EXCLUDE, STAB_NAME_EXCLUDE, STAB_NAME_RE, STRING_NAME_RE,
-    WAVE_MAX_DUR, WAVE_NOT_PATH_RE, WAVE_PATH_RE, WAVE_SINGLE_MAX_SAMPLES, WIND_NAME_RE,
+    WAVE_KIT_CYCLE_MAX_S, WAVE_MAX_DUR, WAVE_NOT_PATH_RE, WAVE_PATH_RE, WAVE_SINGLE_MAX_SAMPLES,
+    WIND_NAME_RE,
     WIND_RESERVE_NOT_RE, WIND_RESERVE_NOT_TAGS, _ABBR_END,
 )
 
@@ -92,12 +93,26 @@ def _classifier_votes(part, canon):
     return out
 
 
+def _in_wave_folder(rel_path, duration):
+    """Under a wavetable / single-cycle path (WAVE_PATH_RE, folders only), and not in a drum
+    kit shipped there (WAVE_NOT_PATH_RE) unless it's one small cycle (WAVE_KIT_CYCLE_MAX_S)."""
+    d = os.path.dirname(rel_path or "")
+    if duration is None or not WAVE_PATH_RE.search(d):
+        return False
+    return not WAVE_NOT_PATH_RE.search(d) or duration <= WAVE_KIT_CYCLE_MAX_S
+
+
 def _is_wave(rel_path, duration):
     """A single-cycle waveform or wavetable frame: under a wavetable / single-cycle path
     and no longer than WAVE_MAX_DUR. Waves belong to WAVES and nowhere else."""
-    d = os.path.dirname(rel_path or "")
-    return (duration is not None and duration <= WAVE_MAX_DUR
-            and bool(WAVE_PATH_RE.search(d)) and not WAVE_NOT_PATH_RE.search(d))
+    return duration is not None and duration <= WAVE_MAX_DUR and _in_wave_folder(rel_path, duration)
+
+
+def _is_long_wavetable(rel_path, duration):
+    """A wave-folder file longer than WAVE_MAX_DUR: a multi-frame wavetable for a wavetable
+    synth, which a sampler plays as a frame-stepped buzz. Out of every category, like an
+    impulse response."""
+    return duration is not None and duration > WAVE_MAX_DUR and _in_wave_folder(rel_path, duration)
 
 
 def _is_fx_transition(name):

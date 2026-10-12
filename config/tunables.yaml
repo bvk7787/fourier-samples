@@ -80,6 +80,7 @@ curate_config:
   WAVE_PATH_RE: rules
   WAVE_PATH_WORDS: library
   WAVE_NOT_PATH_RE: rules
+  WAVE_KIT_CYCLE_MAX_S: correctness
   WAVE_MAX_DUR: correctness
   WAVE_MIN_SAMPLES: correctness
   WAVE_SINGLE_MAX_SAMPLES: correctness
