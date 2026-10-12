@@ -55,7 +55,18 @@ change the CLI or the config).
   open hat drops out), "+OH" and a pack prefix like `XX4d` no longer read as a hat word there,
   and a kit's two toms (two percs) aren't two takes of one drum ("_p2" / "_f2") when the pack
   has another.
-
+- Routing where a name misleads (found by a sample-level audit): a pack prefix like `xx_yy000`
+  ("sd_" and a code) yields to a folder that names the drum, so toms, hats and kicks of such a
+  kit no longer land in SNARES; "Oh" (a word) is no open hat, nor is "oh" in a voice folder
+  (`DRUM_ABBR_NOT_FOLDER_RE`); a drum word beside a bass, pad, string, lead or chord word
+  (`DRUM_NAME_TONAL_RE`) decides nothing when the name carries a note or Live and the classifier
+  agree on no drum (a C2 "snap" bass in CLAPS, a track title with "Snares" in SNARES). Bass,
+  music and effects loops Live tags "Drum Loop" are out of DRUMLOOPS (`DRUMLOOP_MUSIC_DIR_RE`,
+  `DRUMLOOP_KEY_NAME_RE`, `DRUMLOOP_BASS_NAME_RE`, `FX_FOLDER_RE`), and so are sample chains
+  (`SAMPLE_CHAIN_PATH_RE`: slice-grid folders, g16 / g32 / g64 names), which reached 00_SLICE;
+  the style exclusions read "Synth_Bass" and "FX_LOOPS" as well as "Synth Bass". A file under an
+  FX folder the classifier labels FX only, or not at all, is no pad on Live's "Atmosphere" tag
+  (`FX_FOLDER_NOT`), and a Live Set's `Samples/Recorded` takes are demo paths.
 - Device path locks now follow a library that moved (another volume, a renamed library, vendor
   or pack folder). A lock names each source by its absolute path, so after a move a render
   found none of them: every file got a second copy on the card under a new name ("_2") beside

@@ -2357,7 +2357,7 @@
        [
         "path_exclude",
         {
-         "$re": "(?<![a-z])(?:fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])",
+         "$re": "(?<![a-z])(?:fx[ _-]?loops?|impact[ _-]?fx|synth[ _-]?bass|brass[ _-]?stab)(?![a-z])",
          "flags": 34
         }
        ],
@@ -3273,7 +3273,7 @@
  "curate_config.DEMO_PATH": {
   "type": "Pattern",
   "value": {
-   "$re": "(ableton folder info/previews|/demos?/|[/ _-]demo[s]?[ _.)\\-]|\\bpreview\\b|full[ _-]?(mix|track|song)|construction[ _-]?kit|(?:^|/)samples/processed/(?:crop|consolidate|reverse|freeze)/)",
+   "$re": "(ableton folder info/previews|/demos?/|[/ _-]demo[s]?[ _.)\\-]|\\bpreview\\b|full[ _-]?(mix|track|song)|construction[ _-]?kit|(?:^|/)samples/processed/(?:crop|consolidate|reverse|freeze)/|(?:^|/)samples/recorded/)",
    "flags": 34
   }
  },
@@ -3299,7 +3299,50 @@
  "curate_config.DRUMLOOP_STYLE_EXCLUDE": {
   "type": "Pattern",
   "value": {
-   "$re": "(?<![a-z])(?:fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])",
+   "$re": "(?<![a-z])(?:fx[ _-]?loops?|impact[ _-]?fx|synth[ _-]?bass|brass[ _-]?stab)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.DRUMLOOP_MUSIC_DIR_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:bass|music(?:al)?|melod(?:y|ic|ies)|synths?|chords?|keys|leads?|pads?|vocals?|vox)[ _-]*loops?(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.DRUMLOOP_KEY_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![A-Za-z0-9#])[A-G](?:#|b)?(?i:major|minor|maj|min|m)?(?![A-Za-z0-9#])",
+   "flags": 32
+  }
+ },
+ "curate_config.DRUMLOOP_BASS_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:sub ?)?bass(?:lines?|loops?)?(?![a-z])(?! ?drum)",
+   "flags": 34
+  }
+ },
+ "curate_config.FX_FOLDER_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:s?fx|effects?|sound ?design|risers?|uplifters?|downlifters?|sweeps?|lasers?|lazers?|whoosh(?:es)?|noises?|impacts?|transitions?)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.FX_FOLDER_NOT": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "PADS"
+   ]
+  }
+ },
+ "curate_config.SAMPLE_CHAIN_PATH_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:slice[ _-]?grids?|sliced[ _-]?librar(?:y|ies)|sample[ _-]?chains?)(?![a-z])|(?:^|/)grids?/|(?<![a-z0-9])g(?:16|32|64)(?![a-z0-9])",
    "flags": 34
   }
  },
@@ -3465,6 +3508,20 @@
    ]
   }
  },
+ "curate_config.DRUM_ABBR_NOT_FOLDER_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:speech|spoken|vocals?|vox|voices?|acapellas?|words|dialog(?:ue)?s?)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.DRUM_NAME_TONAL_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:bass(?:line)?s?|pads?|strings?|leads?|chords?)(?![a-z])",
+   "flags": 34
+  }
+ },
  "curate_config.DRUM_NAME_RULES": {
   "type": "list",
   "value": [
@@ -3498,7 +3555,7 @@
    {
     "$tuple": [
      {
-      "$re": "hi-?hats?|hihats?|(?<![a-z])(?:hat|hats|shakers?|tambourines?)(?![a-z])|(?<![a-z])(?:hh|ch)(?![a-z])(?!\\d+[a-z])|(?<![a-z+])oh(?![a-z])(?!\\d+[a-z])",
+      "$re": "hi-?hats?|hihats?|(?<![a-z])(?:hat|hats|shakers?|tambourines?)(?![a-z])|(?<![a-z])(?:hh|ch)(?![a-z])(?!\\d+[a-z])|(?<![a-z+])(?-i:OH|oh)(?![a-z])(?!\\d+[a-z])",
       "flags": 34
      },
      "HATS"

@@ -13,4 +13,4 @@ advanced:
     SUB: 900, TOMS: 340, CLAPS: 360, CYMBALS: 300, FX: 660, SYNTH: 1000, PADS: 600,
     STABS: 325, BLIPS: 225, VOX: 375, PIANO: 350, WAVES: 350, ACOUSTIC: 350}
   POOL_SURPLUS: false
-  DRUMLOOP_STYLE_EXCLUDE: '(?<![a-z])(?:dubstep|brostep|trap|future ?bass|fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])'
+  DRUMLOOP_STYLE_EXCLUDE: '(?<![a-z])(?:dubstep|brostep|trap|future[ _-]?bass|fx[ _-]?loops?|impact[ _-]?fx|synth[ _-]?bass|brass[ _-]?stab)(?![a-z])'

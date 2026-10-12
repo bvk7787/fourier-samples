@@ -23,7 +23,7 @@ categories:
   ACOUSTIC: 0.5
   WAVES: 0.5
 advanced:
-  DRUMLOOP_STYLE_EXCLUDE: '(?<![a-z])(?:fx ?loops?|impact ?fx|synth ?bass|brass ?stab)(?![a-z])'
+  DRUMLOOP_STYLE_EXCLUDE: '(?<![a-z])(?:fx[ _-]?loops?|impact[ _-]?fx|synth[ _-]?bass|brass[ _-]?stab)(?![a-z])'
   DRUMLOOP_HAR_MAX: 0.75      # an 808 under the drums reads tonal
   BREAK_PHRASES: [trap drum loop, trap hi-hat roll loop, 808 trap beat, drill drum loop,
     half-time hip hop drum loop, rolling hi-hat loop, hard trap drums, phonk drum loop,

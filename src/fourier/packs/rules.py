@@ -10,7 +10,9 @@ import re
 from ..places import library_rel
 from .curate_config import (
     ACOUSTIC_ABLETON_TAGS, ACOUSTIC_MALLET_PACKS, ACOUSTIC_BAND_TAGS, ACOUSTIC_NAME_RE, CLASSIC_BREAK_PATH_RE,
-    CLASSIC_BREAK_RE, CYMBAL_CRASH_RE, CYMBAL_RIDE_RE, DRUM_NAME_RULES, FX_AB_BANDS,
+    CLASSIC_BREAK_RE, CYMBAL_CRASH_RE, CYMBAL_RIDE_RE, DRUM_ABBR_NOT_FOLDER_RE, DRUM_NAME_RULES,
+    DRUM_NAME_TONAL_RE, DRUMLOOP_BASS_NAME_RE, DRUMLOOP_KEY_NAME_RE, DRUMLOOP_MUSIC_DIR_RE, FX_AB_BANDS,
+    FX_FOLDER_NOT, FX_FOLDER_RE,
     FX_BANDS, FX_DRUM_SON, FX_FALL_NAME_RE, FX_RISE_NAME_RE, FX_SYNTH_SON,
     FX_TRANSITION_NAME_RE, FX_TRANSITION_NOT_RE, GENERIC_ACOUSTIC_TAGS, HAT_CLOSED_RE,
     HAT_OPEN_MIN_S, HAT_OPEN_RE, IR_PATH_RE, KEYBOARD_NAME_RE, KEYS_CHORD_HOME,
@@ -427,7 +429,7 @@ def _drum_name_wins(name, canon, ab_tags, rel=None, fallback=False):
     not with VOX, else None. Such a file is the drum rule's, ahead of the acoustic and organ
     reservations (a "Bell Kick 3", a "Brass Rim 2", an organ maker's drum machine "Snare"),
     except in an orchestra library's section folders (ORCH_PATH_RE)."""
-    dn = _drum_named_in(name, rel, fallback)
+    dn = _drum_named_in(name, rel, fallback, canon, ab_tags)
     if not dn or _orch_path(rel) is not None:
         return None
     from .curate_config import ABLETON_TAGS_BY_CATEGORY, CATEGORIES
@@ -444,17 +446,55 @@ _HAT_WORD_RE = re.compile(r"hi-?hats?|hihats?|(?<![a-z])(?:hat|hats)(?![a-z])"
 _PERC_FOLDER_RE = re.compile(r"(?<![a-z])(?:percs?|percussions?)(?![a-z])", re.I)
 
 
-def _drum_named_in(name, rel=None, fallback=False):
-    """_drum_named, and without Sononym (fallback) the file's folder too: a shaker or
-    tambourine (HATS by its name) in a percussion folder ("Perc/...") is PERC's, as its
-    folder says, unless its name also says hi-hat."""
+# a two-letter drum abbreviation, "_" and a letters+digits code opening a name: a pack's prefix
+# ("sd_qz030"), and the abbreviations alone (what a name says with them blanked out)
+_DRUM_PREFIX_RE = re.compile(r"^(?:bds?|sd|hh|ch|oh|cy)_[a-z]+\d+(?![a-z])", re.I)
+_DRUM_ABBR_RE = re.compile(r"(?<![a-z+])(?:bds?|sd|snrs?|hh|ch|oh|cy)" + _ABBR_END, re.I)
+
+
+def _not_drum_votes(canon, ab_tags) -> bool:
+    """Live's tags and the classifier's labels both put a one-shot somewhere, and neither
+    with the drums (a DRUM_NAME_RULES category)."""
+    from .curate_config import ABLETON_TAGS_BY_CATEGORY, CATEGORIES
+    part = {c: cfg for c, cfg in CATEGORIES.items() if cfg["kind"] in ("oneshot", "loop", "gated")}
+    tags = set(ab_tags or ())
+    son = _classifier_votes(part, set(canon or ()))
+    ab = {c for c in part if tags & set(ABLETON_TAGS_BY_CATEGORY.get(c, ()))}
+    return bool(son) and bool(ab) and not (son | ab) & {cat for _rx, cat in DRUM_NAME_RULES}
+
+
+def _drum_named_in(name, rel=None, fallback=False, canon=None, ab_tags=None):
+    """_drum_named, read with the file's folder and, given them, its classifier labels and
+    Live's tags (DRUM_NAME_FROM's notes): a pack's prefix ("sd_qz030") yields to a folder
+    that names a drum; a drum named only by an abbreviation in a folder named for voices
+    (DRUM_ABBR_NOT_FOLDER_RE) is none; a drum word beside a tonal sound's word
+    (DRUM_NAME_TONAL_RE) is none when the name carries a note, or when both classifiers speak
+    and neither says drum. Without Sononym (fallback) a shaker or tambourine (HATS by its
+    name) in a percussion folder ("Perc/...") is PERC's, as its folder says, unless its name
+    also says hi-hat."""
     dn = _drum_named(name)
-    if not (fallback and dn == "HATS" and rel):
+    if not dn:
         return dn
     from ..metadata.shadow import shape_scope
+    base = os.path.splitext(os.path.basename(name or ""))[0]
+    stem = base.replace("_", " ")
+    folder = shape_scope(rel)[1] if rel else ""
+    if folder and _DRUM_PREFIX_RE.match(base):
+        fd = _drum_named(folder)
+        if fd:
+            return fd
+    if folder and DRUM_ABBR_NOT_FOLDER_RE.search(folder) and _drum_named(_DRUM_ABBR_RE.sub(" ", stem)) is None:
+        return None
+    rest = stem
+    for rx, _cat in DRUM_NAME_RULES:
+        rest = rx.sub(" ", rest)
+    if DRUM_NAME_TONAL_RE.search(rest):
+        from .curate import _NOTE_TOKEN
+        if _NOTE_TOKEN.search(stem) or _not_drum_votes(canon, ab_tags):
+            return None
+    if not (fallback and dn == "HATS" and folder):
+        return dn
     from .curate_config import CATEGORIES
-    stem = os.path.splitext(os.path.basename(name or ""))[0].replace("_", " ")
-    _n, folder = shape_scope(rel)
     if _SHAKEN_RE.search(stem) and not _HAT_WORD_RE.search(stem) and _PERC_FOLDER_RE.search(folder) \
             and "PERC" in CATEGORIES:
         return "PERC"
@@ -481,6 +521,42 @@ def _acoustic_label(d, tags):
     ab = [t for t in d.get("ab", []) if t in tags]
     spec = [t for t in ab if t not in GENERIC_ACOUSTIC_TAGS]
     return spec[0] if spec else (d.get("plk") or (ab[0] if ab else None))
+
+
+_DRUM_FOLDER_RE = re.compile(r"(?<![a-z])(?:drums?|percussion|percs?|breaks?|breakbeats?|beats?|grooves?)(?![a-z])",
+                             re.I)
+
+
+def _not_drum_loop(rel) -> bool:
+    """A loop that is no drum loop whatever Live's tag says (DRUMLOOP_MUSIC_DIR_RE's notes):
+    its name says a key and a bass, or its folder holds bass, music or synth loops and its
+    name says either, or its folder is an FX folder that, with the one above it, names no
+    drums. Genre names ("Drum & Bass") aren't read."""
+    from ..metadata.shadow import shape_scope
+    from .curate_config import PHRASE_GENRE_RE
+    name, folder = shape_scope(rel or "")
+    stem = PHRASE_GENRE_RE.sub(" ", os.path.splitext(name)[0].replace("_", " "))
+    dirs = [d for d in (rel or "").split("/")[:-1] if d]
+    above = dirs[dirs.index(folder) - 1] if folder in dirs and dirs.index(folder) > 0 else ""
+    folder, above = (PHRASE_GENRE_RE.sub(" ", f.replace("_", " ")) for f in (folder, above))
+    key, bass = DRUMLOOP_KEY_NAME_RE.search(stem), DRUMLOOP_BASS_NAME_RE.search(stem)
+    if (key and bass) or ((key or bass) and DRUMLOOP_MUSIC_DIR_RE.search(folder)):
+        return True
+    # ("Drum Loops/Risers" holds drum builds)
+    return bool(FX_FOLDER_RE.search(folder)) and not _DRUM_FOLDER_RE.search(f"{above}/{folder}")
+
+
+def _fx_folder_veto(cand, canon, rel):
+    """Candidates less FX_FOLDER_NOT (PADS) for a file under an FX folder (FX_FOLDER_RE) that
+    the classifier labels FX only, or not at all (a laser, an uplifter, tape noise Live tags
+    "Atmosphere"); an atmosphere it hears as a pad keeps them."""
+    if not cand & FX_FOLDER_NOT:
+        return cand
+    labels = {c for c in (canon or ()) if not c.startswith("class.")}
+    folders = [f.replace("_", " ") for f in (rel or "").split("/")[:-1]]
+    if any(not c.startswith("fx.") for c in labels) or not any(FX_FOLDER_RE.search(f) for f in folders):
+        return cand
+    return cand - FX_FOLDER_NOT
 
 
 def _is_ir(rel_path, path=None):
