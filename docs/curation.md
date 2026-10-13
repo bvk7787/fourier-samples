@@ -461,14 +461,14 @@ Then the rules below decide, first match wins. `fourier why <name>` replays them
 | 5 | pack home | `PACK_HOME`: a pack that belongs to one category (set by the library overlay) |
 | 6 | instrument pack | `INST_ROUTED_PACKS` (a user's piano, keys and orchestral section packs, set in their overlay): its instrument category only |
 | 7 | phrase | a musical phrase homes in PHRASES ahead of every vote (unless rated Misfiled there or name-reserved elsewhere) |
-| 8 | acoustic | acoustic Ableton tag, named plucked string or tuned percussion one-shot, named wind, or an orchestra folder path (`ORCH_PATH_RE`; not from `ORCH_PACK_EXCLUDE`): ACOUSTIC; except a one-shot named as one drum kind that a classifier also files with a drum (`rules._drum_name_wins`, outside an orchestra folder), which rule 15 homes |
-| 9 | organ | a named organ (`ORGAN_NAME_RE`), not a stab: PIANO; except a drum name a classifier agrees with, as in rule 8 |
+| 8 | acoustic | acoustic Ableton tag, named plucked string or tuned percussion one-shot, named wind, or an orchestra folder path (`ORCH_PATH_RE`; not from `ORCH_PACK_EXCLUDE`): ACOUSTIC; except a one-shot named as one drum kind that a classifier also files with a drum (`rules._drum_name_wins`, outside an orchestra folder), which rule 15 homes, or a one-shot named for nothing in a drum-hit folder that a classifier files with a drum (`rules._drum_folder_wins`), which rule 15 homes with its drum votes |
+| 9 | organ | a named organ (`ORGAN_NAME_RE`), not a stab: PIANO; except a drum name or a drum-hit folder a classifier agrees with, as in rule 8 |
 | 10 | name override | `NAME_OVERRIDES` (end of section 4): that category |
 | 11 | sound model | without Sononym, a sample whose own name and folder hold no strong category word (its pack's name or a weak word gave it one): the sound model's category when it is at least `SOUND_MODEL_OVERRIDE_MIN` and disagrees (2.2) |
 | 12 | keys | keyboard-named, or CLAP piano anchor beats anti by `KEYS_CLAP_MARGIN` 0.10 with harmonicity >= 0.5: never SYNTH, SUB, FX, STABS (`KEYS_EXCLUDE`) or a drum category; without Sononym a file the path words call keys and nothing else is PIANO's |
 | 13 | scratch | `SCRATCH_NAME_RE` one-shot (file or folder): FX, its scratch band |
 | 14 | transition | riser / downlifter / sweep-named one-shot from PADS, SYNTH, BLIPS, SUB, VOX, STABS, ACOUSTIC (`FX_TRANSITION_FROM`; ahead of the acoustic reservations): FX ("sweep pad" excluded, read without a trailing " - " part of two or more words that all appear in one of the file's folders, a pack's name the file name repeats). A one-shot by the classifier's class counts even when it or Live also says loop (a riser rendered at a tempo), as does a file with no shape; a stab or chord name doesn't take it back (`rules._fx_transition_shaped`); before it, a file under an FX folder (`FX_FOLDER_RE`) the classifier labels FX only, or not at all, loses PADS (`FX_FOLDER_NOT`): a laser or tape noise Live tags "Atmosphere" isn't a pad |
-| 15 | drum name | named as exactly one drum kind (`DRUM_NAME_RULES`): that category, unless VOX is a candidate |
+| 15 | drum name | named as exactly one drum kind (`DRUM_NAME_RULES`): that category, unless VOX is a candidate; a one-shot named for nothing in a drum-hit folder (rule 8's exception) keeps only its drum candidates |
 | 16 | percussion source | a SYNTH candidate from a drum or percussion folder or an acoustic-percussion / found-object pack (the packs by the library overlay): PERC, unless named synth (`PERC_SOURCE_RE`) |
 | 17 | stab | STABS dropped unless stab-named; a short single-hit chord- or stab-named one-shot moves from SYNTH/SUB/FX/BLIPS/PADS/PERC to STABS (bass and vocal stabs stay; chords always move) |
 | 18 | Misfiled | categories the file (or a sibling) was rated Misfiled in are removed |
@@ -500,6 +500,16 @@ tonal sound's word (`DRUM_NAME_TONAL_RE`: bass, pad, string, lead, chord, outsid
 words) names none when the name also carries a note ("..._C2_..._Clap_Bass") or when Live's
 tags and the classifier both speak and neither files it with the drums (a track title "Qzv
 String Snares" Live tags Pad).
+
+A drum hit its name doesn't name (a numbered "017") speaks through its folder
+(`rules._drum_folder_wins`; the build, verify and `fourier why` alike): when the folder it sits
+in (above a generic "WAV" or "Samples") names drum hits (`DRUM_HITS_FOLDER_RE`: "Drum Hits",
+"Drumhit", "Drums", "Drum One Shots", "Drum Kits", a pack's "XX_DRUM_HITS"; not a tonal drum's
+folder such as steel, tongue, slit or log drums or a handpan, nor "Drum Loops" or a "Drum
+Machine" patch), its name names no instrument (`ACOUSTIC_NAME_RE`, keys, organ: a "Timpani
+Qzv 3" in a "Drums" folder stays ACOUSTIC's) and a classifier files it with a drum and not with
+VOX, it skips the acoustic and organ reservations (Live's "Timpani" on a tom) and keeps only its
+drum candidates; ACOUSTIC and PIANO leave it out (why reason `drum_folder`).
 
 ### 3.2 Selection gates
 
@@ -553,7 +563,12 @@ String Snares" Live tags Pad).
     "120_Amin", key-then-tempo like "Pad_Fm_126" with a capital key letter so an "FM 77" synth or a "DM_88" prefix isn't
     one, or a leading "110 - Title", keeps a file out of every one-shot category but FX); STABS stab-named only; drum categories drop
     files drum- or scratch-named for another category, and ACOUSTIC and PIANO a one-shot named
-    as a drum a classifier agrees with (rule 8).
+    as a drum a classifier agrees with (rule 8), or named for nothing in a drum-hit folder
+    (`drum_folder`, 3.1); a key or pedal noise recorded beside an instrument's notes
+    (`KEY_NOISE_NAME_RE`: "Key Release", "Key Press", "Key Off", a pedal's or a release's
+    noise, read with CamelCase and "_" / "-" as spaces; not a note's "rel" take or an organ's
+    "Pedal" notes) is out of the tonal categories (`KEY_NOISE_CATS`: SUB, SYNTH, STABS, PADS,
+    PIANO, ACOUSTIC, VOX; why reason `key_noise`), and verify fails a master holding one.
 14. Instrument kinds: single-note guard (`max_onsets`), chord / chroma test, `dur_max`,
     `pack_exclude`, `name_exclude`, `ableton_exclude`, then in-pack / tag / name or CLAP.
 15. `exclude_phrases` (set on a category an added category carves from, `carve_from`): out when

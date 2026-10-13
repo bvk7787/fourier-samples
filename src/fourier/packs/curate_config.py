@@ -1144,6 +1144,26 @@ DRUM_ABBR_NOT_FOLDER_RE = _tunable("DRUM_ABBR_NOT_FOLDER_RE", _re.compile(
     r"(?<![a-z])(?:speech|spoken|vocals?|vox|voices?|acapellas?|words|dialog(?:ue)?s?)(?![a-z])", _re.I))
 DRUM_NAME_TONAL_RE = _tunable("DRUM_NAME_TONAL_RE", _re.compile(
     r"(?<![a-z])(?:bass(?:line)?s?|pads?|strings?|leads?|chords?)(?![a-z])", _re.I))
+# A folder named for drum hits ("Drum Hits", "Drumhit", "Drums", "Drum One Shots", "Drum
+# Kits", "XX_DRUM_HITS"; above a generic "WAV" or "Samples" folder) speaks for a one-shot
+# whose name names nothing (a numbered "017"): when a classifier files it with a drum, it's
+# that drum's, ahead of the acoustic and organ reservations (rules._drum_folder_wins), so
+# Live's "Timpani" on a tom doesn't make it ACOUSTIC's. Read with "_" and "-" as spaces. A
+# tonal drum's folder (steel, tongue, slit, log, tank drums, a handpan) isn't one, nor is
+# "Drum Loops" or "Drum Machine" (a synth patch).
+DRUM_HITS_FOLDER_RE = _tunable("DRUM_HITS_FOLDER_RE", _re.compile(
+    r"^(?!.*(?:steel|tongue|hand ?pans?|(?<![a-z])(?:hang|slit|log|tank)(?![a-z])))"
+    r"(?:.*(?<![a-z])drum ?(?:hits?|one ?shots?|shots|sounds|kits?)(?![a-z])"
+    r"|.*(?<![a-z])one ?shots? drums?$|(?:\d+\W*)?drums?$)", _re.I))
+# Key and pedal noises a sampled keyboard or instrument records beside its notes (a key's
+# release thump, a key press click, a pedal's noise) aren't notes: out of the tonal
+# categories (KEY_NOISE_CATS; why reason key_noise), read with CamelCase and "_" / "-" as
+# spaces (rules._key_noise_named). A note's release take ("Vqx G4 rel", "Qzv Rel A5") is a
+# note, and an organ's pedal notes ("Pedal G1") are notes.
+KEY_NOISE_NAME_RE = _tunable("KEY_NOISE_NAME_RE", _re.compile(
+    r"(?<![a-z])key ?(?:releases?|rels?|press(?:es)?|offs?|clicks?|noises?)(?![a-z])"
+    r"|(?<![a-z])(?:release|rel|pedal|damper|hammer|key|mech(?:anical)?)s? ?noises?(?![a-z])", _re.I))
+KEY_NOISE_CATS = _tunable("KEY_NOISE_CATS", {"SUB", "SYNTH", "STABS", "PADS", "PIANO", "ACOUSTIC", "VOX"})
 
 # Near-silent one-shots: a peak-normalized one-shot whose RMS stays under this is mostly
 # silence (an empty file, a faint brushes sweep). Not exported.

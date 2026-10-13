@@ -502,6 +502,43 @@ def _drum_name_wins(name, canon, ab_tags, rel=None, fallback=False):
     return dn if votes & {cat for _rx, cat in DRUM_NAME_RULES} and "VOX" not in votes else None
 
 
+def _drum_folder_wins(name, canon, ab_tags, rel=None):
+    """The drum category a classifier files a one-shot with (a DRUM_NAME_RULES category, by
+    its canonical labels or Live's tags; the one more of them say) when its folder names drum
+    hits (DRUM_HITS_FOLDER_RE, read as shape_scope has it) and its name names neither a drum
+    (_drum_name_wins' case) nor an instrument (ACOUSTIC_NAME_RE, keys, organ), and not with
+    VOX: a numbered "017" in a "Drum Hits" folder is a drum, whatever Live's "Timpani" says,
+    ahead of the acoustic and organ reservations. None elsewhere, and in an orchestra
+    library's section folders (ORCH_PATH_RE)."""
+    from ..metadata.shadow import shape_scope
+    from .curate_config import ABLETON_TAGS_BY_CATEGORY, CATEGORIES, DRUM_HITS_FOLDER_RE
+    folder = re.sub(r"[_-]+", " ", shape_scope(rel or "")[1]).strip()
+    if not folder or not DRUM_HITS_FOLDER_RE.search(folder) or _orch_path(rel) is not None:
+        return None
+    stem = os.path.splitext(os.path.basename(name or ""))[0]
+    if _drum_named(stem) or ACOUSTIC_NAME_RE.search(stem) or KEYBOARD_NAME_RE.search(stem) \
+            or ORGAN_NAME_RE.search(stem):
+        return None
+    part = {c: cfg for c, cfg in CATEGORIES.items() if cfg["kind"] in ("oneshot", "loop", "gated")}
+    tags = set(ab_tags or ())
+    son = _classifier_votes(part, set(canon or ()))
+    ab = {c for c in part if tags & set(ABLETON_TAGS_BY_CATEGORY.get(c, ()))}
+    drums = (son | ab) & {cat for _rx, cat in DRUM_NAME_RULES}
+    if not drums or "VOX" in son | ab:
+        return None
+    return max(sorted(drums), key=lambda c: ((c in son) + (c in ab), c in son))
+
+
+def _key_noise_named(name) -> bool:
+    """Named as a key or pedal noise a sampled instrument records beside its notes
+    (KEY_NOISE_NAME_RE: "Key Release", "Key Press", a pedal's noise), read with CamelCase and
+    "_" / "-" as spaces."""
+    from .curate_config import KEY_NOISE_NAME_RE
+    stem = os.path.splitext(os.path.basename(name or ""))[0]
+    stem = re.sub(r"[_-]+", " ", re.sub(r"(?<=[a-z])(?=[A-Z])", " ", stem))
+    return bool(KEY_NOISE_NAME_RE.search(stem))
+
+
 _SHAKEN_RE = re.compile(r"(?<![a-z])(?:shaker|tambourine|tamb|cabasa|maraca)s?(?![a-z])", re.I)
 _HAT_WORD_RE = re.compile(r"hi-?hats?|hihats?|(?<![a-z])(?:hat|hats)(?![a-z])"
                           r"|(?<![a-z])(?:hh|ch)" + _ABBR_END + r"|(?<![a-z+])oh" + _ABBR_END, re.I)

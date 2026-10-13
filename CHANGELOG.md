@@ -37,6 +37,15 @@ change the CLI or the config).
   hears them at `EDITION_COPY_COS`), and a rating on one covers the other. A drum's or a
   loop's L / R (no note named) stays two sounds. A bare number right after a velocity, ending a
   name that states a note ("_C2_v3_1" / "_C2_v3_2"), is a round robin, so one of the twins stays.
+- A drum hit only its folder names (a numbered "017" in a "Drum Hits", "Drumhit" or "Drums"
+  folder, `DRUM_HITS_FOLDER_RE`) that a classifier files with a drum is no longer taken by the
+  acoustic or organ reservation when Live tags it "Timpani": it keeps its drum candidates, and
+  ACOUSTIC and PIANO leave it out (why reason `drum_folder`). A tonal drum's folder (steel,
+  tongue, slit drums) or a name that names an instrument ("Timpani Qzv 3") keeps the old home.
+- Key and pedal noises a sampled instrument records beside its notes ("Key Release", "Key
+  Press", "Key Off", a pedal's noise, `KEY_NOISE_NAME_RE`) stay out of the tonal categories
+  (`KEY_NOISE_CATS`, why reason `key_noise`), and verify fails a master holding one. A note's
+  "rel" take is still a note.
 - One note per set and C now runs on a category's picks: a note leaves only for a note of its
   set the category ships, and its folder picks again without it. Run before the picks, it could
   leave a note for one that then lost its own place, taking whole instruments out of a master;

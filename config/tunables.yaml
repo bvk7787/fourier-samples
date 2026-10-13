@@ -231,6 +231,9 @@ curate_config:
   DRUM_NAME_FROM: rules
   DRUM_ABBR_NOT_FOLDER_RE: rules
   DRUM_NAME_TONAL_RE: rules
+  DRUM_HITS_FOLDER_RE: rules
+  KEY_NOISE_NAME_RE: rules
+  KEY_NOISE_CATS: rules
   QUIET_RMS_DB: correctness
   RETUNE_CATS: knob:retune
   RETUNE_DETECT_CATS: knob:retune
