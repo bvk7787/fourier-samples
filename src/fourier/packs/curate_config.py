@@ -995,13 +995,27 @@ ACOUSTIC_SOURCE_MIN = _tunable("ACOUSTIC_SOURCE_MIN", 0.4)
 # On the Digitakt II and M8 a pitched sample is played chromatically, so twenty notes of
 # one patch fill twenty slots with one sound. In these categories a folder keeps at most
 # SIBLING_CAP files of one
-# multisample set (curate._sibling_key: same pack and name once note, velocity and
-# number tokens are removed), spread across its register. A Keep is always kept.
+# multisample set, or of one named patch's numbered takes and variant letters
+# (identity.cap_key: one source folder, the name once note, velocity, round robin and take
+# tokens are removed), spread across its register. A Keep is always kept.
 SIBLING_CAP = _tunable("SIBLING_CAP", 3)
 SIBLING_CAP_CATS = _tunable("SIBLING_CAP_CATS", {"SUB", "SYNTH", "PADS", "STABS", "VOX", "BLIPS", "PIANO", "ACOUSTIC",
-                                                 "FX"})
+                                                 "FX", "KICKS", "SNARES", "CLAPS", "HATS", "TOMS", "PERC",
+                                                 "CYMBALS"})
 # ...fewer in these categories: an effect played at another note is mostly the same effect
 SIBLING_CAP_BY_CAT = _tunable("SIBLING_CAP_BY_CAT", {"FX": 2})
+# ...and in these only true multisample sets (notes, velocities, round robins, or numbers that
+# track the pitch: identity.set_key, number_sets): a drum pack's numbered hits are a series of
+# different drums
+SIBLING_SETS_ONLY = _tunable("SIBLING_SETS_ONLY", {"KICKS", "SNARES", "CLAPS", "HATS", "TOMS", "PERC", "CYMBALS"})
+# one recording released twice (packs/identity.py, editions): a processed edition's last name
+# word ("Hit 87 Cleanup" beside "Hit 87" or "Hit 87 Dirty"), and how far apart in length (a share
+# of the longer) two editions may be
+EDITION_SUFFIX_RE = _tunable("EDITION_SUFFIX_RE", _re.compile(r"^(?:cleanup|clean|dirty|tube)$", _re.I))
+EDITION_DUR_TOL = _tunable("EDITION_DUR_TOL", 0.05)
+# a set's bare numbers are notes when each file's measured root less its number agrees within
+# this many semitones (identity.number_sets: "Lead 059" / "061" rooted a semitone or two apart)
+NUMBER_NOTE_TOL = _tunable("NUMBER_NOTE_TOL", 0.5)
 
 
 def sibling_cap(category):

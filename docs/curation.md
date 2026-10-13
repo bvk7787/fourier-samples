@@ -588,6 +588,34 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
 - The instrument categories' per-pack cap and verify's vendor and pack checks count the same
   way.
 
+#### Identity
+
+One module (`packs/identity.py`) says what counts as the same sound, in four tiers, for every
+rule below that asks:
+
+- **Recording**: the same audio (a byte hash, or the audio check below, `COPY_XCORR`). Never
+  asked of synthetic single cycles: a sine and a triangle cycle correlate at 0.99, so WAVES
+  compares names only (`identity.comparable`).
+- **Edition**: one recording released more than once, told by its names within one pack: a
+  processed edition (a last name word `EDITION_SUFFIX_RE` matches: "Hit 87 Cleanup" beside
+  "Hit 87" or "Hit 87 Dirty", whatever their folders and trims), or one name in folders that
+  differ only by edition words (a `.wav` and an `.aif` side by side; mono/stereo or 16/24-bit
+  twin folders) with lengths within 5% (`EDITION_DUR_TOL`); across two packs of one vendor, one
+  name of two or more words at one length (a compilation's re-release). One name in two
+  folders of a pack ("808/Kick 01", "909/Kick 01") is two recordings, and a name that names
+  nothing ("Hit Dirty") is never paired.
+- **Set**: a multisample set, one instrument or patch in one source folder (edition words like
+  "mono" or "16bit" aside) whose names differ only by note, velocity or round robin
+  (`identity.set_key`; a dynamics word first in a name, "MP_Kick", is a prefix). A bare number
+  is a note only when the numbers track the measured pitch: for one of the name's numbers,
+  every file's root less its number agrees within half a semitone (`NUMBER_NOTE_TOL`) across at
+  least three numbers from 0 to 127 ("Lead 059" / "061" / "062"; `identity.number_sets`).
+- **Series**: a numbered batch ("Qzk 01" to "Qzk 24", "106_QZ", "Hinge07"), never a set; a
+  number glued to a name ("Vqx5-27", "Vqx17-27") is another patch. Outside the drum
+  categories the set cap also counts one described patch's numbered takes and variant letters
+  as one ("Qzv Drop A 01" to "C 09"; `identity.patch_key`; a one-word name's letter, "Vqxarch B 57",
+  is a bank); in the drum categories only sets.
+
 #### Near-duplicate prune
 
 - Without Sononym, two loops further apart in tempo than one tempo folder (`SAME_TEMPO_BPM`,
@@ -603,17 +631,20 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
   or round robins that are separate takes, and two chords of one pack all stay. A source that
   can't be read stays too. A copy never comes back to fill a minimum.
 - **One recording picked twice** (every category, `_drop_copies`): a pack shipped in two
-  editions (16 and 24 bit, an older sampler's and a newer one's, two formats) or as a long
-  and a short cut of each hit puts one recording in the pool twice, and CLAP hears such
-  pairs anywhere from 0.77 to 0.98, under the prune's 0.985. So once a category has picked,
-  each two picks at a CLAP cosine of 0.75 or more (`CATEGORY_COPY_COS`) are compared as audio:
+  editions (16 and 24 bit, an older sampler's and a newer one's, two formats, a raw and a
+  processed edition) or as a long and a short cut of each hit puts one recording in the pool
+  twice, and CLAP hears such pairs anywhere from 0.77 to 0.98, under the prune's 0.985. So once
+  a category has picked, two editions by their names (Identity) are one recording, and each
+  other two picks at a CLAP cosine of 0.75 or more (`CATEGORY_COPY_COS`) are compared as audio
+  (never in WAVES, which goes by the names alone):
   loops further apart in tempo than one tempo folder (`SAME_TEMPO_BPM`) never, then a quick
   look at the first second of sound at 8 kHz (`COPY_GATE_SECONDS`, `COPY_GATE_RATE`, 0.9 or
   more: `COPY_GATE_XCORR`), then the full check below (`COPY_XCORR`), in which a shorter cut of
   a hit counts as a copy. One stays: a Keep (two Keeps both stay), else the longer sound (a
   shorter cut loses; within 5%, an edition's padding), then the deeper bit depth, a kit's pin,
-  the previous build's file, quality. A folder that lost a copy picks again without it, and its
-  new picks are checked in turn; a copy never comes back to fill a minimum. On an
+  the previous build's file, quality. A folder that lost a copy picks again without it, keeping
+  the copy's keeper, and its new picks are checked in turn; a copy never comes back to fill a
+  minimum. On an
   11,500-file master about 200,000 pairs pass the CLAP prefilter, 115,000 of them drum loops,
   of which 20,000 share a tempo: about 105,000 quick
   looks (under a millisecond each, after a 2-second read of each pick, about 4 ms), with the
@@ -661,12 +692,18 @@ categories cluster inside tempo bands (section 4). `FOLDER_MAX` is 12 folders pe
 (DRUMLOOPS 32); overshoot merges a band's smallest folder into its nearest same-band folder,
 never across tempo folders or below a band's minimum. Then:
 
-- **Sibling cap** (SUB, SYNTH, PADS, STABS, VOX, BLIPS, PIANO, ACOUSTIC, FX): at most 3 files of
-  one multisample set per folder (FX 2, `SIBLING_CAP_BY_CAT`: an effect at another note is mostly
-  the same effect): C notes first, then the loudest velocity per note, spread across
-  the register; Keeps stay. A set (`_sibling_key`) is one vendor/pack and one name with note,
-  velocity, take and number tokens removed; one word plus a number counts only for a patch name,
-  not a generic word like "kick". A note counts wherever the root parser finds one (glued to the
+- **Round robins**: twins of one note and velocity that differ only by their round robin
+  ("_C2_v3_rr1", "_C2_v3_rr2"; `identity.rr_key`) are one sound on a sampler that plays one:
+  across the category's folders one stays (a Keep's, else the previous build's, else the
+  lowest round robin; `_one_per_round_robin`).
+- **Sibling cap** (SUB, SYNTH, PADS, STABS, VOX, BLIPS, PIANO, ACOUSTIC, FX, and the drum
+  categories): at most 3 files of one multisample set per folder (FX 2, `SIBLING_CAP_BY_CAT`: an
+  effect at another note is mostly the same effect): C notes first, then the loudest velocity
+  per note, spread across the register; Keeps stay. The group (`identity.cap_key`, Identity
+  above) is a set, and outside the drum categories also one described patch's takes and variant
+  letters (a processing word aside); in the drum categories (`SIBLING_SETS_ONLY`) a set only,
+  as a drum pack's numbered hits are a series of different drums. One word plus a number counts
+  only for a patch name, not a generic word like "kick". A note counts wherever the root parser finds one (glued to the
   name, "warmpadF#2", or below octave 0, "A-1"), and so does a lowercase note with a sampler's hex
   code after it ending the name ("Pad_f#34b00ff"); a pack's 4-character ID (capitals and digits)
   ending the name right after the note, or after the note and a velocity ("Pad_F#3-XQ1Z",
@@ -674,9 +711,9 @@ never across tempo folders or below a band's minimum. Then:
   retune onto the same C by the notes their names state are one sound (F#2, A#2, C3, D#3 and
   E3 all play C3): first, across the category's folders, one note per set and C stays (a Keep's,
   else the smallest shift, then the previous build's pick, then the lowest), with its velocity
-  layers (`_one_per_retune_target`; a detected root counts when the name states the note).
-  Numbered takes retuned by a measured root ("Saw Lead 02", "Saw Lead 05") may be different
-  patches and all stay. The same note of one patch picked by two categories (a SUB and a PADS
+  layers (`_one_per_retune_target`; a detected root counts when the name states the note, and
+  so do bare numbers that track the measured pitch, Identity above). Numbered takes retuned by
+  a measured root ("Saw Lead 02", "Saw Lead 05") may be different patches and all stay. The same note of one patch picked by two categories (a SUB and a PADS
   organ both on C3) isn't caught: each category is built on its own.
 - **Small folders** (not tempo-banded): under 15 records, or given under 15 files by the budget,
   merges into its nearest same-band folder (`FOLDER_MIN_FILES`).
@@ -721,8 +758,9 @@ while still in the pool, so a rule change moves only the files it touches.
 - The build logs "kept N of the previous build's M files" per category. `FOURIER_NO_STICKY=1`
   builds fresh (picks and names).
 
-**Sets kept together**: after picking, a set's stragglers move to the folder holding most of
-the set (same band, room under 120, the folder left keeps 15, sibling cap holds). Not in
+**Sets kept together**: after picking, a set's stragglers (or a described patch's takes,
+`identity.patch_key`) move to the folder holding most of the set (same band, room under 120,
+the folder left keeps 15, sibling cap holds). Not in
 `SET_TOGETHER_SKIP` (DRUMLOOPS, PHRASES, PIANO, ACOUSTIC, WAVES: the `no_sets` role).
 
 **Cross-category dedup** (parallel `--jobs` builds, `_dup_winner`): a source picked twice stays
@@ -1214,8 +1252,10 @@ sets below it.
   role never takes one its name rules out (a closed hat as the open hat): a pack without one has
   no such slot. A kit needs kick, snare, closed and open hat (`KIT_REQUIRED`) and 6 of the 8
   roles. The second tom (perc) isn't another take of the first, a name that differs only in its
-  last number (`KIT_TAKE_RE`: "_4" / "_7", "_p2" / "_f2", a velocity layer or round robin), when
-  the pack has a tom of another name.
+  last number (`KIT_TAKE_RE`: "_4" / "_7", "_p2" / "_f2", a velocity layer or round robin), a
+  mic perspective ("+OH"), a processing word, or a variant letter and the articulation before
+  it ("Tom Brush A +OH 1" and "Tom Stick A 4": `identity.take_name`), when the pack has a tom of
+  another name.
 - **Leveling**: each slot is turned down to its role's loudness (`KIT_LEVEL_DB`: kick -9, snare
   -13, clap -14, closed hat -16, open hat -15, cymbal -16, tom -11, perc -15 dBFS), so every kit
   plays at one level with one balance. Loudness is the loudest 75 ms window of the slot's

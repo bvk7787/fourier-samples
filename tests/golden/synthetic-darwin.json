@@ -2504,50 +2504,6 @@
        "class.oneshot",
        "hat"
       ],
-      "out": "closed/Closed_Hat_03.wav",
-      "out_md5": "d9808f32bed179650f7ca481da328e39",
-      "son_cats": [
-       "HATS"
-      ],
-      "sononym": [
-       "Perc Hats & Shakers"
-      ],
-      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Closed Hat 03.wav",
-      "support": 2
-     },
-     {
-      "ab_cats": [
-       "HATS"
-      ],
-      "ableton": [],
-      "band": "closed",
-      "family": "closed",
-      "labels": [
-       "class.oneshot",
-       "hat"
-      ],
-      "out": "closed/Closed_Hat_04.wav",
-      "out_md5": "f2250f0226a5e442cbe03540ce26427f",
-      "son_cats": [
-       "HATS"
-      ],
-      "sononym": [
-       "Perc Hats & Shakers"
-      ],
-      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Closed Hat 04.wav",
-      "support": 2
-     },
-     {
-      "ab_cats": [
-       "HATS"
-      ],
-      "ableton": [],
-      "band": "closed",
-      "family": "closed",
-      "labels": [
-       "class.oneshot",
-       "hat"
-      ],
       "out": "closed/Closed_Hat_06.wav",
       "out_md5": "7cbef5de8e87dff9f282ed0c4658b99c",
       "son_cats": [
@@ -2579,6 +2535,28 @@
        "Perc Hats & Shakers"
       ],
       "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Closed Hat 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "closed/Closed_Hat_03.wav",
+      "out_md5": "d9808f32bed179650f7ca481da328e39",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Closed Hat 03.wav",
       "support": 2
      },
      {
@@ -2636,6 +2614,28 @@
        "class.oneshot",
        "hat"
       ],
+      "out": "closed/Closed_Hat_04.wav",
+      "out_md5": "f2250f0226a5e442cbe03540ce26427f",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Closed Hat 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "closed",
+      "family": "closed",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
       "out": "closed/Closed_Hat_08.wav",
       "out_md5": "c3036d03dd20f7d339d3af0eb46a5a3f",
       "son_cats": [
@@ -2675,12 +2675,12 @@
       ],
       "ableton": [],
       "band": "open",
-      "family": "open-washy",
+      "family": "open",
       "labels": [
        "class.oneshot",
        "hat"
       ],
-      "out": "open-washy/Open_Hat_01.wav",
+      "out": "open/Open_Hat_01.wav",
       "out_md5": "1086cc6ba357db61e51e2c1ee7ff5b39",
       "son_cats": [
        "HATS"
@@ -2697,12 +2697,12 @@
       ],
       "ableton": [],
       "band": "open",
-      "family": "open-washy",
+      "family": "open",
       "labels": [
        "class.oneshot",
        "hat"
       ],
-      "out": "open-washy/Open_Hat_05.wav",
+      "out": "open/Open_Hat_05.wav",
       "out_md5": "209edd11b55321944e100f8f4ba38cd1",
       "son_cats": [
        "HATS"
@@ -2719,12 +2719,12 @@
       ],
       "ableton": [],
       "band": "open",
-      "family": "open-washy",
+      "family": "open",
       "labels": [
        "class.oneshot",
        "hat"
       ],
-      "out": "open-washy/Open_Hat_09.wav",
+      "out": "open/Open_Hat_09.wav",
       "out_md5": "887cd786241e197efbd150342c4ba752",
       "son_cats": [
        "HATS"
@@ -2741,122 +2741,12 @@
       ],
       "ableton": [],
       "band": "open",
-      "family": "open-washy",
+      "family": "open",
       "labels": [
        "class.oneshot",
        "hat"
       ],
-      "out": "open-washy/Open_Hat_06.wav",
-      "out_md5": "ea6d9ed0725eb96025ebc0e90208b641",
-      "son_cats": [
-       "HATS"
-      ],
-      "sononym": [
-       "Perc Hats & Shakers"
-      ],
-      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Open Hat 06.wav",
-      "support": 2
-     },
-     {
-      "ab_cats": [
-       "HATS"
-      ],
-      "ableton": [],
-      "band": "open",
-      "family": "open-washy",
-      "labels": [
-       "class.oneshot",
-       "hat"
-      ],
-      "out": "open-washy/Open_Hat_10.wav",
-      "out_md5": "fb097c8fa95a903eba058769b943c501",
-      "son_cats": [
-       "HATS"
-      ],
-      "sononym": [
-       "Perc Hats & Shakers"
-      ],
-      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Open Hat 10.wav",
-      "support": 2
-     },
-     {
-      "ab_cats": [
-       "HATS"
-      ],
-      "ableton": [],
-      "band": "open",
-      "family": "open-washy",
-      "labels": [
-       "class.oneshot",
-       "hat"
-      ],
-      "out": "open-washy/Open_Hat_03.wav",
-      "out_md5": "a484a664d39782a7159b6a368670508a",
-      "son_cats": [
-       "HATS"
-      ],
-      "sononym": [
-       "Perc Hats & Shakers"
-      ],
-      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Open Hat 03.wav",
-      "support": 2
-     },
-     {
-      "ab_cats": [
-       "HATS"
-      ],
-      "ableton": [],
-      "band": "open",
-      "family": "open-washy",
-      "labels": [
-       "class.oneshot",
-       "hat"
-      ],
-      "out": "open-washy/Open_Hat_04.wav",
-      "out_md5": "561e80b67abe29770fdfad18ca72eac7",
-      "son_cats": [
-       "HATS"
-      ],
-      "sononym": [
-       "Perc Hats & Shakers"
-      ],
-      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Open Hat 04.wav",
-      "support": 2
-     },
-     {
-      "ab_cats": [
-       "HATS"
-      ],
-      "ableton": [],
-      "band": "open",
-      "family": "open-washy",
-      "labels": [
-       "class.oneshot",
-       "hat"
-      ],
-      "out": "open-washy/Open_Hat_08.wav",
-      "out_md5": "a9182c0cbae572a9a9dd22a1568f7c16",
-      "son_cats": [
-       "HATS"
-      ],
-      "sononym": [
-       "Perc Hats & Shakers"
-      ],
-      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Open Hat 08.wav",
-      "support": 2
-     },
-     {
-      "ab_cats": [
-       "HATS"
-      ],
-      "ableton": [],
-      "band": "open",
-      "family": "open-washy",
-      "labels": [
-       "class.oneshot",
-       "hat"
-      ],
-      "out": "open-washy/Open_Hat_02.wav",
+      "out": "open/Open_Hat_02.wav",
       "out_md5": "0bf32bd01e4295887279f78f03f0aea7",
       "son_cats": [
        "HATS"
@@ -2873,12 +2763,78 @@
       ],
       "ableton": [],
       "band": "open",
-      "family": "open-washy",
+      "family": "open",
       "labels": [
        "class.oneshot",
        "hat"
       ],
-      "out": "open-washy/Open_Hat_07.wav",
+      "out": "open/Open_Hat_06.wav",
+      "out_md5": "ea6d9ed0725eb96025ebc0e90208b641",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Open Hat 06.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_10.wav",
+      "out_md5": "fb097c8fa95a903eba058769b943c501",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Open Hat 10.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_03.wav",
+      "out_md5": "a484a664d39782a7159b6a368670508a",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Open Hat 03.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_07.wav",
       "out_md5": "2c7612e75cbd1104cf1a3a8fd2ff4363",
       "son_cats": [
        "HATS"
@@ -2895,12 +2851,12 @@
       ],
       "ableton": [],
       "band": "open",
-      "family": "open-washy",
+      "family": "open",
       "labels": [
        "class.oneshot",
        "hat"
       ],
-      "out": "open-washy/Open_Hat_11.wav",
+      "out": "open/Open_Hat_11.wav",
       "out_md5": "5f9ff626078102c79aa13ec3322aace0",
       "son_cats": [
        "HATS"
@@ -2917,12 +2873,56 @@
       ],
       "ableton": [],
       "band": "open",
-      "family": "open-washy",
+      "family": "open",
       "labels": [
        "class.oneshot",
        "hat"
       ],
-      "out": "open-washy/Open_Hat_12.wav",
+      "out": "open/Open_Hat_04.wav",
+      "out_md5": "561e80b67abe29770fdfad18ca72eac7",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Open Hat 04.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_08.wav",
+      "out_md5": "a9182c0cbae572a9a9dd22a1568f7c16",
+      "son_cats": [
+       "HATS"
+      ],
+      "sononym": [
+       "Perc Hats & Shakers"
+      ],
+      "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Open Hat 08.wav",
+      "support": 2
+     },
+     {
+      "ab_cats": [
+       "HATS"
+      ],
+      "ableton": [],
+      "band": "open",
+      "family": "open",
+      "labels": [
+       "class.oneshot",
+       "hat"
+      ],
+      "out": "open/Open_Hat_12.wav",
       "out_md5": "6b4e1a363a5e707e18ee4665a1b46508",
       "son_cats": [
        "HATS"
@@ -5278,29 +5278,6 @@
        "class.oneshot",
        "lead"
       ],
-      "out": "synth/Saw_Lead_05.wav",
-      "out_md5": "0202221b7c1abc796de92f781c72db91",
-      "retune": -4.0,
-      "root_midi": 64.0,
-      "root_src": "detect",
-      "son_cats": [
-       "SYNTH"
-      ],
-      "sononym": [
-       "Tone Leads & MidHiKeys"
-      ],
-      "src": "<lib>/SampleLibrary/Synth Tones A/Leads/Saw Lead 05.wav",
-      "support": 1
-     },
-     {
-      "ab_cats": [],
-      "ableton": [],
-      "band": null,
-      "family": "synth",
-      "labels": [
-       "class.oneshot",
-       "lead"
-      ],
       "out": "synth/Saw_Lead_09.wav",
       "out_md5": "44cf78fd84741bcd06f5dc9f90bae8c3",
       "retune": 4.0,
@@ -5439,29 +5416,6 @@
        "class.oneshot",
        "lead"
       ],
-      "out": "synth/Saw_Lead_07.wav",
-      "out_md5": "d1f80a0513a670f364b2db0c18e1032e",
-      "retune": 6.0,
-      "root_midi": 66.0,
-      "root_src": "detect",
-      "son_cats": [
-       "SYNTH"
-      ],
-      "sononym": [
-       "Tone Leads & MidHiKeys"
-      ],
-      "src": "<lib>/SampleLibrary/Synth Tones C/Leads/Saw Lead 07.wav",
-      "support": 1
-     },
-     {
-      "ab_cats": [],
-      "ableton": [],
-      "band": null,
-      "family": "synth",
-      "labels": [
-       "class.oneshot",
-       "lead"
-      ],
       "out": "synth/Saw_Lead_11.wav",
       "out_md5": "a2d4db1ae01defac89abd43d51aae3fb",
       "retune": 2.0,
@@ -5547,7 +5501,7 @@
      }
     ],
     "families": 1,
-    "files": 13,
+    "files": 11,
     "loop_gated": 0,
     "note_gated": 0,
     "source_samples": 13
@@ -6332,7 +6286,7 @@
    }
   },
   "clap_model": "laion/clap-htsat-unfused",
-  "code_hash": "bee1e0a620fbade5",
+  "code_hash": "233be7bb838fc3d5",
   "config_hash": "3ad71cdf97ebb52e",
   "fourier_manifest": 3,
   "fourier_version": "0.1.2",
@@ -6501,7 +6455,7 @@
       "src": "<lib>/SampleLibrary/Synth Drums A/Kit/Hats/Closed Hat 05.wav"
      },
      {
-      "came_from": "HATS/open-washy/Open_Hat_05.wav",
+      "came_from": "HATS/open/Open_Hat_05.wav",
       "family": "kit-synth-drums-a",
       "gain_db": -0.17,
       "out": "kit-synth-drums-a/Open_Hat_05.wav",
@@ -6580,7 +6534,7 @@
       "src": "<lib>/SampleLibrary/Synth Drums B/Kit/Hats/Closed Hat 06.wav"
      },
      {
-      "came_from": "HATS/open-washy/Open_Hat_06.wav",
+      "came_from": "HATS/open/Open_Hat_06.wav",
       "family": "kit-synth-drums-b",
       "gain_db": -1.56,
       "out": "kit-synth-drums-b/Open_Hat_06.wav",
@@ -6658,7 +6612,7 @@
       "src": "<lib>/SampleLibrary/Synth Drums C/Kit/Hats/Closed Hat 07.wav"
      },
      {
-      "came_from": "HATS/open-washy/Open_Hat_07.wav",
+      "came_from": "HATS/open/Open_Hat_07.wav",
       "family": "kit-synth-drums-c",
       "gain_db": -2.32,
       "out": "kit-synth-drums-c/Open_Hat_07.wav",
@@ -6736,7 +6690,7 @@
       "src": "<lib>/SampleLibrary/Synth Drums D/Kit/Hats/Closed Hat 08.wav"
      },
      {
-      "came_from": "HATS/open-washy/Open_Hat_08.wav",
+      "came_from": "HATS/open/Open_Hat_08.wav",
       "family": "kit-synth-drums-d",
       "gain_db": -3.08,
       "out": "kit-synth-drums-d/Open_Hat_08.wav",
@@ -6888,6 +6842,6 @@
     ]
    }
   },
-  "tunables_hash": "84021a5b1a524532"
+  "tunables_hash": "0118fd9084e49d3e"
  }
 }
