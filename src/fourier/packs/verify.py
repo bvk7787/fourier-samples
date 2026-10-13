@@ -824,12 +824,15 @@ def check_bands(ctx):
                         continue
                 got = {C._wave_band(fr / sr, sr)}
             elif bt == "fx":
-                if not e.get("sononym") and not e.get("ableton"):
-                    continue                # no labels recorded (pinned / re-homed)
+                if ctx.pinned(cat, e) or (not e.get("sononym") and not e.get("ableton")):
+                    continue                # a Keep or a Move here: the build banded it on the labels the
+                                            # database holds, which its entry doesn't record; or none recorded
                 got = {C._fx_band(e.get("sononym"), e.get("ableton"), fn, _rel(e["src"]))}
                 if got == {"misc"}:         # placed by CLAP among the library FX types
                     got = set(C.BAND_ORDER["fx"]) - {"synth", "scratch", "misc", "riser", "downlifter"}
             else:
+                if ctx.pinned(cat, e):
+                    continue                # banded on the database's labels, which its entry doesn't record
                 got = {C._band_of(bt, fn, son_labels=e.get("sononym") or (), ab_tags=e.get("ableton") or (),
                                   pack=C._pack_of(_rel(e["src"]), e["src"]), rel=_rel(e["src"]))}
             if e.get("band") not in got:

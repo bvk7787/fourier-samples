@@ -25,6 +25,11 @@ change the CLI or the config).
 
 ### Fixed
 
+- `fourier verify` no longer fails a file a Keep or a Move rating pinned into a banded
+  category (FX, CYMBALS, PHRASES, ...) on its band: the build bands it on the labels the
+  database holds, while its manifest entry records only the votes of where it came from, which
+  can read as another band. Four files moved into FX by ratings stopped a build on it.
+
 - Wavetables longer than 1 s (`WAVE_MAX_DUR`) under a wavetable / single-cycle folder no
   longer land in SUB, FX, PADS, SYNTH, STABS or ACOUSTIC, where a sampler played them as a
   buzz stepping through their frames: like impulse responses they are out of scope, in no
