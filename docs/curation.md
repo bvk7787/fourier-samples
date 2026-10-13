@@ -119,7 +119,7 @@ old name.
   `src_root` naming the folder when it isn't the first; absolute for a source outside every
   library folder), `out_md5`, `support`, `band`, `sononym`, `ableton`, `son_cats`, `ab_cats`.
   Loops: `bpm`, `bpm_src` (`name` / `sononym` / `librosa`), `bpm_fold`; DRUMLOOPS also `bars`,
-  `slice_clean`, `swing`, `rotate_ms`. When set: `loop_row`, `retune`, `root_src`, `level_db`,
+  `slice_clean`, `swing`, `rotate_ms`, `trim_ms`. When set: `loop_row`, `retune`, `root_src`, `level_db`,
   `dsp_fallback`, `from_base`, `added_over`.
 - Every reader goes through `packs/manifests.py`, which turns `src` back into the absolute path
   the build used; format 1 and 2 manifests (absolute throughout) read as they are.
@@ -759,6 +759,7 @@ Only categories with special rules are listed.
 | Topic | Rule |
 |---|---|
 | Candidates | Sononym Loop class or Ableton "Drum Loop", with an Ableton drum tag; CLAP closer to `BREAK_PHRASES` than `BREAK_ANTI_PHRASES` and >= `DRUMLOOP_BREAK_MIN` (0.30); harmonicity <= `DRUMLOOP_HAR_MAX` (0.68; `hiphop-lofi` 0.78, `trap` and `ambient-cinematic` 0.75, since filtered drums, drums under a chord or an 808 and percussion over a bed read tonal); 1 s to `DRUMLOOP_DUR_MAX` (16 s; `hiphop-lofi` 28 s); a whole-bar tempo in 60-200 required. `house-techno` and `trap` hold the gate to their own prompts (`BREAK_PHRASES`) |
+| Silence | a loop that is mostly silence is left out (`mostly_silent`; PHRASES too, and so 00_SLICE, which copies DRUMLOOPS): its silent share, the time before its first and after its last sample within 40 dB of its peak (`LOOP_SILENT_DB`) plus its longest run of 20 ms frames under -50 dB between frames over -30 dB, over 45% of its length (`LOOP_SILENT_SHARE_MAX`). That is an ending take, a fill that stops after a bar, a 4-bar loop with an empty last bar or one note then nothing; a sparse groove's rests (an offbeat hat's eighth before its first hit, a half-time break's space) stay under it. A Keep wins; the floor never readmits one; a cloud drive's placeholder isn't read for it |
 | Tempo | `_resolve_tempo`; see [Drum-loop tempo](#drum-loop-tempo) |
 | Folding | into the top octave of the `tempo` range; see [Tempo folding](#tempo-folding) |
 | Bands | `_loop_band`: `classic`, `tops`, else `full`; see [Drum-loop bands](#drum-loop-bands) |
@@ -839,7 +840,7 @@ Tempos fold into the top octave of the `tempo` range (`TEMPO_FOLD`: [90, 180) fo
 | Topic | Rule |
 |---|---|
 | Phrase | `_is_phrase`: producer-marked (a tempo in the name per `BPM_NAME_RE`, or a Sononym/Ableton loop in a loop folder like "Bass Loops" or "Loops (120BPM)" not narrowed by a one-shot folder like "Chords"), 1-20 s, a whole-bar tempo, and musical: no drum or vocal Ableton tag, not FX alone, not a Sononym drum/FX/voice label without an Ableton instrument, no drum / FX / vocal / chain word in its name, folder or a loop folder above (`PHRASE_NOT_RE`; genre names like "Drum & Bass" removed first), and without Sononym not a loop the built-in providers call a drum loop (2.2). Not an IR, preview, demo, wave folder or `PACK_HOME` pack. |
-| Gate | CLAP contrastive only (closer to the role phrases than to `BREAK_PHRASES`, `break_min` 0); chain and loop guards off |
+| Gate | CLAP contrastive only (closer to the role phrases than to `BREAK_PHRASES`, `break_min` 0); chain and loop guards off; a phrase that is mostly silence is left out as a drum loop is (DRUMLOOPS, Silence) |
 | Roles | `_phrase_role` (filename, folder, Ableton tag, Sononym label): `acid` (303, acid, TB-3, and a library overlay's names for the machine, `MACHINE_ALIASES`; `PHRASE_ACID_RE`, checked first), `bass` (bass, sub, reese, wobble), `live` (acoustic instrument words), `chords` (chords, keys, piano, organ, pads, progressions, stabs, M1), else `lead`. Shares (`PHRASE_ROLE_SHARE`): acid 10%, bass 15%, chords 30%, lead 25%, live 20%. |
 | Tempo bands | 60-90, 90-120, 120-140, 140-201 (`PHRASE_TEMPO_BANDS`), after folding into [90, 180) with the DRUMLOOPS filename-tempo rule (no `NO_FOLD_RE` exception) |
 | Folder names | role then tempo (`chords-120-135bpm-deep-house-chords`); named only from the role's phrases, or for the instrument half the filenames name (`PHRASE_INSTRUMENTS`) |
@@ -1053,7 +1054,8 @@ Then:
   reverse (`ROTATE_SKIP_RE`) and not swung, whose on-beat 16ths sit 12-45 ms (and at most 0.3
   of a 16th) off the grid with 75% within 8 ms of the same offset (`ROTATE_AGREE`), is rotated
   by that offset (circular, same length) with a 1.5 ms dip through zero at the old join;
-  entries record `rotate_ms`.
+  entries record `rotate_ms`. A named fill or a swung loop is rotated only for a quiet head
+  (below): its hits off the grid are its feel, a silent lead-in is a late cut all the same.
 - **Not** when the loop is more than 0.1 beat off whole beats at that tempo (`SLICE_BAR_ERR`),
   its silent lead-in and end pad aside: a tempo the length doesn't fit has no grid to rotate
   onto.
@@ -1066,6 +1068,11 @@ Then:
 - **Late start**: rotated to 1 ms before the downbeat's attack (walking back from the hit to
   where its envelope falls under 10% of its peak, so room tone ahead of it doesn't count) and
   never past it, so the front of the downbeat can't end up at the loop's end.
+- **Cut, not rotated**: a late start the loop is whole beats without but not with (within
+  10 ms, `NAME_TEMPO_TOL_MS`: 8 beats and 18 ms of silence ahead) has that lead-in cut, so the
+  loop is whole beats from its downbeat (rotated, it would stay 18 ms long each time round);
+  entries record `trim_ms`. A loop that is whole beats with its lead-in is rotated, keeping
+  its length.
 
 ### Audio cache
 

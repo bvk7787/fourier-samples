@@ -354,6 +354,8 @@ curate:
   NAME_TEMPO_TOL_MS: correctness
   LOOP_QUIET_DB: correctness
   LOOP_PAD_DBFS: correctness
+  LOOP_SILENT_SHARE_MAX: taste
+  LOOP_SILENT_DB: correctness
   DERIVED_BAR_COUNTS: correctness
   TEMPO_DERIVE_TOL: correctness
   STICKY_SHARE: engine

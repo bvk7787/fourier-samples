@@ -60,7 +60,7 @@ def fingerprint_changes(before: dict, after: dict) -> list[str]:
     return sorted({k for k in before.keys() | after.keys() if before.get(k) != after.get(k)})
 
 
-AUDIO_FIELDS = ("out_md5", "level_db", "gain_db", "rotate_ms", "phase_fix", "root_midi", "retune",
+AUDIO_FIELDS = ("out_md5", "level_db", "gain_db", "rotate_ms", "trim_ms", "phase_fix", "root_midi", "retune",
                 "root_src", "bars", "bpm_bars", "swing", "slice_clean", "slice_hits", "slice_ready")
 
 
