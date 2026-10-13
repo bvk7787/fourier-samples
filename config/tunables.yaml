@@ -138,6 +138,8 @@ curate_config:
   ORCH_PATH_INSTRUMENT_RE: rules
   STRING_NAME_RE: rules
   DRUMLOOP_STYLE_EXCLUDE: taste
+  DRUMLOOP_STYLE_SPARE_RE: rules
+  DRUMLOOP_STYLE_CONTENT_RE: rules
   DRUMLOOP_MUSIC_DIR_RE: rules
   DRUMLOOP_KEY_NAME_RE: rules
   DRUMLOOP_BASS_NAME_RE: rules
@@ -416,6 +418,7 @@ sets:
   KIT_PER_ROLE: taste
   KIT_LEVEL_DB: knob:loudness
   KIT_LEVEL_TOL_DB: correctness
+  KIT_UNDER_DB: taste
   ONSET_MIN_RISE_DB: correctness
   ROLE_NAME: taste
   KIT_TAKE_RE: taste

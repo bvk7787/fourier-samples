@@ -571,14 +571,17 @@ def check_routing(ctx):
     if "VOX" in ctx.cats:
         yield Result(FAIL if nch > lim else PASS, f"choirs at most {VOX_CHOIR_SHARE:.0%} of VOX",
                      f"{nch} of {lim} allowed")
+    # (the shapes the build's rule takes: a one-shot by its class, whatever else it or Live says)
     trn = [(c, e["out"]) for c, e in ctx.entries if c in FX_TRANSITION_FROM and not ctx.pinned(c, e)
-           and not e.get("loop_row") and C._is_fx_transition(os.path.basename(e["src"]))]
+           and ("class.oneshot" in (e.get("labels") or ()) or not (e.get("loop_row") or "class.loop" in (
+               e.get("labels") or ())))
+           and C._is_fx_transition(os.path.basename(e["src"]), _rel(e["src"]))]
     yield Result(FAIL if trn else PASS, "named risers / downlifters / sweeps only in FX", _fmt(trn))
     kk = [(c, e["out"]) for c, e in ctx.entries if c in C.KIT_CATS and not ctx.pinned(c, e)
           and KEYBOARD_NAME_RE.search(os.path.basename(e["src"])) and not C._drum_named(os.path.basename(e["src"]))]
     yield Result(FAIL if kk else PASS, "no keys-named files in the drum categories", _fmt(kk))
     sty = [e["out"] for c, e in ctx.entries if CATEGORIES.get(c, {}).get("path_exclude") is not None
-           and not ctx.pinned(c, e) and CATEGORIES[c]["path_exclude"].search(_rel(e["src"]))]
+           and not ctx.pinned(c, e) and C._style_excluded(_rel(e["src"]), CATEGORIES[c]["path_exclude"])]
     yield Result(FAIL if sty else PASS, "no dubstep / trap loops in DRUMLOOPS", _fmt(sty))
     mir = [e["out"] for c, e in ctx.entries if MIRROR_ROOT_RE.search(_rel(e["src"])) and not e.get("mirror_only")]
     yield Result(WARN if mir else PASS, "no files from mirror folders (copies of packs kept elsewhere) unless only there",
@@ -842,14 +845,14 @@ def check_bands(ctx):
                     if not ds:
                         continue
                     lo, hi = min(ds), max(ds)
-                got = {C._hat_band(fn, lo - 0.02), C._hat_band(fn, hi + 0.02)}
+                got = {C._hat_band(fn, lo - 0.02, _rel(e["src"])), C._hat_band(fn, hi + 0.02, _rel(e["src"]))}
             elif bt == "wave":
                 fr, sr = _src_frames(e["src"])
                 if fr is None:
                     fr, sr = _out_frames(ctx.root / cat / e["out"])
                     if fr is None:
                         continue
-                got = {C._wave_band(fr / sr, sr)}
+                got = {C._wave_band(fr / sr, sr, fn)}
             elif bt == "fx":
                 if ctx.pinned(cat, e) or (not e.get("sononym") and not e.get("ableton")):
                     continue                # a Keep or a Move here: the build banded it on the labels the

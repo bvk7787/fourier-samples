@@ -96,8 +96,9 @@ TONAL_CATS = _tunable("TONAL_CATS", _tax.with_role("tonal"))   # the one-shot me
 # "sub-heavy" hat or cymbal is a measurement artefact, not a character)
 SUB_WORD = _tunable("SUB_WORD", {"KICKS": "sub-heavy", "FX": "sub-heavy", "SNARES": "full", "TOMS": "full",
             "PERC": "full", "BLIPS": "full"})
-# noise-based sounds: a detected "pitch" is unreliable and not how anyone picks them
-NO_TUNE_CATS = _tunable("NO_TUNE_CATS", {"HATS", "CYMBALS", "CLAPS"})
+# noise-based sounds: a detected "pitch" is unreliable and not how anyone picks them (a
+# snare's rests on the few confident roots of a noise burst; a kick's or a tom's holds)
+NO_TUNE_CATS = _tunable("NO_TUNE_CATS", {"HATS", "CYMBALS", "CLAPS", "SNARES"})
 
 CATEGORY_NOUN = _tunable("CATEGORY_NOUN", _tax.nouns())
 

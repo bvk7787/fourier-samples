@@ -547,6 +547,18 @@ DRUMLOOP_STYLE_EXCLUDE = _tunable("DRUMLOOP_STYLE_EXCLUDE", _re.compile(
     r"(?<![a-z])(?:fx[ _-]?loops?|impact[ _-]?fx|synth[ _-]?bass|brass[ _-]?stab)(?![a-z])", _re.I))
 # (folders that hold no drum loops: "FX Loops", "Impact FX", "Synth Bass", spaced, "_" or "-";
 # preset breaks-acid also leaves out dubstep, trap and future bass folders)
+# A style word doesn't hold out a loop whose own name, folder or the folder above says drums
+# (DRUMLOOP_STYLE_SPARE_RE: "Vqx Trap/Drum Loops/Kick Snare 3", "Dubstep Drum Loops Qzv/..._hats";
+# "Full" in a drum folder is the full kit) unless they or one of the words the exclusion
+# matched also name a sound that isn't drums (DRUMLOOP_STYLE_CONTENT_RE: "FX Loops", "Synth
+# Bass", "Brass Stab", a "Full Mix"): rules._style_excluded.
+DRUMLOOP_STYLE_SPARE_RE = _tunable("DRUMLOOP_STYLE_SPARE_RE", _re.compile(
+    r"(?<![a-z])(?:drums?|drm|beats?|breaks?|breakbeats?|tops?|hats?|hi[ -]?hats?|hihats?|percs?|percussions?"
+    r"|kicks?|snares?|grooves?|kit[ -]?loops?)(?![a-z])", _re.I))
+DRUMLOOP_STYLE_CONTENT_RE = _tunable("DRUMLOOP_STYLE_CONTENT_RE", _re.compile(
+    r"(?<![a-z])(?:s?fx|effects?|impacts?|synths?|stabs?|brass|music(?:al)?|melod(?:y|ic|ies)|chords?|keys"
+    r"|leads?|pads?|vocals?|vox|full[ -]?mix(?:es)?)(?![a-z])"
+    r"|(?<![a-z])(?<!future )bass(?:lines?)?(?![a-z])(?! ?drum)", _re.I))
 # Loops that are no drum loops whatever Live's "Drum Loop" tag says (rules._not_drum_loop): a
 # loop whose name says a key and a bass (DRUMLOOP_KEY_NAME_RE, DRUMLOOP_BASS_NAME_RE:
 # "Vqx_166_E_Bass_7"), one from a folder of bass, music or synth loops (DRUMLOOP_MUSIC_DIR_RE)
@@ -1230,12 +1242,13 @@ SOFT_LAYER_GAP_DB = _tunable("SOFT_LAYER_GAP_DB", 6.0)
 # ratings on it apply to the twin; a file only there stays.
 MIRROR_ROOT_RE = _tunable("MIRROR_ROOT_RE", _re.compile(_NEVER, _re.I))   # library: mirror folders
 # Named transitions are FX's, wherever the classifiers put them (a "Sweep Down" or an
-# "Uplifter" in a pad pack). A "sweep pad" is a pad.
+# "Uplifter" in a pad pack, or one Live tags as a guitar). A "sweep pad" is a pad (the name
+# read without a pack's name it repeats: rules._is_fx_transition).
 FX_TRANSITION_NAME_RE = _tunable("FX_TRANSITION_NAME_RE", _re.compile(
     r"(?<![a-z])(?:up ?lift(?:er)?s?|down ?lift(?:er)?s?|risers?|sweep(?:s|ing)?|build ?ups?"
     r"|fx ?up|fx ?down)(?![a-z])", _re.I))
 FX_TRANSITION_NOT_RE = _tunable("FX_TRANSITION_NOT_RE", _re.compile(r"(?<![a-z])pads?(?![a-z])", _re.I))
-FX_TRANSITION_FROM = _tunable("FX_TRANSITION_FROM", {"PADS", "SYNTH", "BLIPS", "SUB", "VOX", "STABS"})
+FX_TRANSITION_FROM = _tunable("FX_TRANSITION_FROM", {"PADS", "SYNTH", "BLIPS", "SUB", "VOX", "STABS", "ACOUSTIC"})
 # Hot one-shots: peak normalization leaves a dense, square-ish hit far louder than its
 # neighbors (a synthetic clap or closed hat can sit far above its category), which
 # jumps out when you swap samples live. A one-shot's RMS is capped here: about a

@@ -117,10 +117,35 @@ def _is_long_wavetable(rel_path, duration):
     return duration is not None and duration > WAVE_MAX_DUR and _in_wave_folder(rel_path, duration)
 
 
-def _is_fx_transition(name):
-    """Named as a riser / downlifter / sweep (FX_TRANSITION_NAME_RE), not a sweep pad."""
+def _word_set(s):
+    return {w for w in re.split(r"[^a-z0-9]+", (s or "").lower()) if w}
+
+
+def _without_pack_suffix(stem, rel):
+    """The name less its trailing " - " parts of two or more words that all appear in one of
+    the file's folders: a pack's name repeated in its files' names ("Riser 1 - Vqx - Acme Pad
+    Works" in "Acme Pad Works/...")."""
+    folders = [w for w in (_word_set(f) for f in (rel or "").split("/")[:-1]) if w]
+    parts = re.split(r"\s+-\s+", stem.replace("_", " "))
+    while len(parts) > 1 and len(_word_set(parts[-1])) >= 2 and any(_word_set(parts[-1]) <= f for f in folders):
+        parts.pop()
+    return " - ".join(parts)
+
+
+def _is_fx_transition(name, rel=None):
+    """Named as a riser / downlifter / sweep (FX_TRANSITION_NAME_RE), not a sweep pad
+    (FX_TRANSITION_NOT_RE, read without a pack's name the file name repeats: a riser from a
+    "Pad Works" pack is a riser)."""
     stem = os.path.splitext(os.path.basename(name or ""))[0]
-    return bool(FX_TRANSITION_NAME_RE.search(stem)) and not FX_TRANSITION_NOT_RE.search(stem)
+    if not FX_TRANSITION_NAME_RE.search(stem):
+        return False
+    return not FX_TRANSITION_NOT_RE.search(stem) or not FX_TRANSITION_NOT_RE.search(_without_pack_suffix(stem, rel))
+
+
+def _fx_transition_shaped(is_oneshot, is_loop):
+    """A shape the named-transition rule takes: a one-shot by the classifier's class (even when
+    it or Live also says loop: a riser rendered at a tempo), or no shape at all."""
+    return is_oneshot or not is_loop
 
 
 def _wave_source(rel_path):
@@ -138,11 +163,23 @@ def _wave_source(rel_path):
     return "-".join(words[:2]) or None
 
 
-def _wave_band(duration, sample_rate):
-    """'cycle' for one frame (<= WAVE_SINGLE_MAX_SAMPLES samples), 'table' for several."""
+# a name stating its frames: "<frame size>x<frames>" ("Vqx (128x8)")
+_WAVE_FRAMES_RE = re.compile(r"(?<![0-9])(\d{2,5}) ?[x\u00d7] ?(\d{1,4})(?![0-9])", re.I)
+
+
+def _wave_band(duration, sample_rate, filename=None):
+    """'cycle' for one frame (<= WAVE_SINGLE_MAX_SAMPLES samples), 'table' for several: by
+    length, or by the frames the file's name states when its length holds them ("(128x8)":
+    eight 128-sample frames in 1,024 samples)."""
     if duration is None or not sample_rate:
         return "cycle"
-    return "cycle" if round(duration * sample_rate) <= WAVE_SINGLE_MAX_SAMPLES else "table"
+    n = round(duration * sample_rate)
+    if n > WAVE_SINGLE_MAX_SAMPLES:
+        return "table"
+    m = _WAVE_FRAMES_RE.search(os.path.splitext(os.path.basename(filename or ""))[0])
+    if m and int(m.group(2)) > 1 and abs(n - int(m.group(1)) * int(m.group(2))) <= int(m.group(1)) // 2:
+        return "table"
+    return "cycle"
 
 
 def _cymbal_band(filename, son_labels=(), ab_tags=()):
@@ -171,14 +208,18 @@ def _hat_seconds(duration, attack_ms=None, decay_ms=None):
     return s if duration is None else min(duration, s)
 
 
-def _hat_band(filename, duration):
-    """'open' or 'closed': the name decides when it says so, else the length it sounds
-    (_hat_seconds)."""
+def _hat_band(filename, duration, rel=None):
+    """'open' or 'closed': the name decides when it says so, then the file's own folder when
+    it says one of them ("Closed Hat/zq_qx005"), else the length it sounds (_hat_seconds)."""
     stem = os.path.splitext(filename or "")[0]
     if HAT_OPEN_RE.search(stem):
         return "open"
     if HAT_CLOSED_RE.search(stem):
         return "closed"
+    folder = os.path.basename(os.path.dirname(rel or "")).replace("_", " ")
+    op, cl = bool(HAT_OPEN_RE.search(folder)), bool(HAT_CLOSED_RE.search(folder))
+    if op != cl:
+        return "open" if op else "closed"
     return "open" if (duration or 0.0) >= HAT_OPEN_MIN_S else "closed"
 
 
@@ -423,6 +464,27 @@ def _drum_named(name):
     return next(iter(hits)) if len(hits) == 1 else None
 
 
+def _drum_named_first(text, canon=None, ab_tags=None):
+    """For a folder naming several kinds of drum ("Kick (snare rattle)"): the one the
+    classifier's labels or Live's tags single out among them, else the one named first."""
+    stem = (text or "").replace("_", " ")
+    at = {}
+    for rx, cat in DRUM_NAME_RULES:
+        m = rx.search(stem)
+        if m and (cat not in at or m.start() < at[cat]):
+            at[cat] = m.start()
+    if len(at) < 2:
+        return None
+    from .curate_config import ABLETON_TAGS_BY_CATEGORY, CATEGORIES
+    part = {c: cfg for c, cfg in CATEGORIES.items() if c in at}
+    tags = set(ab_tags or ())
+    said = (_classifier_votes(part, set(canon or ())) | {
+        c for c in part if tags & set(ABLETON_TAGS_BY_CATEGORY.get(c, ()))}) & set(at)
+    if len(said) == 1:
+        return next(iter(said))
+    return min(at, key=lambda c: (at[c], c))
+
+
 def _drum_name_wins(name, canon, ab_tags, rel=None, fallback=False):
     """The drum category a one-shot's name names (_drum_named_in) when a classifier also files
     it with a drum (a DRUM_NAME_RULES category, by its canonical labels or Live's tags) and
@@ -480,7 +542,7 @@ def _drum_named_in(name, rel=None, fallback=False, canon=None, ab_tags=None):
     stem = base.replace("_", " ")
     folder = shape_scope(rel)[1] if rel else ""
     if folder and _DRUM_PREFIX_RE.match(base):
-        fd = _drum_named(folder)
+        fd = _drum_named(folder) or _drum_named_first(folder, canon, ab_tags)
         if fd:
             return fd
     if folder and DRUM_ABBR_NOT_FOLDER_RE.search(folder) and _drum_named(_DRUM_ABBR_RE.sub(" ", stem)) is None:
@@ -525,6 +587,24 @@ def _acoustic_label(d, tags):
 
 _DRUM_FOLDER_RE = re.compile(r"(?<![a-z])(?:drums?|percussion|percs?|breaks?|breakbeats?|beats?|grooves?)(?![a-z])",
                              re.I)
+
+
+def _style_excluded(rel, ex):
+    """What a style exclusion (DRUMLOOP_STYLE_EXCLUDE) matched in a loop's path, or None when
+    nothing did or it doesn't hold: the loop's name, its folder or the folder above says drums
+    (DRUMLOOP_STYLE_SPARE_RE) and neither they nor a word the exclusion matched name a sound
+    that isn't drums (DRUMLOOP_STYLE_CONTENT_RE)."""
+    from .curate_config import DRUMLOOP_STYLE_CONTENT_RE, DRUMLOOP_STYLE_SPARE_RE
+    hits = [m.group(0) for m in ex.finditer(rel or "")]
+    if not hits:
+        return None
+    segs = [x for x in (rel or "").split("/") if x]
+    near = " / ".join(segs[-3:-1] + [os.path.splitext(segs[-1])[0]] if segs else [])
+    near = re.sub(r"[_-]+", " ", near)
+    if DRUMLOOP_STYLE_SPARE_RE.search(near) and not DRUMLOOP_STYLE_CONTENT_RE.search(near) \
+            and not any(DRUMLOOP_STYLE_CONTENT_RE.search(re.sub(r"[_-]+", " ", h)) for h in hits):
+        return None
+    return hits[0]
 
 
 def _not_drum_loop(rel) -> bool:

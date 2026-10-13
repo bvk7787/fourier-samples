@@ -63,6 +63,9 @@ KIT_PER_ROLE = _tunable("KIT_PER_ROLE", {"tom": 2, "perc": 2})
 KIT_LEVEL_DB = _tunable("KIT_LEVEL_DB", {"kick": -9.0, "snare": -13.0, "clap": -14.0, "hat_closed": -16.0,
                 "hat_open": -15.0, "cymbal": -16.0, "tom": -11.0, "perc": -15.0})
 KIT_LEVEL_TOL_DB = _tunable("KIT_LEVEL_TOL_DB", 0.5)
+# ...and a slot can't be turned up: a candidate more than this under its role's level (a soft
+# velocity layer, a quiet take) fills the slot only when the pack has no louder one
+KIT_UNDER_DB = _tunable("KIT_UNDER_DB", 6.0)
 
 
 # ---------------------------------------------------------------------------
@@ -260,9 +263,11 @@ ROLE_NAME = _tunable("ROLE_NAME", {
     "snare": (_W(r"snare|(?<![a-z])sd(?![a-z])|(?<![a-z])sn"), _W(r"rim|(?<![a-z])rs(?![a-z])|stick|perc")),
     "clap": (_W(r"clap|(?<![a-z])cp(?![a-z])|handclap"), None),
     "hat_closed": (_W(r"hat|(?<![a-z])(hh|ch|chh)(?![a-z])|closed"), _W(r"tamb|shak|marac|cabasa|open|(?<![a-z+])oh")),
-    # (an open-hat band from a long tail or a mic tag: a hat its name calls closed isn't the open hat)
+    # (an open-hat band from a long tail or a mic tag: a hat its name calls closed, pedal or
+    # foot isn't the open hat, nor one a pack's code calls so: "Hat PC", "zq_hc017")
     "hat_open": (_W(r"hat|(?<![a-z])(oh|ohh)(?![a-z])|open"),
-                 _W(r"tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])(?!\d+[a-z])")),
+                 _W(r"tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])(?!\d+[a-z])"
+                    r"|pedal|(?<![a-z])foot|(?<![a-z])(pc|hc)(?![a-z])")),
     "cymbal": (_W(r"crash|ride|cym"), _W(r"(?<![a-z])rev|reverse")),
     "tom": (_W(r"tom"), None),
     "perc": (None, _W(r"fx|synth|flute|pad")),
@@ -294,10 +299,12 @@ def _stem(ce):
     return take_name(KIT_TAKE_RE.sub("", os.path.splitext(os.path.basename(ce[1]["src"]))[0]))
 
 
-def _spread_pick(c, k):
+def _spread_pick(c, k, quiet=None):
     """k of the name-sorted candidates c, evenly spaced; a later pick that is another take of
     an earlier one (same name but its number: a velocity layer of the same drum) moves to the
-    nearest candidate of another stem, when there is one."""
+    nearest candidate of another stem, when there is one. `quiet(candidate)`, given, says a
+    candidate plays too far under its role's level (KIT_UNDER_DB): such a pick moves to the
+    nearest one that isn't, when there is one."""
     step = max(1, len(c) // (k + 1))
     out: list = []
     for i in range(min(k, len(c))):
@@ -306,14 +313,44 @@ def _spread_pick(c, k):
         if c[j] not in out and _stem(c[j]) in taken:
             alt = sorted((q for q in range(len(c)) if _stem(c[q]) not in taken), key=lambda q: (abs(q - j), q))
             j = alt[0] if alt else j
+        if quiet is not None and quiet(c[j]):
+            near = sorted((q for q in range(len(c)) if c[q] not in out), key=lambda q: (
+                _stem(c[q]) in taken, abs(q - j), q))
+            j = next((q for q in near if not quiet(c[q])), j)
         out.append(c[j])
     return out
 
 
-def _kits(man):
+def _quiet_check(root):
+    """quiet(candidate) for _spread_pick: its master file plays more than KIT_UNDER_DB under
+    its role's level (KIT_LEVEL_DB); None without a master to read. Each file is read once."""
+    if root is None:
+        return None
+    import soundfile as sf
+    seen: dict = {}
+
+    def quiet(ce):
+        cat, e = ce
+        key = (cat, e["out"])
+        if key not in seen:
+            t = KIT_LEVEL_DB.get(_role(cat, e))
+            try:
+                y, sr = sf.read(str(Path(root) / cat / e["out"]), always_2d=True)
+                st = kit_level_db(y, sr)
+            except Exception:
+                st = None
+            seen[key] = t is not None and st is not None and bool(np.isfinite(st)) and st < t - KIT_UNDER_DB
+        return seen[key]
+    return quiet
+
+
+def _kits(man, root=None):
     """[(kit name, [(category, entry)])]: per (pack, drum machine), one file a role
     (two toms, two percs). The best kit of each drum machine comes first (acid and house
-    reach for a 909 or an 808 kit), then the kits with the most roles; KIT_COUNT of them."""
+    reach for a 909 or an 808 kit), then the kits with the most roles; KIT_COUNT of them.
+    With the master's folder (`root`), a slot passes over a file far under its role's level
+    (_quiet_check)."""
+    quiet = _quiet_check(root)
     from .curate import _machine_label, _pack_key2
     groups = defaultdict(lambda: defaultdict(list))
     for cat, cd in (man.get("categories") or {}).items():
@@ -336,7 +373,7 @@ def _kits(man):
             continue
         pick = []
         for r in KIT_ROLES:
-            pick += _spread_pick(slots[r], KIT_PER_ROLE.get(r, 1))
+            pick += _spread_pick(slots[r], KIT_PER_ROLE.get(r, 1), quiet)
         kits.append((len(have), sum(len(v) for v in roles.values()), pack, mach, pick))
     kits.sort(key=lambda t: (-t[0], -t[1], t[2], t[3] or ""))
     acoustic = [t for t in kits if not t[3] and KIT_ACOUSTIC_PACKS.search(t[2])][:KIT_ACOUSTIC_MAX]
@@ -393,7 +430,7 @@ def build_sets(master_dir, log=print):
                 shutil.rmtree(root / d)
         sets = {"KITS": {"entries": []}, "SLICE": {"entries": []}}
     have = {e["out"] for e in sets["SLICE"]["entries"]}
-    for kit, pick in ([] if additive else _kits(man)):
+    for kit, pick in ([] if additive else _kits(man, root)):
         for cat, e in pick:
             src = root / cat / e["out"]
             name = os.path.basename(e["out"])

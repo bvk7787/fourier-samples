@@ -101,7 +101,7 @@ from .rules import (  # noqa: F401  (re-exported: verify, why, tests and callers
     _acoustic_band, _is_plucked, _is_synth_tagged, _is_mallet_named, _is_acoustic_named, _is_organ_named,
     _is_wind_named, _perc_sourced, _orch_path, _acoustic_reserved, _plucked_label, _is_keys,
     _is_chord, _is_stab, _stab_named, _is_named_stab, _scratch_named, _drum_named, _drum_named_in,
-    _drum_name_wins, _not_drum_loop, _fx_folder_veto,
+    _drum_name_wins, _not_drum_loop, _style_excluded, _fx_folder_veto, _fx_transition_shaped,
     _keys_candidates, _acoustic_label, _is_ir, _is_preview, _name_reserved, _is_loop_row,
 )
 
@@ -714,11 +714,11 @@ def _band_of(btype, filename, duration=None, sample_rate=None, son_labels=(), ab
              chroma=None, harmonicity=None, min_chroma=1.6, pack=None, rel=None):
     """Band label for a sample under a category's band rule (None if it has none)."""
     if btype == "wave":
-        return _wave_band(duration, sample_rate)
+        return _wave_band(duration, sample_rate, filename)
     if btype == "chord":
         return "chord" if _is_chord(filename, chroma, min_chroma, harmonicity) else "note"
     if btype == "hat":
-        return _hat_band(filename, duration)
+        return _hat_band(filename, duration, rel)
     if btype == "cymbal":
         return _cymbal_band(filename, son_labels, ab_tags)
     if btype == "fx":
@@ -938,15 +938,21 @@ def compute_homes(session, emb_n, id2row, log=print):
             if is_oneshot and not is_loop else None
         if _drum and _drum in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
             _drum = None
-        if _acoustic_tagged(ab_tags, _fn, pack) and not ORCH_PACK_EXCLUDE.search(pack) and not _drum:
-            continue
-        # plucked strings named as such are ACOUSTIC's (like the tagged ones above)
-        # (and tuned percussion: xylophone, kalimba, church bell, ...)
-        # (and a named wind, or anything in an orchestra folder (ORCH_PATH_RE), loop class or not:
-        # a sustained tremolo reads as a loop to Sononym)
-        if ((is_oneshot and not is_loop and _is_acoustic_named(_fn, ab_tags))
+        # a named riser / downlifter / sweep (a one-shot by its class, or no shape) is FX's,
+        # ahead of the acoustic reservations too when ACOUSTIC is in FX_TRANSITION_FROM
+        _trn_named = _fx_transition_shaped(is_oneshot, is_loop) and _is_fx_transition(
+            _fn, r.rel_path or library_rel(r.path or ""))
+        _trn = _trn_named and "FX" not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s)
+        # (plucked strings named as such are ACOUSTIC's, like the tagged ones; and tuned
+        # percussion: xylophone, kalimba, church bell, ...; and a named wind, or anything in an
+        # orchestra folder (ORCH_PATH_RE), loop class or not: a sustained tremolo reads as a
+        # loop to Sononym)
+        _acu = (_acoustic_tagged(ab_tags, _fn, pack)
+                or (is_oneshot and not is_loop and _is_acoustic_named(_fn, ab_tags))
                 or (not is_loop and _is_wind_named(_fn, ab_tags))
-                or _orch_path(r.rel_path) is not None) and not ORCH_PACK_EXCLUDE.search(pack) and not _drum:
+                or _orch_path(r.rel_path) is not None) and not ORCH_PACK_EXCLUDE.search(pack) and not _drum
+        _trn_acoustic = _acu and _trn and "ACOUSTIC" in FX_TRANSITION_FROM
+        if _acu and not _trn_acoustic:
             continue
         # a named organ one-shot (not a stab) is PIANO's
         if not is_loop and _is_organ_named(_fn) and not _drum:
@@ -962,6 +968,8 @@ def compute_homes(session, emb_n, id2row, log=print):
             ab_cats |= tag2cats.get(t, set())
 
         cand = son_cats | ab_cats
+        if not cand and _trn_acoustic:
+            cand = {"FX"}        # an acoustic-reserved transition no classifier placed
         # without Sononym: where only a pack's or vendor's name (or a weak word) speaks, a
         # confident sound model decides (SOUND_MODEL_OVERRIDE_MIN) when it says otherwise or
         # picks between several candidates
@@ -1043,10 +1051,10 @@ def compute_homes(session, emb_n, id2row, log=print):
             cand = {SCRATCH_HOME}
             ab_cats = ab_cats | {SCRATCH_HOME}
             n_named_drums += 1
-        # a named riser / downlifter / sweep homes in FX (not PADS or SYNTH); a
-        # file no classifier gave a shape counts as a one-shot here, as verify has it
-        if not is_loop and not _scr and cand & FX_TRANSITION_FROM and _is_fx_transition(_fn) \
-                and "FX" not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
+        # a named riser / downlifter / sweep homes in FX (not PADS, SYNTH or ACOUSTIC); a
+        # file no classifier gave a shape counts as a one-shot here, as verify has it, and so
+        # does one the classifier calls a one-shot as well as a loop, whatever Live's tag says
+        if _trn and not _scr and (cand & FX_TRANSITION_FROM or _trn_acoustic):
             cand = {"FX"}
             ab_cats = ab_cats | {"FX"}
         # a file named as exactly one kind of drum homes in that drum category
@@ -1077,10 +1085,10 @@ def compute_homes(session, emb_n, id2row, log=print):
                 continue
         # a short one-shot named as a chord or a stab is a stab, not a synth / bass / FX /
         # blip / pad
-        # (a named riser / downlifter / sweep stays FX's, "Riser Chord", unless a
-        # classifier or Live calls it a loop: verify holds neither rule on those)
+        # (a named riser / downlifter / sweep stays FX's, "Riser Chord", in the shapes the
+        # transition rule takes)
         if not _keyz and not _dn and _is_named_stab(_fn, r.duration_s, r.n_events, is_oneshot and not is_loop) \
-                and cand & STAB_CHORD_FROM and not (_is_fx_transition(_fn) and not _is_loop_row(r)) \
+                and cand & STAB_CHORD_FROM and not _trn_named \
                 and "STABS" not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
             cand = (cand - STAB_CHORD_FROM) | {"STABS"}
             ab_cats = ab_cats | {"STABS"}                    # counts as one vote
@@ -4150,9 +4158,10 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             stats["mirror_copies"] = stats.get("mirror_copies", 0) + 1
             _out(r, "mirror_copies")
             continue                     # a copy in a mirror folder
-        if cfg.get("path_exclude") and cfg["path_exclude"].search(r.rel_path or r.path):
+        _sx = _style_excluded(r.rel_path or r.path, cfg["path_exclude"]) if cfg.get("path_exclude") else None
+        if _sx:
             stats["style_excluded"] = stats.get("style_excluded", 0) + 1
-            _out(r, "style_excluded", cfg["path_exclude"].search(r.rel_path or r.path).group(0))
+            _out(r, "style_excluded", _sx)
             continue
         _pk = getattr(r, "peak_db", None)
         if _soft and _pk is not None and _pk < SOFT_LAYER_PEAK_DB and pins.get(r.path) != category:
@@ -4384,6 +4393,15 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             if _dn and _dn not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
                 stats["named_elsewhere"] = stats.get("named_elsewhere", 0) + 1
                 _out(r, "named_elsewhere", _dn)
+                continue
+        # ...and a named riser / downlifter / sweep is FX's (compute_homes' transition rule)
+        if cfg["kind"] == "instrument" and category in FX_TRANSITION_FROM and "FX" in CATEGORIES:
+            _cl = _as_list(getattr(r, "classes", None))
+            if _fx_transition_shaped(any("OneShot" in c for c in _cl), any("Loop" in c for c in _cl)) \
+                    and _is_fx_transition(r.filename, rel) and "FX" not in misfiled.categories(
+                        r.path, emb_n[id2row[r.id]]):
+                stats["named_elsewhere"] = stats.get("named_elsewhere", 0) + 1
+                _out(r, "named_elsewhere", "FX")
                 continue
         if cfg["kind"] == "instrument":
             dur = r.duration_s
