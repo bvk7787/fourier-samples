@@ -179,9 +179,22 @@ INSTRUMENT_COPY_COS = _tunable("INSTRUMENT_COPY_COS", 0.95)
 CROSS_COPY_COS = _tunable("CROSS_COPY_COS", 0.88)
 # two sources are one recording when their normalized cross-correlation at the best lag, over
 # their first COPY_SECONDS, reaches COPY_XCORR (copies sit at 1.0, two chords of one pack near
-# 0.1, two notes of a multisample or two takes of one note well under 0.99)
+# 0.1, two notes of a multisample or two takes of one note well under 0.99); the shorter's
+# sound is matched against the longer's, so a shorter cut of one hit counts too
 COPY_XCORR = _tunable("COPY_XCORR", 0.99)
 COPY_SECONDS = _tunable("COPY_SECONDS", 10.0)
+# ...when the stretch compared (the longer's sound up to where the shorter's ends) holds at
+# least this share of the longer's energy: a cut keeps most of its hit, while a click can
+# match a sliver of any sound
+COPY_SHARE = _tunable("COPY_SHARE", 0.5)
+# one recording picked twice by one category (a pack's 16- and 24-bit editions, or a long
+# and a short cut of each hit): picks this close in CLAP are compared as audio
+# (editions and cuts sat at 0.77 to 0.98, under NEAR_DUP_COS), first by a quick look at their
+# first COPY_GATE_SECONDS at COPY_GATE_RATE Hz (COPY_GATE_XCORR), then as above
+CATEGORY_COPY_COS = _tunable("CATEGORY_COPY_COS", 0.75)
+COPY_GATE_XCORR = _tunable("COPY_GATE_XCORR", 0.9)
+COPY_GATE_SECONDS = _tunable("COPY_GATE_SECONDS", 1.0)
+COPY_GATE_RATE = _tunable("COPY_GATE_RATE", 8000)
 TRIM_FLOOR_DB = _tunable("TRIM_FLOOR_DB", -50.0)     # silence floor (dBFS below peak) for edge trimming
 TRIM_PAD_MS = _tunable("TRIM_PAD_MS", 3.0)         # lead-in kept before the first non-silent sample (avoids clicks)
 PEAK_CEILING_DB = _tunable("PEAK_CEILING_DB", -1.0)    # one-shot / instrument peak-normalization target (dBFS)
@@ -1853,33 +1866,220 @@ def _copy_views(y, other_channels):
     return views
 
 
+def _sounding(u):
+    """u from its first to its last sample within TRIM_FLOOR_DB of its peak: the sound, without
+    the silence one edition pads it with and another doesn't."""
+    a = np.abs(u)
+    pk = float(a.max()) if len(a) else 0.0
+    if not pk:
+        return u[:0]
+    on = np.flatnonzero(a >= pk * 10 ** (TRIM_FLOOR_DB / 20))
+    return u[on[0]:on[-1] + 1]
+
+
+def _xcorr_peak(u, v):
+    """The normalized cross-correlation at the best lag (either polarity) of the shorter of u's
+    and v's sound (_sounding) against the other's from its start to where the shorter ends:
+    1.0 for one recording at any gain, and for a shorter cut of it (the same start, less
+    tail), whose match a whole-file measure would lower by the tail it lacks. A sound that
+    starts elsewhere in the other (a fragment, or one sweep's later part) is held to all of
+    the other's sound before it, and the stretch compared must hold at least COPY_SHARE of the
+    longer's energy. None when either is silent."""
+    u, v = _sounding(u), _sounding(v)
+    if len(u) > len(v):
+        u, v = v, u
+    nu, nv = float(np.linalg.norm(u)), float(np.linalg.norm(v))
+    if not nu or not nv:
+        return None
+    from scipy.signal import fftconvolve
+    c = fftconvolve(v, u[::-1], mode="full")          # c[k]: u starting at v[k - len(u) + 1]
+    e = np.concatenate(([0.0], np.cumsum(np.square(v, dtype="float64"))))
+    w2 = e[np.minimum(np.arange(1, len(c) + 1), len(v))]   # v from its start to u's end
+    ok = (w2 > 0) & (w2 >= COPY_SHARE * nv * nv)
+    return float(np.max(np.abs(c[ok]) / (nu * np.sqrt(w2[ok])))) if ok.any() else 0.0
+
+
+def _views_match(x, y, thr):
+    """True when any of _copy_views' pairs of x and y (frames x channels, one rate) reaches thr
+    (_xcorr_peak); False when none does; None when every view is silent."""
+    heard = False
+    for u in _copy_views(x, y.shape[1]):
+        for v in _copy_views(y, x.shape[1]):
+            r = _xcorr_peak(u, v)
+            if r is None:
+                continue
+            heard = True
+            if r >= thr:
+                return True
+    return False if heard else None
+
+
 def _same_recording(a, b):
-    """True when sources a and b hold one recording: their normalized cross-correlation at the
-    best lag (either polarity), over their first COPY_SECONDS at the lower of their two rates,
-    reaches COPY_XCORR (mono mixes, or a mono edition against the other's mix or either side).
-    False when it doesn't; None when either can't be read or is silent. Reads the sources
-    (never the exports, which a retune or trim has changed)."""
+    """True when sources a and b hold one recording, or one holds a shorter cut of the other:
+    their normalized cross-correlation at the best lag (either polarity, _xcorr_peak), over
+    their first COPY_SECONDS at the lower of their two rates, reaches COPY_XCORR (mono mixes,
+    or a mono edition against the other's mix or either side). False when it doesn't; None
+    when either can't be read or is silent. Reads the sources (never the exports, which a
+    retune or trim has changed)."""
     if a == b:
         return True
     try:
         (x, sx), (y, sy) = _copy_signal(a), _copy_signal(b)
     except Exception:
         return None
-    from scipy.signal import fftconvolve, resample_poly
+    from scipy.signal import resample_poly
     if sx > sy:
         x = resample_poly(x, sy, sx, axis=0)
     elif sy > sx:
         y = resample_poly(y, sx, sy, axis=0)
-    heard = False
-    for u in _copy_views(x, y.shape[1]):
-        for v in _copy_views(y, x.shape[1]):
-            nu, nv = float(np.linalg.norm(u)), float(np.linalg.norm(v))
-            if not nu or not nv:
-                continue
-            heard = True
-            if float(np.max(np.abs(fftconvolve(u / nu, (v / nv)[::-1], mode="full")))) >= COPY_XCORR:
-                return True
-    return False if heard else None
+    return _views_match(x, y, COPY_XCORR)
+
+
+def _gate_signal(path):
+    """A source's first COPY_GATE_SECONDS of sound (from its first sample within TRIM_FLOOR_DB
+    of its peak) at COPY_GATE_RATE, frames x channels: the copy check's quick look. None when
+    it can't be read or is silent."""
+    import soundfile as sf
+    from math import gcd
+    from scipy.signal import resample_poly
+    try:
+        sr = int(sf.info(path).samplerate)
+        y, _ = sf.read(path, frames=int(2 * COPY_GATE_SECONDS * sr), always_2d=True, dtype="float32")
+    except Exception:
+        return None
+    rate = int(COPY_GATE_RATE)
+    g = gcd(sr, rate)
+    if len(y) and sr != rate:
+        y = resample_poly(y, rate // g, sr // g, axis=0).astype("float32")
+    a = np.abs(y).max(axis=1) if len(y) else y[:, 0]
+    pk = float(a.max()) if len(a) else 0.0
+    if not pk:
+        return None
+    t0 = int(np.flatnonzero(a >= pk * 10 ** (TRIM_FLOOR_DB / 20))[0])
+    return y[t0:t0 + int(COPY_GATE_SECONDS * rate)]
+
+
+def _copies_within(srcs, V, apart=None, new=None, sigs=None, cos=None):
+    """[(i, j)] index pairs (i < j) of srcs, sources in one category, that hold one recording
+    or a shorter cut of it: CLAP cosine (rows of V, unit vectors) at least cos
+    (CATEGORY_COPY_COS), not apart(i, j) (loops at other tempos), the quick look
+    (_gate_signal, COPY_GATE_XCORR), then _same_recording. new: only pairs with at least one
+    of these indices; sigs: a dict the quick look's signals are kept in between calls."""
+    cos = CATEGORY_COPY_COS if cos is None else cos
+    if cos >= 1.0 or len(srcs) < 2:
+        return []
+    sigs = {} if sigs is None else sigs
+
+    def sig(i):
+        if srcs[i] not in sigs:
+            sigs[srcs[i]] = _gate_signal(srcs[i])
+        return sigs[srcs[i]]
+    V = np.asarray(V, dtype="float32")
+    S = V @ V.T
+    pairs = []
+    for i, j in zip(*np.nonzero(np.triu(S >= cos, 1))):
+        i, j = int(i), int(j)
+        if (new is not None and i not in new and j not in new) or srcs[i] == srcs[j] \
+                or (apart is not None and apart(i, j)):
+            continue
+        x, y = sig(i), sig(j)
+        if x is None or y is None or not _views_match(x, y, COPY_GATE_XCORR):
+            continue
+        if _same_recording(srcs[i], srcs[j]) is True:
+            pairs.append((i, j))
+    return pairs
+
+
+_BITS = {"PCM_S8": 8, "PCM_U8": 8, "PCM_16": 16, "PCM_24": 24, "PCM_32": 32, "FLOAT": 32, "DOUBLE": 64}
+
+
+def _copy_measure(path):
+    """(seconds of sound in its first COPY_SECONDS, bits per sample) of a source: which of one
+    recording's copies is the fuller one."""
+    import soundfile as sf
+    try:
+        y, sr = _copy_signal(path)
+        bits = _BITS.get(sf.info(path).subtype, 16)
+    except Exception:
+        return 0.0, 0
+    return len(_sounding(np.abs(y).max(axis=1))) / sr, bits
+
+
+def _copy_keepers(group, rec):
+    """Which of one recording's picks in a category (indices into rec) stay: every Keep (two
+    Keeps stay, as rated), else one: the longest sound (a shorter cut loses; within 5%, one
+    edition's padding), then the deeper bit depth, then a kit's pin, the previous build's
+    file, the higher quality, the lower id."""
+    keeps = [i for i in group if rec[i].get("pin") is True]
+    if keeps:
+        return set(keeps)
+    m = {i: _copy_measure(rec[i]["path"]) for i in group}
+    longest = max(m[i][0] for i in group)
+    full = [i for i in group if m[i][0] >= 0.95 * longest]
+    return {min(full, key=lambda i: (-m[i][1], not rec[i].get("pin"), not rec[i].get("incumbent"),
+                                     -float(rec[i].get("qual") or 0.0), rec[i]["id"]))}
+
+
+def _drop_copies(clusters, allocs, rec, emb_n, cfg, pick, stats, why=None, log=print):
+    """One recording a category picked twice under two names (two editions of a pack, or a
+    shorter cut of it) stays once (_copies_within, _copy_keepers); the near-duplicate prune
+    can't see these (CLAP 0.77 to 0.98). A folder that lost a copy picks again without it
+    (pick(idxs, want)), and its new picks are checked in turn. As in the instrument
+    categories' prune, a copy never comes back to fill a minimum (and verify fails on one
+    left). Each copy goes into why as "copy" (the id of the pick it repeats) and is counted
+    in stats. Returns how many picks were cloud-only (downloaded before the first read,
+    safety.ensure_local)."""
+    from ..safety import ensure_local
+    loop = cfg.get("kind") == "loop"
+    sigs: dict = {}
+    gone: dict = {}
+    n_cloud, new = 0, None
+    while CATEGORY_COPY_COS < 1.0:
+        picked = sorted({i for c in clusters for i in c["_pick"]})
+        n_cloud += ensure_local([rec[i]["path"] for i in picked], log=log)
+        pos = {i: q for q, i in enumerate(picked)}
+        pairs = _copies_within(
+            [rec[i]["path"] for i in picked], emb_n[[rec[i]["row"] for i in picked]],
+            # a copy plays at its recording's tempo: loops further apart aren't compared
+            apart=(lambda a, b: _tempo_apart(rec[picked[a]], rec[picked[b]])) if loop else None,
+            new=None if new is None else {pos[i] for i in new if i in pos}, sigs=sigs)
+        if not pairs:
+            break
+        parent = {i: i for p in pairs for i in p}
+
+        def root(k):
+            while parent[k] != k:
+                parent[k] = parent[parent[k]]
+                k = parent[k]
+            return k
+        for a, b in pairs:
+            parent[root(a)] = root(b)
+        groups = defaultdict(list)
+        for k in sorted(parent):
+            groups[root(k)].append(picked[k])
+        lost = {}
+        for g in groups.values():
+            keep = _copy_keepers(g, rec)
+            stay = min(keep, key=lambda i: rec[i]["id"])
+            lost.update({i: stay for i in g if i not in keep})
+        if not lost:
+            break
+        gone.update({rec[i]["id"]: rec[k]["id"] for i, k in lost.items()})
+        new = set()
+        for c, want in zip(clusters, allocs):
+            if any(i in lost for i in c["idxs"]):
+                c["idxs"] = [i for i in c["idxs"] if i not in lost]
+                if any(i in lost for i in c["_pick"]):
+                    before = set(c["_pick"])
+                    c["_pick"] = pick(c["idxs"], want)
+                    new |= set(c["_pick"]) - before
+    if gone:
+        stats["copy"] = len(gone)
+        if why is not None:
+            why.setdefault("copy", {}).update(gone)
+        log(f"{len(gone)} pick(s) repeating another's recording (another edition or a shorter cut) "
+            f"left out (CATEGORY_COPY_COS, COPY_XCORR)")
+    return n_cloud
 
 
 def _recordings_apart(a, b):
@@ -5492,6 +5692,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     # the files each folder will hold; its name is judged on these (what you'll browse)
     for c, want in zip(clusters, _allocs):
         c["_pick"] = medoid_pick(c["idxs"], want)
+    _n_cloud = _drop_copies(clusters, _allocs, rec, emb_n, cfg, medoid_pick, stats, _why,
+                            log=lambda m: log(f"{category}: {m}"))
     if _prev_srcs:
         _kept = sum(1 for c in clusters for i in c["_pick"] if rec[i]["incumbent"])
         _avail = sum(1 for r in rec if r["incumbent"])
@@ -5635,8 +5837,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     # verbatim copy or skip a check, so two builds of one library could differ. A pick
     # that won't download stops the build before anything is written.
     from ..safety import ensure_local
-    _n_cloud = ensure_local([rec[i]["path"] for c in clusters for i in c["_pick"]],
-                            log=lambda m: log(f"{category}: {m}"))
+    _n_cloud += ensure_local([rec[i]["path"] for c in clusters for i in c["_pick"]],
+                             log=lambda m: log(f"{category}: {m}"))
     if kroot.is_dir():
         shutil.rmtree(kroot)
     if category in RETUNE_CATS:
@@ -5753,7 +5955,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         f"{stats.get('near_dup', 0)} near-dups pruned, {stats.get('loop_gated', 0)} loops dropped")
     # why each candidate that isn't in the master was left out, beside the build (not in it)
     _picked = {e["src"] for e in file_entries}
-    _why["over_budget"] = {r["id"]: None for r in rec if r["path"] not in _picked and r["id"] not in _quiet_ids}
+    _why["over_budget"] = {r["id"]: None for r in rec if r["path"] not in _picked and r["id"] not in _quiet_ids
+                           and r["id"] not in _why.get("copy", ())}
     if _quiet_ids:
         _why["too_quiet"] = {i: QUIET_RMS_DB for i in sorted(_quiet_ids)}
     # the source of each picked file's tempo and root (metadata/resolve.py), for `fourier why`

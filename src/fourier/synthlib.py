@@ -239,7 +239,7 @@ def _plan():
         out.append((f"{top} {'ABCD'[i % 4]}/{rest}", builder, meta))
 
     for i in range(12):
-        add(f"Synth Drums/Kit/Kicks/Kick {i + 1:02d}.wav", lambda r, i=i: kick(r, i % 4),
+        add(f"Synth Drums/Kit/Kicks/Kick {i + 1:02d}.wav", lambda r, i=i: kick(r, i % 4 + 0.3 * (i // 4)),
             categories=["Perc Kicks"], classes=["OneShot"], brightness=0.2, noisiness=0.1)
         add(f"Synth Drums/Kit/Snares/Snare {i + 1:02d}.wav", lambda r, i=i: snare(r, i % 4),
             categories=["Perc Snares"], classes=["OneShot"], brightness=0.6, noisiness=0.7)
@@ -251,7 +251,7 @@ def _plan():
             categories=["Perc Hats & Shakers"], classes=["OneShot"], brightness=0.9, noisiness=0.9)
         add(f"Synth Drums/Kit/Toms/Tom {i + 1:02d}.wav", lambda r, i=i: tom(r, i),
             categories=["Perc Toms"], classes=["OneShot"], brightness=0.3, noisiness=0.2)
-        add(f"Synth Drums/Kit/Percussion/Wood Hit {i + 1:02d}.wav", lambda r, i=i: perc(r, i % 4),
+        add(f"Synth Drums/Kit/Percussion/Wood Hit {i + 1:02d}.wav", lambda r, i=i: perc(r, i % 4 + 0.3 * (i // 4)),
             categories=["Perc Wood Hits"], classes=["OneShot"], brightness=0.6, noisiness=0.3)
         add(f"Synth Drums/Kit/Cymbals/Crash {i + 1:02d}.wav", lambda r, i=i: cymbal(r, i % 4),
             categories=["Perc Cymbal Crashes"], classes=["OneShot"], brightness=0.9, noisiness=0.9)
@@ -296,16 +296,17 @@ def _plan():
                 lambda r, b=bpm, i=i: phrase(r, b, 36 + i % 5, i),
                 categories=["Tone Bass & LowKeys"], classes=["Loop"], bpm=float(bpm), note=36.0,
                 harmonicity=0.8)
-    # defect cases the export DSP must fix
+    # defect cases the export DSP must fix (each its own recording: a copy of another file
+    # would leave the master as one, curate._drop_copies)
     add("Synth Tones/Leads/Flat Lead C.wav", lambda r: tone(r, 60, 0.8, "saw", 0.4, detune=-40),
         categories=["Tone Leads & MidHiKeys"], classes=["OneShot"], note=59.6, harmonicity=0.8)
-    add("Synth Drums/Kit/Kicks/Hot Start Kick.wav", lambda r: np.concatenate([[0.9], kick(r, 1)[1:]]).astype(np.float32),
+    add("Synth Drums/Kit/Kicks/Hot Start Kick.wav", lambda r: np.concatenate([[0.9], kick(r, 4)[1:]]).astype(np.float32),
         categories=["Perc Kicks"], classes=["OneShot"])
     add("Synth Tones/Pads/Long Tail Pad.wav",
-        lambda r: np.concatenate([pad(r, 48, 0), 1e-4 * r.standard_normal(SR * 4)]).astype(np.float32),
-        categories=["Tone Pads & Textures"], classes=["OneShot"], note=48.0)
-    add("Synth Tones/Pads/Phase Flipped Pad.wav", lambda r: np.stack([pad(r, 50, 1), -pad(r, 50, 1)], 1),
-        categories=["Tone Pads & Textures"], classes=["OneShot"], note=50.0)
+        lambda r: np.concatenate([pad(r, 36, 0), 1e-4 * r.standard_normal(SR * 4)]).astype(np.float32),
+        categories=["Tone Pads & Textures"], classes=["OneShot"], note=36.0)
+    add("Synth Tones/Pads/Phase Flipped Pad.wav", lambda r: np.stack([pad(r, 38, 1), -pad(r, 38, 1)], 1),
+        categories=["Tone Pads & Textures"], classes=["OneShot"], note=38.0)
     return out
 
 

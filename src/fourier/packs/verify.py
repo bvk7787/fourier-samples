@@ -92,6 +92,7 @@ class _Ctx:
         self.fallback = False     # the build classified without Sononym (names read bare notes)
         self.copies = None        # [((cat, src), (cat, src))] one recording in two categories, or None (no DB)
         self.hat_s = None         # {src path: how long it sounds (rules._hat_seconds)} or None (no DB)
+        self.copies_within = None  # [((cat, src), (cat, src))] one recording twice in one category, or None
 
     def path(self, c, e):
         return self.root / c / e["out"]
@@ -705,6 +706,12 @@ def check_routing(ctx):
         yield Result(FAIL if both else PASS, "no recording in two categories under two names "
                      "(CLAP, then the audio)",
                      _fmt(f"{a[0]}/{os.path.basename(a[1])} = {b[0]}/{os.path.basename(b[1])}" for a, b in both))
+    if ctx.copies_within is not None:
+        both = [(a, b) for a, b in ctx.copies_within
+                if not (ctx.pins.get(a[1]) == a[0] and ctx.pins.get(b[1]) == b[0])]   # both Keeps: as rated
+        yield Result(FAIL if both else PASS, "no recording twice in one category (another edition or a "
+                     "shorter cut; CLAP, then the audio)",
+                     _fmt(f"{a[0]}/{os.path.basename(a[1])} = {os.path.basename(b[1])}" for a, b in both))
     if ctx.prof is None:
         yield Result(WARN, "sample-chain guard", "skipped (no DB)")
         return
@@ -975,6 +982,28 @@ def check_audio(ctx):
     yield Result(FAIL if leads else PASS, "files start at the sound (leads trimmed at their category's trim_lead_db)", _fmt(leads))
 
 
+def _copies_within(entries, vecs):
+    """[((cat, src), (cat, src))] picks of one category that hold one recording or a shorter
+    cut of it, found as the build finds them (curate._copies_within, CATEGORY_COPY_COS; loops
+    further apart in tempo than a folder aren't compared). vecs: curate._copy_vectors'."""
+    from . import curate as C
+    from .curate_config import CATEGORIES
+    by = defaultdict(dict)
+    for c, e in entries:
+        if e.get("src") in vecs:
+            by[c].setdefault(e["src"], e)
+    out, sigs = [], {}
+    for c in sorted(by):
+        srcs = sorted(by[c])
+        es = [by[c][s] for s in srcs]
+        loop = CATEGORIES.get(c, {}).get("kind") == "loop"
+        for i, j in C._copies_within(srcs, np.stack([vecs[s][1] for s in srcs]),
+                                     apart=(lambda a, b: C._tempo_apart(es[a], es[b])) if loop else None,
+                                     sigs=sigs):
+            out.append(((c, srcs[i]), (c, srcs[j])))
+    return out
+
+
 def verify_master(master_dir, session=None, audio=True, store_path=None, log=print):
     """Run every master check. Returns (ok, [Result])."""
     from .validate import validate_master
@@ -1009,6 +1038,7 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
             if vecs:        # CROSS_COPY_COS 1.0: the build keeps copies on purpose, and so does this
                 cos = C.CROSS_COPY_COS
                 ctx.copies = [(members[i], members[j]) for i, j in C._cross_copy_pairs(members, vecs, cos=cos)]
+                ctx.copies_within = _copies_within(ctx.entries, vecs)
     out = []
     for fn in (check_manifest, check_sets, check_budgets, check_naming, check_ratings, check_routing, check_bands,
                *( [check_audio] if audio else [])):

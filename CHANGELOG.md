@@ -79,6 +79,18 @@ change the CLI or the config).
   rotation because such loops' off-grid hits are feel. A late start the loop is whole beats
   without (and not with) is cut instead of rotated, so it no longer runs long each time round
   (`trim_ms`). Found by an audit: 7 drum loops starting 16-27 ms late.
+- One recording picked twice by one category stays once. A pack shipped in two editions
+  (16 and 24 bit, an older sampler's and a newer one's) or as a long and a short cut of
+  each hit put both copies in the master, because the near-duplicate prune only compares CLAP
+  (above 0.985) and CLAP heard these pairs at 0.77 to 0.98. Each category now compares its
+  picks above a CLAP cosine of 0.75 (`CATEGORY_COPY_COS`) as audio, after a quick look at their
+  first second (`COPY_GATE_XCORR`, `COPY_GATE_SECONDS`, `COPY_GATE_RATE`; loops at other tempos
+  never), keeps the longer sound, then the deeper bit depth (a Keep always stays), and refills
+  the folder. The audio check now holds the shorter sound to the longer one from its start to
+  where the shorter ends (at least half its energy, `COPY_SHARE`), so a shorter cut of a hit
+  counts as a copy here, in the instrument categories' prune and across categories. `fourier why` names the
+  copy that stayed, and `fourier verify` fails on any left. Found by an audit: 16 such pairs in
+  one master, from hats, kicks and toms to an acid loop shipped under two names.
 - Device path locks now follow a library that moved (another volume, a renamed library, vendor
   or pack folder). A lock names each source by its absolute path, so after a move a render
   found none of them: every file got a second copy on the card under a new name ("_2") beside

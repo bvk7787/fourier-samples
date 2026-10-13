@@ -569,7 +569,7 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
 | Instrument packs (PIANO, ACOUSTIC) | each vendor/pack <= 20% (`INSTRUMENT_PACK_MAX_SHARE`) |
 | Multisample libraries (other kinds) | `INSTRUMENT_PACKS` <= 20 files each (`INSTRUMENT_CAP`) |
 | Vendor (other kinds) | a vendor <= 40% (`VENDOR_MAX_SHARE`); see [Vendor cap](#vendor-cap) |
-| Near-duplicates | CLAP cosine > 0.985 (`NEAR_DUP_COS`) pruned, better quality kept (WAVES off; PIANO and ACOUSTIC only copies: above 0.95, `INSTRUMENT_COPY_COS`, and the audio agrees); see [Near-duplicate prune](#near-duplicate-prune) |
+| Near-duplicates | CLAP cosine > 0.985 (`NEAR_DUP_COS`) pruned, better quality kept (WAVES off; PIANO and ACOUSTIC only copies: above 0.95, `INSTRUMENT_COPY_COS`, and the audio agrees); after the picks, one recording picked twice (an edition, a shorter cut: above 0.75, `CATEGORY_COPY_COS`, and the audio agrees) stays once; see [Near-duplicate prune](#near-duplicate-prune) |
 | Routed rows | rows homed in from outside the classifier's bucket <= 35% (`ROUTED_MAX_SHARE`; stab-, scratch- and drum-named exempt) |
 
 #### Vendor cap
@@ -602,6 +602,24 @@ Then pool caps, each keeping a CLAP-spread subset (KMeans medoids):
   (`COPY_XCORR`, as for one recording in two categories below): two notes, two velocity layers
   or round robins that are separate takes, and two chords of one pack all stay. A source that
   can't be read stays too. A copy never comes back to fill a minimum.
+- **One recording picked twice** (every category, `_drop_copies`): a pack shipped in two
+  editions (16 and 24 bit, an older sampler's and a newer one's, two formats) or as a long
+  and a short cut of each hit puts one recording in the pool twice, and CLAP hears such
+  pairs anywhere from 0.77 to 0.98, under the prune's 0.985. So once a category has picked,
+  each two picks at a CLAP cosine of 0.75 or more (`CATEGORY_COPY_COS`) are compared as audio:
+  loops further apart in tempo than one tempo folder (`SAME_TEMPO_BPM`) never, then a quick
+  look at the first second of sound at 8 kHz (`COPY_GATE_SECONDS`, `COPY_GATE_RATE`, 0.9 or
+  more: `COPY_GATE_XCORR`), then the full check below (`COPY_XCORR`), in which a shorter cut of
+  a hit counts as a copy. One stays: a Keep (two Keeps both stay), else the longer sound (a
+  shorter cut loses; within 5%, an edition's padding), then the deeper bit depth, a kit's pin,
+  the previous build's file, quality. A folder that lost a copy picks again without it, and its
+  new picks are checked in turn; a copy never comes back to fill a minimum. On an
+  11,500-file master about 200,000 pairs pass the CLAP prefilter, 115,000 of them drum loops,
+  of which 20,000 share a tempo: about 105,000 quick
+  looks (under a millisecond each, after a 2-second read of each pick, about 4 ms), with the
+  full check (up to about 60 ms for 10 s of audio) only for the pairs that pass. That's two to
+  three minutes of CPU spread over the categories' workers, and about as much in `fourier
+  verify`, which checks the master the same way.
 - `fourier why` names the kept file each pruned one repeats and where the master holds it.
 
 Pins removed by a cap are restored. A category whose pool still ends under its folder minimum
@@ -705,8 +723,13 @@ categories with a CLAP cosine of at least 0.88 (`CROSS_COPY_COS`, a loose prefil
 recording's editions sit as low as 0.966) are compared as audio: the sources' normalized
 cross-correlation at the best lag, over their first 10 s (`COPY_SECONDS`), at the lower of
 their rates, as mono mixes, and a mono edition also against each side of a stereo one (a mono
-edition can be one side rather than the sum). At 0.99 or more (`COPY_XCORR`) they're one
-recording, and one copy stays: a Keep's, else the one whose own name gives it its category
+edition can be one side rather than the sum). The shorter one's sound (silence trimmed at
+`TRIM_FLOOR_DB`) is held to the other's from its start to where the shorter one ends, so a
+shorter cut of a hit (the same start, less tail) matches the longer one, while a sound that
+lines up with a later part of the other (one sweep's tail, a fragment) answers for all of the
+other before it; the stretch compared has to hold at least half the longer's energy
+(`COPY_SHARE`), so a click can't match a sliver of a sound.
+At 0.99 or more (`COPY_XCORR`) they're one recording, and one copy stays: a Keep's, else the one whose own name gives it its category
 (`_named_home`, the rules _dup_winner follows), else the earlier category in play order. CLAP
 alone isn't enough either way: two chords of one pack, an Em and a Cm, sat at 0.9997 and
 cross-correlate at 0.1, while one chord's mono and stereo editions sat at 0.966; real copies
@@ -1273,7 +1296,8 @@ chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN.
 ### Routing checks
 
 - **Homes**: PACK_HOME; one category per source; no identical audio in two categories; no
-  recording in two categories under two names (with the database: CLAP, then the audio); name
+  recording in two categories under two names, nor twice in one category (another edition or a
+  shorter cut, the build's thresholds; both with the database: CLAP, then the audio); name
   overrides and filters hold; no IRs, previews or wavetables over `WAVE_MAX_DUR`; mirror files (WARN).
 - **Keys and organs**: no keys-named files in SYNTH/SUB/FX/STABS or drum categories; PIANO chord
   and note folders apart; organs only in PIANO.

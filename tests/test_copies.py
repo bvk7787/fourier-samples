@@ -192,3 +192,104 @@ def test_no_database_no_copies(tmp_path):
     picks = [("STABS", {"files": 1}, [{"family": "f", "out": "f/a.wav", "src": "/nowhere/a.wav"}]),
              ("SYNTH", {"files": 1}, [{"family": "g", "out": "g/b.wav", "src": "/nowhere/b.wav"}])]
     assert C._cross_copies(picks) == ({}, {})
+
+
+# --- one recording twice in one category: editions and shorter cuts --------------------------
+
+def _cut(path, src, secs, fade_ms=0.0, gain=1.0, subtype="PCM_16"):
+    """A shorter cut of src: its first secs, faded out over fade_ms, at another gain."""
+    y, sr = sf.read(src, dtype="float64")
+    y = y[:int(secs * sr)] * gain
+    n = int(fade_ms / 1000 * sr)
+    if n:
+        y[-n:] *= np.linspace(1.0, 0.0, n)
+    sf.write(path, y.astype("float32"), sr, subtype=subtype)
+    return str(path)
+
+
+def test_a_shorter_cut_is_a_copy(tmp_path):
+    """A pack's long and short cuts of one hit: the shorter's sound is matched against
+    the stretch of the longer's it covers, so the tail it lacks doesn't hide the copy."""
+    full = _note(tmp_path / "Qxvwz Zq 4.wav", 220.0, 1, secs=2.0, noise=0.05)
+    assert C._same_recording(full, _cut(tmp_path / "s.wav", full, 0.6)) is True
+    assert C._same_recording(_cut(tmp_path / "f.wav", full, 0.3, fade_ms=5, gain=0.3), full) is True
+    # padded with silence by one edition and not the other: still one recording
+    y, sr = sf.read(full)
+    sf.write(tmp_path / "pad.wav", np.concatenate([np.zeros(2000), y, np.zeros(9000)]), sr, subtype="PCM_24")
+    assert C._same_recording(full, str(tmp_path / "pad.wav")) is True
+    # a short hit of another recording is no cut of this one, nor is another take of this note
+    assert C._same_recording(full, _cut(tmp_path / "o.wav", _note(tmp_path / "o2.wav", 220.0, 7), 0.4)) is False
+    assert C._same_recording(full, _note(tmp_path / "t.wav", 220.0, 3, noise=0.05)) is False
+    # nor is a short stretch from the middle of it, which holds little of its sound
+    y, sr = sf.read(full)
+    sf.write(tmp_path / "mid.wav", y[int(0.8 * sr):int(0.9 * sr)], sr, subtype="PCM_16")
+    assert C._same_recording(full, str(tmp_path / "mid.wav")) is False
+
+
+def test_copies_within_prefilter_gate_and_tempo(tmp_path, monkeypatch):
+    """Pairs under CATEGORY_COPY_COS are never read; pairs a loop's tempo sets apart aren't
+    either; the quick look (_gate_signal) passes copies across rates and a shorter cut, and
+    _same_recording decides."""
+    a = _note(tmp_path / "Qzv 1.wav", 130.81, 1, sr=48000, subtype="PCM_24", stereo=(0.3, 0.2))
+    b = _mono_of(a, tmp_path / "Qzv 1 16.wav", sr=44100)                # a mono, 44.1 kHz edition
+    c = _cut(tmp_path / "Qzv 1 c.wav", a, 0.5)                       # a shorter cut
+    d = _note(tmp_path / "Vqx 2.wav", 130.81, 2)                         # another take
+    srcs = [a, b, c, d]
+    V = np.ones((4, 2), dtype="float32") / np.sqrt(2)                    # CLAP: all alike
+    assert C._copies_within(srcs, V) == [(0, 1), (0, 2), (1, 2)]
+    assert C._copies_within(srcs, V, new={2}) == [(0, 2), (1, 2)]        # only pairs with a newcomer
+    assert C._copies_within(srcs, V, apart=lambda i, j: 2 in (i, j)) == [(0, 1)]
+    read = []
+    monkeypatch.setattr(C, "_gate_signal", lambda p: read.append(p))
+    W = np.eye(4, dtype="float32")                                       # CLAP: all apart
+    assert C._copies_within(srcs, W) == [] and not read
+    monkeypatch.setattr(C, "CATEGORY_COPY_COS", 1.0)
+    assert C._copies_within(srcs, V) == [] and not read
+
+
+def test_the_fuller_copy_stays(tmp_path):
+    """Of one recording's copies the longer sound stays (a shorter cut loses), then the deeper
+    bit depth; a Keep beats both, and two Keeps both stay."""
+    full = _note(tmp_path / "Qxvwz 7.wav", 196.0, 1, secs=1.5)
+    short = _cut(tmp_path / "Qxvwz 7 c.wav", full, 0.4)
+    deep = _note(tmp_path / "Qzv 3.wav", 196.0, 2, subtype="PCM_24")
+    shallow = _note(tmp_path / "Qzv 3 16.wav", 196.0, 2, subtype="PCM_16")
+    rec = [dict(id=i + 1, path=p, qual=0.5) for i, p in enumerate([short, full, shallow, deep])]
+    assert C._copy_keepers([0, 1], rec) == {1}
+    assert C._copy_keepers([2, 3], rec) == {3}
+    rec[0]["pin"] = True                                                 # a Keep on the short cut
+    assert C._copy_keepers([0, 1], rec) == {0}
+    rec[1]["pin"] = True
+    assert C._copy_keepers([0, 1], rec) == {0, 1}
+
+
+def test_a_folder_that_loses_a_copy_picks_again(tmp_path):
+    full = _note(tmp_path / "Qxvwz Vq 4.wav", 98.0, 1, secs=1.0)
+    paths = [_cut(tmp_path / "Qxvwz Vq 4 c.wav", full, 0.25), full,
+             _note(tmp_path / "Vqx 1.wav", 98.0, 5), _note(tmp_path / "Vqx 2.wav", 147.0, 6)]
+    rec = [dict(id=10 + i, row=i, path=p, qual=1.0) for i, p in enumerate(paths)]
+    emb_n = np.ones((4, 2), dtype="float32") / np.sqrt(2)
+    clusters = [dict(idxs=[0, 2, 3], _pick=[0, 2]), dict(idxs=[1], _pick=[1])]
+    stats, why, said = {}, {}, []
+    C._drop_copies(clusters, [2, 1], rec, emb_n, {"kind": "oneshot"},
+                   lambda idxs, want: list(idxs)[:want], stats, why, log=said.append)
+    assert clusters[0]["_pick"] == [2, 3] and clusters[0]["idxs"] == [2, 3]   # the cut went; 3 filled in
+    assert clusters[1]["_pick"] == [1]
+    assert stats["copy"] == 1 and why == {"copy": {10: 11}} and "shorter cut" in said[0]
+    from fourier.packs import why_log
+    line = why_log.describe("copy", 11, {"category": "TOMS"}, name_of=lambda i: f"#{i}",
+                            place_of=lambda i: "TOMS/low/Qxvwz Vq 4.wav")
+    assert "shorter cut" in line and "TOMS/low/Qxvwz Vq 4.wav" in line
+
+
+def test_verify_finds_copies_within_a_category(tmp_path):
+    from fourier.packs import verify as Vf
+    a = _note(tmp_path / "Qzv 9.wav", 110.0, 1)
+    b = _cut(tmp_path / "Qzv 9 c.wav", a, 0.5)
+    o = _note(tmp_path / "Vqx 9.wav", 110.0, 4)
+    v = np.ones(2, dtype="float32") / np.sqrt(2)
+    vecs = {a: (1, v), b: (2, v), o: (3, v)}
+    entries = [("TOMS", {"src": a}), ("TOMS", {"src": b}), ("TOMS", {"src": o}),
+               ("PHRASES", {"src": a, "bpm": 120}), ("PHRASES", {"src": b, "bpm": 140})]
+    assert Vf._copies_within(entries, vecs) == [(("TOMS", b), ("TOMS", a))]   # loops at other tempos: apart
+
