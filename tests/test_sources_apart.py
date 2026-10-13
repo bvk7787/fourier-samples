@@ -5,7 +5,6 @@ places and Fourier's own to its own, Fourier's own analysis runs with or without
 picks the same before and after the migration and after Fourier's own analysis."""
 import importlib.util
 import math
-import subprocess
 import sys
 from pathlib import Path
 
@@ -17,6 +16,7 @@ from sqlalchemy import create_engine, text
 
 from fourier.db import migrations as M
 from fourier.db import session as S
+from childproc import run_child
 
 ROOT = Path(__file__).resolve().parents[1]
 V1 = ROOT / "tests" / "data" / "schema_v1"
@@ -273,12 +273,9 @@ def test_why_names_the_source_of_a_picks_tempo(tmp_path):
 # --- the synthetic library: the same picks before and after ---
 
 def _synthetic(tmp_path, *args):
-    r = subprocess.run([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
-                        str(tmp_path / "work"), *args], capture_output=True, text=True, check=False)
-    if r.returncode != 0:  # which interpreter the child ran, and where it looked for packages
-        where = subprocess.run([sys.executable, "-c", "import sys; print(sys.executable, sys.prefix, sys.path)"],
-                               capture_output=True, text=True, check=False).stdout
-        raise AssertionError(f"{r.stdout[-3000:]}{r.stderr[-3000:]}\nchild interpreter: {where}")
+    r = run_child([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
+                   str(tmp_path / "work"), *args])
+    assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
     return r.stdout
 
 

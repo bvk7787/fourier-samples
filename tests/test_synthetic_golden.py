@@ -1,7 +1,6 @@
 """The synthetic library (fourier/synthlib.py) and its golden build (tests/golden/)."""
 import hashlib
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -9,6 +8,7 @@ import pytest
 
 from fourier import synthlib
 from fourier.packs import manifests
+from childproc import run_child
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,8 +41,8 @@ def test_the_library_covers_every_category_and_the_defect_cases(tmp_path):
 @pytest.mark.skipif(not os.environ.get("FOURIER_GOLDEN"), reason="set FOURIER_GOLDEN=1 (CI runs it as its own step)")
 @pytest.mark.slow
 def test_synthetic_build_matches_the_golden(tmp_path):
-    r = subprocess.run([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
-                        str(tmp_path / "work"), "--check"], capture_output=True, text=True, check=False)
+    r = run_child([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
+                   str(tmp_path / "work"), "--check"])
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
 
 
@@ -52,8 +52,8 @@ def test_the_synthetic_library_scaled_builds_every_category(tmp_path):
     11,600 files) scaled to the 280-file library, so every category keeps what it has in one
     or two folders (a folder per tempo range for the loops), kits and slices are made, and
     verify passes against the recorded budgets. The golden above builds with scale = "off"."""
-    r = subprocess.run([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
-                        str(tmp_path / "work"), "--scale"], capture_output=True, text=True, check=False)
+    r = run_child([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
+                   str(tmp_path / "work"), "--scale"])
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
     assert "synthetic --scale: factor 0.00" in r.stdout and "19 of 19 categories" in r.stdout
     man = manifests.read(tmp_path / "work" / "out" / "FourierCurated" / "manifest.json")

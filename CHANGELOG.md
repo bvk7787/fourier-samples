@@ -157,6 +157,10 @@ change the CLI or the config).
   different chords of one pack that CLAP scores as near-identical all stay. Found by a QA
   sweep of a 246,000-sample library (11 such pairs) and an audit (a note kept twice in one
   folder, as 16- and 24-bit editions, at CLAP 0.990).
+- CI only: the test jobs precompile their venv and run without writing bytecode or reading a
+  user site-packages, check that a child of the test Python runs in the venv too, and a test's
+  child Python that can't import an installed package (a flake on macOS runners) is reported
+  with what it saw and run once more.
 
 ## [0.1.2] - 2026-10-07
 

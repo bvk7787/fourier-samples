@@ -21,6 +21,12 @@ jobs:
     if: ${{ !github.event.repository.private }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    # no process writes bytecode into the venv or the checkout while the tests run (the venv is
+    # precompiled below) and no user site-packages leaks in: a child Python on a macOS runner
+    # sometimes saw an incomplete set of installed packages (tests/childproc.py)
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
     # Windows isn't supported yet (paths in fourier.toml, rsync, SQLite file locks): its run
     # is by hand, in windows.yml, until it passes
     strategy:
@@ -56,11 +62,24 @@ jobs:
           uv export --frozen --no-hashes --extra dev --no-emit-project > "$RUNNER_TEMP/requirements.lock.txt"
           python -m pip install -r "$RUNNER_TEMP/requirements.lock.txt"
           python -m pip install -e . --no-deps
-      - name: The venv is the Python every step uses
+      - name: Precompile the venv and the checkout
+        shell: bash
+        # a package may ship a file that doesn't compile (an old example, a template): a warning
+        run: python -m compileall -q -j 0 "$RUNNER_TEMP/venv" src tests || echo "::warning::compileall left some files uncompiled"
+      - name: The venv is the Python every step uses, and its children's
         shell: bash
         run: |
           python -c "import sys; print(sys.executable)"
-          python -c "import sys, click, fourier; assert sys.prefix != sys.base_prefix, sys.prefix"
+          # a child started as the tests start one (subprocess, sys.executable) runs in the venv too
+          python - <<'EOF'
+          import os, subprocess, sys
+          code = ("import os, sys, click, fourier; "
+                  "venv = os.path.realpath(os.path.join(os.environ['RUNNER_TEMP'], 'venv')); "
+                  "assert os.path.realpath(sys.prefix) == venv != os.path.realpath(sys.base_prefix), "
+                  "(sys.prefix, sys.base_prefix, venv); print(sys.executable, sys.prefix)")
+          exec(code)
+          subprocess.run([sys.executable, "-c", code], check=True)
+          EOF
       - name: Lint
         run: ruff check src tests
       - name: Tests
@@ -104,6 +123,10 @@ jobs:
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # the same venv as the test job's
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -124,11 +147,20 @@ jobs:
           uv export --frozen --no-hashes --extra dev --no-emit-project > "$RUNNER_TEMP/requirements.lock.txt"
           python -m pip install -r "$RUNNER_TEMP/requirements.lock.txt"
           python -m pip install -e . --no-deps
-      - name: The venv is the Python every step uses
+      - name: The venv is the Python every step uses, and its children's
         shell: bash
         run: |
           python -c "import sys; print(sys.executable)"
-          python -c "import sys, click, fourier; assert sys.prefix != sys.base_prefix, sys.prefix"
+          # a child started as the tests start one (subprocess, sys.executable) runs in the venv too
+          python - <<'EOF'
+          import os, subprocess, sys
+          code = ("import os, sys, click, fourier; "
+                  "venv = os.path.realpath(os.path.join(os.environ['RUNNER_TEMP'], 'venv')); "
+                  "assert os.path.realpath(sys.prefix) == venv != os.path.realpath(sys.base_prefix), "
+                  "(sys.prefix, sys.base_prefix, venv); print(sys.executable, sys.prefix)")
+          exec(code)
+          subprocess.run([sys.executable, "-c", code], check=True)
+          EOF
       - name: mypy (settings in pyproject.toml)
         run: mypy
 
