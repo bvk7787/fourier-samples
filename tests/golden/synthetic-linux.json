@@ -158,10 +158,7 @@
        "lead"
       ],
       "out": "string-gs4-violin/Violin_Sustain_08.wav",
-      "out_md5": "f8f1c26cf32be54e04757bffea9c2e4e",
-      "retune": 2.99,
-      "root_midi": 69.01,
-      "root_src": "pyin",
+      "out_md5": "b8312df4d9248166ba76691aff7a3f0e",
       "son_cats": [],
       "sononym": [],
       "src": "<lib>/SampleLibrary/Synth Strings D/Violin/Violin Sustain 08.wav",
@@ -6286,7 +6283,7 @@
    }
   },
   "clap_model": "laion/clap-htsat-unfused",
-  "code_hash": "233be7bb838fc3d5",
+  "code_hash": "c2b3d39050503bfb",
   "config_hash": "3ad71cdf97ebb52e",
   "fourier_manifest": 3,
   "fourier_version": "0.1.2",
@@ -6842,6 +6839,6 @@
     ]
    }
   },
-  "tunables_hash": "0118fd9084e49d3e"
+  "tunables_hash": "20248bc13ab9bfe4"
  }
 }

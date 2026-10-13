@@ -2414,6 +2414,14 @@ def _silent_share_of(path, _stamp):
         y, sr = sf.read(path, dtype="float32", always_2d=True)
     except Exception:
         return 0.0
+    return silent_share_audio(y, sr)
+
+
+def silent_share_audio(y, sr):
+    """_silent_share of audio already read (frames x channels; verify's loop check)."""
+    y = np.asarray(y, dtype="float32")
+    if y.ndim == 1:
+        y = y[:, None]
     a = np.abs(y).max(axis=1)
     pk = float(a.max()) if len(a) else 0.0
     if pk <= 0:
@@ -2919,20 +2927,57 @@ def _cap_siblings(idxs, rec, cap=SIBLING_CAP, key=None, spread=None, why=None):
     return sorted(keep)
 
 
-def _one_per_retune_target(groups, rec, why=None):
+def _number_root(r):
+    """The root a numbered set's numbers are checked against (identity.number_sets): the root
+    the build retunes from (Sononym's when sure, a chunk's), else pYIN's (Fourier's own
+    analysis), so a set Sononym reads with little confidence at the bottom or top of its
+    range is still one set. verify.check_pitch reads the same."""
+    return r.get("tune") if r.get("tune") is not None else r.get("own_root")
+
+
+def _folder_number_roots(session, paths):
+    """{path: root as _number_root reads it} of every file in the source folders of these
+    numbered files (identity.number_sets): a numbered set is read on its whole folder, not
+    only a category's candidates, so it's the same set whichever category's candidates hold
+    its notes, and the set verify reads. {} without a session."""
+    from sqlalchemy import or_
+    folders = sorted({os.path.dirname(p) for p in paths if p and _id._number_key(p) is not None})
+    if session is None or not folders:
+        return {}
+    fb, want, out = _fallback(session), set(folders), {}
+    q0 = sample_select("path", "base_note", "base_note_confidence", "root_note", "own_root_midi", session=session)
+    for i in range(0, len(folders), 200):
+        q = q0.where(or_(*[_under_folder(f)
+                           for f in folders[i:i + 200]]))
+        for r in fetch(session, q):
+            if os.path.dirname(r.path or "") in want:
+                out[r.path] = _number_root({"tune": _resolve.root(r, fb).value,
+                                            "own_root": getattr(r, "own_root_midi", None)})
+    return out
+
+
+def _number_items(pairs, roots=None):
+    """number_sets' items: these (path, root) pairs over their folders' other files' roots
+    (_folder_number_roots)."""
+    got = dict(roots or {})
+    got.update(pairs)
+    return list(got.items())
+
+
+def _one_per_retune_target(groups, rec, why=None, roots=None):
     """Notes of one multisample set (identity.set_key) that export retunes onto the same C
     (F#2, A#2, C3, D#3 and E3 all play C3) are one sound: across a category's folders keep
     one note per set and C: a Keep's (Keeps always stay), else the one with the smallest
     shift, then the previous build's pick, then the set's pitch order. The kept note's other
     layers stay for _cap_siblings to choose from, as before. Only notes the names state count
     (a measured root counts when the name states a note the root parser doesn't read,
-    "Pad_f#34b00ff"), or bare numbers that track the measured pitch (identity.number_sets:
-    "Lead 059" / "061"; "Saw Lead 02" and "Saw Lead 05" may be two patches); files not
-    retuned are untouched. RETUNE_CATS only. Returns (groups, how many left out). `why`, a
+    "Pad_f#34b00ff"), or bare numbers that track the measured pitch (identity.number_sets on
+    every candidate's root, _number_root: "Lead 059" / "061"; "Saw Lead 02" and "Saw Lead
+    05" may be two patches); files not retuned are untouched. RETUNE_CATS only. Returns (groups, how many left out). `why`, a
     dict, gets each note left out: {sample id: [the kept note's name, the C both play]}
-    (one_note_per_c)."""
-    numbered = _id.number_sets([(rec[i]["path"], rec[i].get("tune")) for g in groups for i in g
-                                if rec[i].get("retune") is not None])
+    (one_note_per_c). `roots`: the candidates' folders' other roots (_folder_number_roots)."""
+    numbered = _id.number_sets(_number_items([(rec[i]["path"], _number_root(rec[i])) for g in groups for i in g],
+                                             roots))
     by = defaultdict(list)
     for g in groups:
         for i in g:
@@ -3704,9 +3749,17 @@ def _rating_reach(misfiled=None, drops=None, scopes=None):
     return _REACH[key]
 
 
+def _under_folder(folder):
+    """A file directly or deeper under this folder (a LIKE with its own wildcards escaped; "!"
+    escapes, as DuckDB takes no backslash escape)."""
+    pat = folder.replace("!", "!!").replace("%", "!%").replace("_", "!_")
+    return Sample.path.like(pat + "/%", escape="!")
+
+
 def _rated_facts(rated):
     """({source: (file hash, seconds)} of these rated sources, {path: set key} of every file in
-    their folders, identity.set_keys on the roots the build retunes from), from the database."""
+    their folders, identity.set_keys on the roots the build reads for them: _number_root), from
+    the database."""
     from sqlalchemy import or_
     from ..db.session import session_scope
     facts, rows = {}, []
@@ -3717,13 +3770,14 @@ def _rated_facts(rated):
             for r in s.execute(select(Sample.path, Sample.file_hash, Sample.duration_s)
                                .where(Sample.path.in_(rated[i:i + 900]))):
                 facts[r[0]] = (r[1], r[2])
-        q0 = sample_select("path", "base_note", "base_note_confidence", "root_note", session=s)
+        q0 = sample_select("path", "base_note", "base_note_confidence", "root_note", "own_root_midi", session=s)
         for i in range(0, len(folders), 200):
-            q = q0.where(or_(*[Sample.path.like(f.replace("%", "\\%").replace("_", "\\_") + "/%", escape="\\")
+            q = q0.where(or_(*[_under_folder(f)
                                for f in folders[i:i + 200]]))
             rows += [r for r in fetch(s, q) if os.path.dirname(r.path or "") in set(folders)]
-    members = {p: k for p, k in _id.set_keys((r.path, _resolve.root(r, fb).value) for r in rows).items()
-               if k is not None}
+    members = {p: k for p, k in _id.set_keys(
+        (r.path, _number_root({"tune": _resolve.root(r, fb).value, "own_root": getattr(r, "own_root_midi", None)}))
+        for r in rows).items() if k is not None}
     return facts, members
 
 
@@ -5944,16 +5998,20 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
 
     dims = naming_dims(category, cfg)
     clusters = []
+    # a numbered set's other files in its folder (identity.number_sets reads the whole folder)
+    _nroots = _folder_number_roots(session, [r["path"] for r in rec]) \
+        if category in RETUNE_CATS or category in SIBLING_SETS_ONLY else {}
     groups, _n_rr = _one_per_round_robin(groups, rec)
     if _n_rr:
         log(f"{category}: {_n_rr} round robins of a note and velocity already here left out")
     if category in SIBLING_CAP_CATS and category in RETUNE_CATS:
-        groups, _n_rt = _one_per_retune_target(groups, rec, why=_why.setdefault("one_note_per_c", {}))
+        groups, _n_rt = _one_per_retune_target(groups, rec, why=_why.setdefault("one_note_per_c", {}),
+                                               roots=_nroots)
         if _n_rt:
             log(f"{category}: {_n_rt} notes of multisample sets left out (retuned onto a C the set already plays)")
     _scap = sibling_cap(category)
     # the set cap's groups (identity.cap_key: true sets only in the drum categories)
-    _numbered = _id.number_sets([(r["path"], r.get("tune")) for r in rec]) \
+    _numbered = _id.number_sets(_number_items([(r["path"], _number_root(r)) for r in rec], _nroots)) \
         if category in SIBLING_SETS_ONLY else {}
     _ckey = lambda p: _id.cap_key(p, category, _numbered)  # noqa: E731
     _spread = SET_SPREAD_RANGE if category in RETUNE_CATS else None     # a pitched sample's register
@@ -6277,7 +6335,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         _nd = _check_detected_roots([i for c in clusters for i in c["_pick"]], rec)
         if _nd:
             log(f"{category}: {_nd} file(s) with a detected root no steady pYIN pitch confirms keep their pitch")
-        _nf = _fill_roots(category, [i for c in clusters for i in c["_pick"]], rec)
+        _nf = _fill_roots(category, [i for c in clusters for i in c["_pick"]], rec, roots=_nroots)
         if _nf:
             log(f"{category}: {_nf} file(s) with no named or Sononym root retuned by their pYIN pitch")
     manifest, file_entries, total, conv, failed, n_quiet = [], [], 0, 0, 0, 0
@@ -6765,20 +6823,39 @@ def _pitch_cache_dir():
                 or os.path.join(os.path.dirname(default_store()), "cache", "pitch"))
 
 
-def _detect_pitch(path):
-    """MIDI pitch (float) of a tonal one-shot's steady part by pYIN, or None when it isn't
-    clearly pitched (PITCH_VOICED_MIN of the frames voiced, spread under PITCH_SPREAD_MAX
-    semitones). Cached by path, size and mtime under ~/.fourier/cache/pitch."""
+def _pitch_cache_file(path):
+    """Where _detect_pitch keeps a source's reading (by path, size and mtime), or None when
+    the file isn't there."""
     import hashlib
-    import json as _json
-    import soundfile as sf
-    from .curate_config import PITCH_SPREAD_MAX, PITCH_VOICED_MIN
     try:
         st = os.stat(path)
     except OSError:
         return None
     key = hashlib.md5(f"{path}|{st.st_size}|{st.st_mtime_ns}|pyin1".encode()).hexdigest()
-    cf = _pitch_cache_dir() / key[:2] / f"{key}.json"
+    return _pitch_cache_dir() / key[:2] / f"{key}.json"
+
+
+def cached_pitch(path):
+    """The pYIN pitch _detect_pitch read for a source, from its cache only (never the audio):
+    None when it read no clear pitch or never ran on it (verify's pitch check)."""
+    import json as _json
+    cf = _pitch_cache_file(path)
+    try:
+        return None if cf is None else _json.loads(cf.read_text())["midi"]
+    except Exception:
+        return None
+
+
+def _detect_pitch(path):
+    """MIDI pitch (float) of a tonal one-shot's steady part by pYIN, or None when it isn't
+    clearly pitched (PITCH_VOICED_MIN of the frames voiced, spread under PITCH_SPREAD_MAX
+    semitones). Cached by path, size and mtime under ~/.fourier/cache/pitch."""
+    import json as _json
+    import soundfile as sf
+    from .curate_config import PITCH_SPREAD_MAX, PITCH_VOICED_MIN
+    cf = _pitch_cache_file(path)
+    if cf is None:
+        return None
     try:
         return _json.loads(cf.read_text())["midi"]
     except Exception:
@@ -6924,15 +7001,21 @@ def _check_detected_roots(idxs, rec):
     return n
 
 
-def _fill_roots(category, idxs, rec):
+def _fill_roots(category, idxs, rec, roots=None):
     """A picked tonal one-shot with no root yet (no note in its name, nothing Sononym was
     sure of) is retuned by a clear pYIN pitch, within the category's cap, smallest shift
     first; never onto a C another note of its set already plays here (names that state
-    their notes, as _one_per_retune_target: that note keeps its pitch). Returns how many."""
+    their notes, or bare numbers that track the picks' roots, as _one_per_retune_target: that
+    note keeps its pitch). Returns how many."""
     if os.environ.get("FOURIER_NO_PITCH_CHECK") or category not in RETUNE_CATS:
         return 0
-    taken = {(_id.set_key(rec[i]["path"]), int(round(p / 12))) for i in idxs
-             if rec[i].get("retune") is not None and rec[i].get("path") and _states_note(rec[i]["path"])
+    numbered = _id.number_sets(_number_items([(rec[i]["path"], _number_root(rec[i])) for i in idxs
+                                              if rec[i].get("path")], roots))
+
+    def _set(path):
+        return _id.set_key(path) if _states_note(path) else numbered.get(path)
+    taken = {(_set(rec[i]["path"]), int(round(p / 12))) for i in idxs
+             if rec[i].get("retune") is not None and rec[i].get("path") and _set(rec[i]["path"]) is not None
              and (p := _played_note(rec[i])) is not None}
     cand = []
     for i in idxs:
@@ -6951,7 +7034,7 @@ def _fill_roots(category, idxs, rec):
             cand.append((abs(rt), r["path"], i, rt, midi))
     n = 0
     for _a, path, i, rt, midi in sorted(cand):
-        c = (_id.set_key(path), int(round((midi + rt) / 12))) if _states_note(path) else (None, 0)
+        c = (_set(path), int(round((midi + rt) / 12)))
         if c[0] is not None:
             if c in taken:
                 continue                # its set plays this C already: this note keeps its pitch
