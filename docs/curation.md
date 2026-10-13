@@ -430,7 +430,7 @@ Per category:
 5. **Shape folders**: folder caps, sibling cap, small-folder merges, splits (3.3).
 6. **Allocate** the budget and pick files by medoid (3.4).
 7. **Gather sets**, **name** folders (section 5), apply sticky names.
-8. **Export** through the DSP chain (section 6), then rotate drum loops, level melodic folders.
+8. **Export** through the DSP chain (section 6), then rotate drum loops and late phrases, level melodic folders.
 
 Deterministic on one machine: seeded PCA and KMeans under `threadpool_limits(1)`, rows sorted by
 (WAV first, id). `--jobs N` builds categories in a process pool with homes computed once; each
@@ -542,8 +542,9 @@ String Snares" Live tags Pad).
     folders, a "Demo <name>" folder, and Live's own renders and recordings under a set's
     `Samples/Processed/Crop|Consolidate|Reverse|Freeze` and `Samples/Recorded`) out of non-instrument categories; `PACK_HOME`; waves (and byte-identical copies of them) only in WAVES.
 12. SUB/SYNTH/PADS/STABS/VOX: a file over 4 s from a loop folder is out.
-13. `DUR_CAP`; `BPM_NAME_GUARD` (a tempo in the name, or tempo-then-key like "120_Amin", keeps a
-    file out of every one-shot category but FX); STABS stab-named only; drum categories drop
+13. `DUR_CAP`; `BPM_NAME_GUARD` (a tempo in the name: "120bpm", tempo-then-key like
+    "120_Amin", key-then-tempo like "Pad_Fm_126" with a capital key letter so an "FM 77" synth or a "DM_88" prefix isn't
+    one, or a leading "110 - Title", keeps a file out of every one-shot category but FX); STABS stab-named only; drum categories drop
     files drum- or scratch-named for another category, and ACOUSTIC and PIANO a one-shot named
     as a drum a classifier agrees with (rule 8).
 14. Instrument kinds: single-note guard (`max_onsets`), chord / chroma test, `dur_max`,
@@ -857,17 +858,24 @@ Only categories with special rules are listed.
 
 `_resolve_tempo` takes the first that applies:
 
-1. An explicit "92bpm" in the filename, as written, when the loop is then a whole number of
-   beats (a 2-beat fill or a 3/4 loop still is) within 10 ms over its whole length
+1. An explicit "92bpm" (or "120.0": a take number is never written with decimals) in the
+   filename, as written, when the loop is then a whole number of beats, whatever the bar count
+   (a 2-beat fill, a 3/4 loop or a 5-bar phrase still is) within 10 ms over its whole length
    (`NAME_TEMPO_TOL_MS`, the slice grid's own 10 ms) and 0.15 beat (`_name_tempo_fits`).
    Silence isn't length: the loop is measured from its first sound (a lead-in 60 dB under its
    peak, `LOOP_QUIET_DB`), and a pad of digital silence at its end (under -90 dBFS,
    `LOOP_PAD_DBFS`) may hold the bar line, unless the whole file is exactly whole bars at the
    analyzers' tempo (then that silence is a rest). A quiet decay isn't a pad, so a break cut
    1% long still goes to (3). A cloud drive's placeholder isn't read for this.
-2. A bare number 60-200 in the name when the loop is then 1, 2, 4, 6, 8, 12, 16 or 32 bars
-   within the same tolerance. Every number is tried ("X-78 Beat 120": a model number can come
-   first).
+2. A tempo a folder above it states with "BPM" ("126_BPM", "Loops (126BPM)", "BPM 96"; the
+   nearest first, never a range like "70 - 95 bpm"), as (1); source `folder`.
+   Then a bare number 60-200 in the name when the loop is then 1, 2, 4, 6, 8, 12, 16 or 32
+   bars within the same tolerance, or another whole number of beats (lead-in aside, never a
+   padded end) when Sononym's or librosa's tempo, or its double or half, is within 3% of it: a
+   take number fits whole beats by chance far more often than whole bars ("Groove_075", 5 beats
+   at 75 of a 2-bar loop both analyzers hear at 120, stays 120). Every number is tried ("X-78
+   Beat 120": a model number can come first). `fourier why --detail` says when the bar count
+   is odd ("126 BPM (from its name; 20 beats, 5 bars)").
 3. An explicit tempo the length misses, snapped to the tempo at which the loop is one of those
    bar counts when that is within 3% of it (`_named_snap`; source still `name`): a "96bpm"
    break cut 1% long plays at 95.07, and is filed there.
@@ -885,7 +893,7 @@ When none of those gives one (`_fallback_tempos`), in order:
 - "bpm120" in the name, as written when the length agrees (as in 1);
 - the WAV's ACID chunk: its tempo, else its beats over the length;
 - a number glued to a word ("Groove96", "T116"; within the tolerance of 2) and a folder named
-  only by a number ("Loops/174/"), both at whole bars;
+  only by a number ("Loops/174/", at whole bars or whole beats within 10 ms);
 - last, the tempo the loop's length implies at 1, 2, 4, 8 or 16 bars when the analysis's tempo
   (or its half or double) is within 3% of it (`_length_tempo`, `DERIVED_BAR_COUNTS`,
   `TEMPO_DERIVE_TOL`; `bpm_src` "length", which `fourier why` shows as "tempo from length (8
@@ -925,7 +933,7 @@ Tempos fold into the top octave of the `tempo` range (`TEMPO_FOLD`: [90, 180) fo
 
 | Topic | Rule |
 |---|---|
-| Phrase | `_is_phrase`: producer-marked (a tempo in the name per `BPM_NAME_RE`, or a Sononym/Ableton loop in a loop folder like "Bass Loops" or "Loops (120BPM)" not narrowed by a one-shot folder like "Chords"), 1-20 s, a whole-bar tempo, and musical: no drum or vocal Ableton tag, not FX alone, not a Sononym drum/FX/voice label without an Ableton instrument, no drum / FX / vocal / chain word in its name, folder or a loop folder above (`PHRASE_NOT_RE`; genre names like "Drum & Bass" removed first), and without Sononym not a loop the built-in providers call a drum loop (2.2). Not an IR, preview, demo, wave folder or `PACK_HOME` pack. |
+| Phrase | `_is_phrase`: producer-marked (a tempo in the name per `BPM_NAME_RE`, or a Sononym/Ableton loop in a loop folder like "Bass Loops" or "Loops (126BPM)" not narrowed by a one-shot folder like "Chords"), 1-20 s, a whole-bar tempo, and musical: no drum or vocal Ableton tag, not FX alone, not a Sononym drum/FX/voice label without an Ableton instrument, no drum / FX / vocal / chain word in its name, folder or a loop folder above (`PHRASE_NOT_RE`; genre names like "Drum & Bass" removed first), and without Sononym not a loop the built-in providers call a drum loop (2.2). Not an IR, preview, demo, wave folder or `PACK_HOME` pack. |
 | Gate | CLAP contrastive only (closer to the role phrases than to `BREAK_PHRASES`, `break_min` 0); chain and loop guards off; a phrase that is mostly silence is left out as a drum loop is (DRUMLOOPS, Silence) |
 | Roles | `_phrase_role` (filename, folder, Ableton tag, Sononym label): `acid` (303, acid, TB-3, and a library overlay's names for the machine, `MACHINE_ALIASES`; `PHRASE_ACID_RE`, checked first), `bass` (bass, sub, reese, wobble), `live` (acoustic instrument words), `chords` (chords, keys, piano, organ, pads, progressions, stabs, M1), else `lead`. Shares (`PHRASE_ROLE_SHARE`): acid 10%, bass 15%, chords 30%, lead 25%, live 20%. |
 | Tempo bands | 60-90, 90-120, 120-140, 140-201 (`PHRASE_TEMPO_BANDS`), after folding into [90, 180) with the DRUMLOOPS filename-tempo rule (no `NO_FOLD_RE` exception) |
@@ -1098,7 +1106,7 @@ Then:
 | Fallback | a file whose processing throws is copied verbatim and marked `dsp_fallback` (fails verify) |
 | Phase | a stereo file (not WAVES) whose L/R correlation is under -0.8, or that loses more than 10 dB summed to mono, keeps its louder channel, a one-shot's brought back to the file's peak (a loop's already meets its RMS target) (`_fix_phase`, `PHASE_FIX_CORR`, `PHASE_FIX_LOSS_DB`; entries record `phase_fix`): a clap that vanishes in mono isn't a width choice. Drums and drum loops (`PHASE_FIX_DRUM_CATS`) are held to -0.3 or 4.5 dB (`PHASE_FIX_DRUM_CORR`, `PHASE_FIX_DRUM_LOSS_DB`): a hat that thins out in mono isn't either. Elsewhere -0.8 to -0.3 warns in verify (check by ear); wider is left to the mix |
 | Leveling | per folder, `LEVEL_CATS` (SUB, SYNTH, STABS, PADS, VOX, PIANO, ACOUSTIC), 3+ files: loudness is the loudest 75 ms RMS window (`LEVEL_WINDOW_MS`) of the level-keeping mono downmix kits use too (`curate._level_mono`: a wide stereo file reads about its channels' level, which the plain L+R average read up to 3 dB quiet, and verify measures it the same way); a file more than 3 dB (`LEVEL_TOL_DB`) from the folder median moves to that edge, down freely, up by at most 6 dB (`LEVEL_MAX_UP_DB`) and only to the -1 dBFS peak and the category RMS ceiling; entries record `level_db`. Drum folders (`DRUM_LEVEL_CATS`) only come down: a hit more than 3 dB over its folder's median goes to median + 3 (`DRUM_LEVEL_OVER_DB`) |
-| Rotation | DRUMLOOPS, at the folder tempo; see [Rotation](#rotation) |
+| Rotation | DRUMLOOPS at the folder tempo, and a phrase's silent late start; see [Rotation](#rotation) |
 | Audio cache | `audiocache.py`, `~/.fourier/cache/audio`; see [Audio cache](#audio-cache) |
 
 ### Retune
@@ -1167,7 +1175,15 @@ Then:
   past the 16th cap.
 - **Late start**: rotated to 1 ms before the downbeat's attack (walking back from the hit to
   where its envelope falls under 10% of its peak, so room tone ahead of it doesn't count) and
-  never past it, so the front of the downbeat can't end up at the loop's end.
+  never past it, so the front of the downbeat can't end up at the loop's end. An onset before
+  the first sound (1 ms level 60 dB under the peak, `LOOP_QUIET_DB`) isn't a hit: digital
+  silence turning into a faint floor ahead of a soft downbeat is the steepest rise the onset
+  detector sees, so the first sound stands for the downbeat instead.
+- **Phrases** (PHRASES, and any other loop category): only a silent late start moves. Silence
+  is the lead-in the tempo rule sets aside (every channel's 1 ms level 60 dB under the peak,
+  `LOOP_QUIET_DB`); 12-45 ms of it (after the 1 ms kept ahead) is under a 16th at 60-200 BPM,
+  so a late cut, and it is rotated (or cut, as below) to its first sound. A pickup, a swell or
+  a swung start that sounds is the phrase's own lead-in and stays.
 - **Cut, not rotated**: a late start the loop is whole beats without but not with (within
   10 ms, `NAME_TEMPO_TOL_MS`: 8 beats and 18 ms of silence ahead) has that lead-in cut, so the
   loop is whole beats from its downbeat (rotated, it would stay 18 ms long each time round);

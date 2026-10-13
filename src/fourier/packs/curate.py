@@ -2270,6 +2270,8 @@ BAR_COUNTS = _tunable("BAR_COUNTS", (1, 2, 4, 8, 16))
 BAR_TOL_BEATS = _tunable("BAR_TOL_BEATS", 0.15)            # a loop "fits" a tempo if it lands within this of whole bars
 _BPM_WORD = re.compile(r"(\d{2,3}(?:\.\d+)?)\s*bpm", re.I)
 _BPM_TOKEN = re.compile(r"(?:^|[_\s(\-])(\d{2,3})(?=[_\s)\-]|$)")
+# a tempo written with decimals ("Lead 126.0 F"): a take number never is, so it is explicit
+_BPM_DECIMAL = re.compile(r"(?:^|[_\s(\-])(\d{2,3}\.\d{1,2})(?=[_\s)\-]|$)")
 
 
 def _filename_bpms(filename):
@@ -2286,11 +2288,11 @@ def _filename_bpms(filename):
 
 
 def _filename_tempos(filename):
-    """[(tempo, explicit)] stated in the filename, 60-200: explicit '75bpm' forms first,
-    then bare numbers ('_100_', '(100)'), which may be take numbers ("Loop 072")."""
+    """[(tempo, explicit)] stated in the filename, 60-200: explicit '75bpm' and '120.0' forms
+    first, then bare numbers ('_100_', '(100)'), which may be take numbers ("Loop 072")."""
     stem = os.path.splitext(os.path.basename(filename or ""))[0]
     out, seen = [], set()
-    for explicit, gs in ((True, [m.group(1) for m in _BPM_WORD.finditer(stem)]),
+    for explicit, gs in ((True, [m.group(1) for m in _BPM_WORD.finditer(stem)] + _BPM_DECIMAL.findall(stem)),
                          (False, _BPM_TOKEN.findall(stem))):
         for g in gs:
             v = float(g)
@@ -2304,8 +2306,8 @@ NAMED_BAR_COUNTS = _tunable("NAMED_BAR_COUNTS", (1, 2, 4, 6, 8, 12, 16, 32))
 
 
 def _whole_bars(dur, bpm):
-    """True if a loop is NAMED_BAR_COUNTS bars at bpm: a bare number in a name counts
-    with 6 or 12 bars too ("LOOP_120_6x4"), not 3 or 5 (a take number fits those by chance)."""
+    """True if a loop is NAMED_BAR_COUNTS bars at bpm within BAR_TOL_BEATS: a number-only
+    folder's tempo (other bar counts need whole beats within NAME_TEMPO_TOL_MS)."""
     if not dur or not bpm:
         return False
     beats = dur * bpm / 60.0
@@ -2458,21 +2460,26 @@ def _sounding_span(dur, path, pad=True):
     return max(0.0, hi - (tail if pad else 0.0)), hi
 
 
-def _name_tempo_fits(dur, bpm, explicit, path=None, pad=True):
-    """True if the loop's length agrees with a tempo its name states: whole beats within
-    NAME_TEMPO_TOL_MS (and BAR_TOL_BEATS), and for a bare number ("_120_", maybe a take
-    number) whole bars too. With the file's path its silence aside (_sounding_span: a loop
-    cut 50 ms before its downbeat, or padded with zeros, is still the name's tempo)."""
+def _name_tempo_fits(dur, bpm, explicit, path=None, pad=True, heard=()):
+    """True if the loop's length agrees with a tempo its name (or folder) states: whole beats
+    within NAME_TEMPO_TOL_MS (and BAR_TOL_BEATS), whatever the bar count (5 bars at a
+    "126bpm" is 126; `fourier why --detail` says when the bars are odd). With the file's path
+    its silence aside (_sounding_span: a loop cut 50 ms before its downbeat, or padded with
+    zeros, is still the name's tempo). A bare number ("_120_", maybe a take number) needs
+    whole NAMED_BAR_COUNTS bars, or another whole number of beats when an analyzer's tempo in
+    `heard` (or its double or half) is within TEMPO_DERIVE_TOL of it: a take number fits
+    whole beats by chance far more often than whole bars ("Groove_075" is 5 beats at 75
+    of a 2-bar loop at 120), and a padded end's span of lengths more often still."""
     if not dur or not bpm:
         return False
-    lo, hi = _sounding_span(dur, None)
-    if _beats_in(lo, hi, bpm, BAR_TOL_BEATS, NAME_TEMPO_TOL_MS, bars=not explicit):
+    lo, hi = _sounding_span(dur, path, pad) if path else (dur, dur)
+    spans = [(dur, dur)] + ([(lo, hi)] if (lo, hi) != (dur, dur) else [])
+    if any(_beats_in(a, b, bpm, BAR_TOL_BEATS, NAME_TEMPO_TOL_MS, bars=not explicit) for a, b in spans):
         return True
-    if not path:
+    if explicit or not any(v and abs(v * m - bpm) <= TEMPO_DERIVE_TOL * bpm
+                           for v in heard for m in (1, 2, 0.5)):
         return False
-    lo, hi = _sounding_span(dur, path, pad)
-    return (lo, hi) != (dur, dur) and _beats_in(lo, hi, bpm, BAR_TOL_BEATS, NAME_TEMPO_TOL_MS,
-                                                bars=not explicit)
+    return any(_beats_in(x, x, bpm, BAR_TOL_BEATS, NAME_TEMPO_TOL_MS) for x in (dur, hi))
 
 
 
@@ -2496,8 +2503,9 @@ def _bar_fit(dur, bpm):
 
 def _resolve_tempo(filename, dur, sononym_bpm, librosa_bpm, extra=None, path=None):
     """(bpm, source) for a loop, or (None, None). The filename is the producer's intent
-    and wins as written when the loop's length agrees (_name_tempo_fits): an explicit
-    '92bpm' at whole beats, a bare number at whole bars, each within NAME_TEMPO_TOL_MS.
+    and wins as written when the loop's length agrees (_name_tempo_fits: whole beats within
+    NAME_TEMPO_TOL_MS, whatever the bar count): an explicit '92bpm' or '120.0', then a
+    folder's "126_BPM" (_folder_tempos), then a bare number ('_126_').
     Else an explicit one snapped to the length when it is then whole bars within
     TEMPO_DERIVE_TOL (_named_snap: a "96bpm" break cut 1% long is 95.07). Otherwise Sononym,
     then librosa, each also tried at x2 / x0.5 (octave errors), accepted only when the loop
@@ -2505,7 +2513,7 @@ def _resolve_tempo(filename, dur, sononym_bpm, librosa_bpm, extra=None, path=Non
     may be a take number, so the analyzers come first). `extra` (without Sononym only:
     _fallback_tempos): [(bpm, source, explicit)] tried when all of that finds nothing, an
     explicit one as stated (a name's only when the length agrees, as above), the others
-    when the loop is then whole bars; but the tempo the WAV's ACID chunk states comes before
+    when the loop is then whole bars (or whole beats within NAME_TEMPO_TOL_MS); but the tempo the WAV's ACID chunk states comes before
     librosa's estimate (a stated tempo beats an estimate), after the name's and the path's.
     `path`: the file, whose silent lead-in and padded end a name's tempo may discount
     (_name_tempo_fits; the end only when the whole file isn't exactly whole bars at the
@@ -2524,7 +2532,8 @@ def _resolve_tempo(filename, dur, sononym_bpm, librosa_bpm, extra=None, path=Non
     got = _resolve_tempo_chain(filename, dur, sononym_bpm, librosa_bpm, path, pad)
     if got[0] is None and extra:
         for bpm, src, explicit in extra:
-            if explicit or (_name_tempo_fits(dur, bpm, False, path, pad) if src == "name" else _whole_bars(dur, bpm)):
+            if explicit or (_name_tempo_fits(dur, bpm, False, path, pad, (sononym_bpm, librosa_bpm)) if src == "name"
+                            else _whole_bars(dur, bpm) or _whole_beats(dur, bpm, NAME_TEMPO_TOL_MS)):
                 return bpm, src
     return got
 
@@ -2539,9 +2548,9 @@ _FOLDER_BPM = re.compile(r"^\s*(\d{2,3})\s*$")
 def _fallback_tempos(r) -> list:
     """[(bpm, source, explicit)] a loop's own metadata states beyond what _resolve_tempo
     reads (without Sononym only; tried when the usual chain finds nothing): the name's
-    "bpm120" (explicit) and "Groove96" / "T116" (whole bars), the WAV's ACID chunk (its tempo
+    "bpm120" (explicit) and "Groove96" / "T116" (whole beats), the WAV's ACID chunk (its tempo
     as stated, else beats over the length), and a folder named only by a number ("Loops/174/",
-    whole bars). Each 60-200 BPM."""
+    whole bars or whole beats within NAME_TEMPO_TOL_MS). Each 60-200 BPM."""
     out = []
     fn = getattr(r, "filename", None) or os.path.basename(getattr(r, "path", None) or "")
     stem = os.path.splitext(os.path.basename(fn))[0]
@@ -2598,13 +2607,37 @@ def _length_tempo(dur, measured):
     return best[1] if best else None
 
 
+# a folder that states a tempo with "BPM" ("126_BPM", "Loops (126BPM)", "BPM 96"), and isn't
+# a range ("70 - 95 bpm", "120-130 BPM"), states each loop's in it: explicit, as a name's
+_FOLDER_BPM_WORD = re.compile(r"(?<![\d.])(\d{2,3}(?:\.\d+)?)\s*[_-]?\s*bpm(?![a-z])"
+                              r"|(?<![a-z])bpm\s*[_-]?\s*(\d{2,3}(?:\.\d+)?)(?![\d.])", re.I)
+_FOLDER_RANGE = re.compile(r"\d{2,3}\s*(?:-|\u2013|to|~)\s*\d{2,3}", re.I)
+
+
+def _folder_tempos(path) -> list:
+    """Tempos the folders above a file state with "BPM" (_FOLDER_BPM_WORD), nearest first."""
+    out: list = []
+    rel = library_rel(path or "") if path else ""
+    for seg in reversed([x for x in rel.split("/")[:-1] if x]):
+        if _FOLDER_RANGE.search(seg):
+            continue
+        for m in _FOLDER_BPM_WORD.finditer(seg):
+            v = float(m.group(1) or m.group(2))
+            if TEMPO_MIN <= v <= TEMPO_MAX and v not in out:
+                out.append(v)
+    return out
+
+
 def _resolve_tempo_chain(filename, dur, sononym_bpm, librosa_bpm, path=None, pad=True):
     named = _filename_tempos(filename)
     for nb, explicit in named:
         if explicit and _name_tempo_fits(dur, nb, True, path, pad):
             return nb, "name"
+    for fb in _folder_tempos(path):
+        if _name_tempo_fits(dur, fb, True, path, pad):
+            return fb, "folder"
     for nb, explicit in named:
-        if not explicit and _name_tempo_fits(dur, nb, False, path, pad):
+        if not explicit and _name_tempo_fits(dur, nb, False, path, pad, (sononym_bpm, librosa_bpm)):
             return nb, "name"
     for nb, explicit in named:
         got = _named_snap(dur, nb) if explicit else None
@@ -4839,6 +4872,17 @@ def _grid_offset(y, sr, bpm, head_only=False):
         return 0.0
     m = y if y.ndim == 1 else y.mean(axis=1)
     on = _onsets(m, sr)
+    # an "onset" before the first sound (its 1 ms level over LOOP_QUIET_DB from the peak)
+    # isn't a hit: digital silence turning into a faint floor ahead of a soft downbeat is the
+    # steepest rise in the detector's window, so it stands in for that downbeat and the loop
+    # reads as starting on time. The first sound is the downbeat's onset instead.
+    w = max(1, int(sr * 0.001))
+    env = np.sqrt(np.convolve(m * m, np.ones(w) / w, "same"))
+    pk = float(env.max()) if len(env) else 0.0
+    snd = np.nonzero(env > pk * 10 ** (LOOP_QUIET_DB / 20.0))[0] if pk > 0 else []
+    if len(snd) and len(on) and on[0] < snd[0] / sr - 0.001:
+        t = snd[0] / sr
+        on = np.concatenate(([t], on[on > t + 0.005]))
     six = 60.0 / bpm / 4
     if len(on) < 6:
         return 0.0
@@ -4875,6 +4919,23 @@ def _grid_offset(y, sr, bpm, head_only=False):
         if off < ROTATE_MIN_MS / 1000:
             return 0.0
     return off
+
+
+def _silent_lead(y, sr):
+    """Seconds of silence before a loop's first sound (its 1 ms level, loudest channel, over
+    LOOP_QUIET_DB from the peak: the lead-in the tempo rule sets aside), less
+    ROTATE_PREROLL_MS, when that is ROTATE_MIN_MS-ROTATE_MAX_MS; else 0.0. At 60-200 BPM that
+    is under a 16th, so not a pickup or an offbeat start: a late cut."""
+    from .curate_config import ROTATE_MAX_MS, ROTATE_MIN_MS, ROTATE_PREROLL_MS
+    a = np.square(y) if y.ndim == 1 else np.square(y).max(axis=1)
+    w = max(1, int(sr * 0.001))
+    env = np.sqrt(np.convolve(a, np.ones(w) / w, "same"))
+    pk = float(env.max()) if len(env) else 0.0
+    snd = np.nonzero(env > pk * 10 ** (LOOP_QUIET_DB / 20.0))[0] if pk > 0 else []
+    if not len(snd):
+        return 0.0
+    lead = snd[0] / sr - ROTATE_PREROLL_MS / 1000
+    return float(lead) if ROTATE_MIN_MS / 1000 <= lead <= ROTATE_MAX_MS / 1000 else 0.0
 
 
 def _quiet_head(m, sr, a):
@@ -4925,27 +4986,30 @@ def _gridded(path, bpm, m0):
     return _beats_in(lo, hi, bpm, SLICE_BAR_ERR)
 
 
-def _rotate_and_slice(path, bpm, src):
+def _rotate_and_slice(path, bpm, src, phrase=False):
     """Rotate an off-grid drum loop onto its grid (_grid_offset; not loops more than
     SLICE_BAR_ERR beats off whole beats, and of fills, rolls and swung loops only a quiet
     lead-in), then its slice metrics. A rotated file is written anew (it may be a cache
     hardlink) and keeps its length, but a quiet lead-in the loop is whole beats without (and
-    not with) is cut. Returns the manifest fields."""
+    not with) is cut. Returns the manifest fields. `phrase` (a musical loop): only silence
+    before its first sound moves (_silent_lead: a pickup or a swung start that sounds stays
+    where it is), and no slice metrics."""
     import soundfile as sf
     from .curate_config import ROTATE_SKIP_RE
     from .sets import SWING_FLAG
     out = {}
     try:
-        m0 = _slice_fields(path, bpm)
+        m0 = {} if phrase else _slice_fields(path, bpm)
         # (a loop that isn't whole beats at its tempo, its silent ends aside, has no grid to
         # rotate onto; a fill's or a swung loop's hits off the grid are its feel, but silence
         # before its downbeat is a late cut all the same)
-        if bpm and _gridded(path, bpm, m0):
+        if bpm and (phrase or _gridded(path, bpm, m0)):
             feel = bool(ROTATE_SKIP_RE.search(os.path.basename(src or ""))) \
                 or (m0.get("swing") or 50.0) >= SWING_FLAG
             info = sf.info(str(path))
             y, sr = sf.read(str(path), always_2d=False)
-            off = _grid_offset(np.asarray(y, dtype="float64"), sr, bpm, head_only=feel)
+            off = (_silent_lead(np.asarray(y), sr) if phrase
+                   else _grid_offset(np.asarray(y, dtype="float64"), sr, bpm, head_only=feel))
             sh = int(round(off * sr))
             if off > 0 and not _whole_beats(len(y) / sr, bpm, NAME_TEMPO_TOL_MS) \
                     and _whole_beats((len(y) - sh) / sr, bpm, NAME_TEMPO_TOL_MS):
@@ -4956,7 +5020,7 @@ def _rotate_and_slice(path, bpm, src):
                 sf.write(str(tmp), y2, sr, subtype=info.subtype if info.subtype.startswith("PCM") else "PCM_24")
                 os.replace(tmp, path)
                 out["trim_ms"] = round(off * 1000, 1)
-                m0 = _slice_fields(path, bpm)
+                m0 = {} if phrase else _slice_fields(path, bpm)
             elif off:
                 from .curate_config import ROTATE_SEAM_MS
                 y2 = np.roll(y, -sh, axis=0)
@@ -4975,10 +5039,10 @@ def _rotate_and_slice(path, bpm, src):
                 sf.write(str(tmp), y2, sr, subtype=info.subtype if info.subtype.startswith("PCM") else "PCM_24")
                 os.replace(tmp, path)
                 out["rotate_ms"] = round(off * 1000, 1)
-                m0 = _slice_fields(path, bpm)
+                m0 = {} if phrase else _slice_fields(path, bpm)
         out.update(m0)
     except Exception:
-        return _slice_fields(path, bpm)
+        return {} if phrase else _slice_fields(path, bpm)
     return out
 
 
@@ -6243,7 +6307,10 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                     # half time is counted at the doubled tempo it is filed at
                     **({"bpm_bars": _loop_tempo(rec[i])} if category == "DRUMLOOPS" and _loop_tempo(rec[i]) else {}),
                     **(_rotate_and_slice(outp, _loop_tempo(rec[i]), src) if category == "DRUMLOOPS" and loudness
-                       else _slice_fields(outp, _loop_tempo(rec[i])) if category == "DRUMLOOPS" else {}),
+                       else _slice_fields(outp, _loop_tempo(rec[i])) if category == "DRUMLOOPS"
+                       # a phrase (any other loop category) loses only a silent late start
+                       else _rotate_and_slice(outp, _loop_tempo(rec[i]), src, phrase=True)
+                       if cfg["kind"] == "loop" and loudness else {}),
                     **({"dsp_fallback": True} if str(outp) in dsp_fallback else {}),
                     **({"retune": rec[i]["retune"], "root_src": rec[i]["root_src"]}
                        if rec[i].get("retune") is not None else {}),
