@@ -12,7 +12,6 @@ byte-identical (path, size, mtime, sha256) after every command."""
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -21,6 +20,7 @@ import pytest
 import soundfile as sf
 
 from fourier.packs import manifests
+from childproc import run_child
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests" / "golden"))
@@ -259,8 +259,8 @@ class Sandbox:
         return env
 
     def run(self, *args, ok=True, **extra):
-        r = subprocess.run([sys.executable, str(self.runner), *args], env=self.env(**extra),
-                           cwd=self.tmp, capture_output=True, text=True, timeout=900)
+        r = run_child([sys.executable, str(self.runner), *args], env=self.env(**extra),
+                      cwd=self.tmp, timeout=900)
         out = r.stdout + r.stderr
         self.log.append((args, r.returncode, out))
         assert "Traceback" not in out, f"fourier {' '.join(args)}:\n{out[-3000:]}"

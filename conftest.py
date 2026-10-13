@@ -5,6 +5,9 @@ from pathlib import Path
 
 # src layout: import fourier from this checkout's src/, not an installed copy
 sys.path.insert(0, str(Path(__file__).parent / "src"))
+# tests/childproc.py (how the end-to-end tests run a child Python) imports as `childproc`
+# however the test module using it was imported (test_first_run is also imported by name)
+sys.path.append(str(Path(__file__).parent / "tests"))
 
 import atexit  # noqa: E402
 import shutil  # noqa: E402
@@ -39,6 +42,9 @@ def _isolate() -> Path:
     os.environ["HOME"] = _place("user")
     for k in ("HF_HOME", "HF_HUB_CACHE", "HUGGINGFACE_HUB_CACHE", "XDG_CACHE_HOME", "XDG_CONFIG_HOME"):
         os.environ.pop(k, None)
+    # a child Python (the synthetic build, the CLI runner) imports only what the test's own
+    # Python has, never a user site-packages (tests/childproc.py: the macOS import flake)
+    os.environ["PYTHONNOUSERSITE"] = "1"
 
     # builds in tests never read or fill the real processed-audio cache (~/.fourier/cache);
     # tests/test_audiocache.py points it at a temp folder and turns it on

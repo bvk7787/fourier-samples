@@ -1,7 +1,6 @@
 """fourier demo (fourier/demo.py): the pipeline on the synthetic library, in a sandbox folder
 that is the only place it reads or writes."""
 import os
-import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -11,6 +10,7 @@ from click.testing import CliRunner
 
 from fourier import demo as D
 from fourier.cli import main
+from childproc import run_child
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -124,8 +124,7 @@ def test_demo_builds_and_renders_inside_its_folder_only(tmp_path):
     home_before, cwd_before = _tree(home), _tree(cwd)
     env = {k: v for k, v in os.environ.items() if not k.startswith("FOURIER_")}
     env.update(HOME=str(home), PYTHONPATH=str(ROOT / "src"))
-    r = subprocess.run([sys.executable, "-m", "fourier", "demo", "--dir", str(root)], cwd=cwd,
-                       env=env, capture_output=True, text=True, check=False)
+    r = run_child([sys.executable, "-m", "fourier", "demo", "--dir", str(root)], cwd=cwd, env=env)
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
     assert "stand-in" in r.stdout and "4/4" in r.stdout
     assert _has(r.stdout, str(root / "master")) and _has(r.stdout, f". {root / 'demo.env'}")

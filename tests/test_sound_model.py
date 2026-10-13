@@ -408,11 +408,11 @@ def test_with_sononym_the_sound_model_routes_nothing(tmp_path, monkeypatch):
 @pytest.mark.skipif(not __import__("os").environ.get("FOURIER_GOLDEN"),
                     reason="set FOURIER_GOLDEN=1 (CI runs the golden builds as their own step)")
 def test_the_synthetic_golden_is_unchanged_with_a_sound_model(tmp_path):
-    import subprocess
     import sys
-    r = subprocess.run([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
-                        str(tmp_path / "work"), "--check", "--sound"], capture_output=True, text=True,
-                       check=False)
+
+    from childproc import run_child
+    r = run_child([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
+                   str(tmp_path / "work"), "--check", "--sound"])
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
     assert "golden: identical" in r.stdout
 

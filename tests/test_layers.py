@@ -10,6 +10,7 @@ import pytest
 
 from fourier import layers
 from fourier.settings import ConfigError
+from childproc import run_child
 
 ROOT = Path(__file__).resolve().parents[1]
 KNOWN = {
@@ -145,8 +146,8 @@ def _cli(args, cwd, extra_env=None):
     (cwd / "home").mkdir(exist_ok=True)
     env.update(FOURIER_HOME=str(cwd / "home"), PYTHONPATH=str(ROOT / "src"),
                HOME=str(cwd), **(extra_env or {}))            # HOME: not the real ~/.config/fourier
-    return subprocess.run([sys.executable, "-m", "fourier.cli", "--db", str(cwd / "home" / "t.duckdb"), *args],
-                          cwd=cwd, env=env, capture_output=True, text=True, check=False)
+    return run_child([sys.executable, "-m", "fourier.cli", "--db", str(cwd / "home" / "t.duckdb"), *args],
+                     cwd=cwd, env=env)
 
 
 def test_cli_resolves_once_and_workers_see_it(tmp_path):

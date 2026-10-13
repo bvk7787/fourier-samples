@@ -15,6 +15,7 @@ import soundfile as sf
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_first_run import SR, Sandbox, _flat, _sounds  # noqa: E402
 from fourier.packs import manifests
+from childproc import run_child
 
 # one sandbox, built once, that the tests below change in turn: one worker runs them all, in
 # order (pytest -n: --dist loadgroup, conftest.py)
@@ -54,11 +55,10 @@ def two(tmp_path_factory):
 def _run_b(b, *args, ok=True):
     """A command of the second library's config: its own master (the sandbox points
     $FOURIER_CURATED_DIR at the first one's)."""
-    import subprocess
     env = b.env()
     env["FOURIER_CURATED_DIR"] = str(b.master_b)
-    r = subprocess.run([sys.executable, str(b.runner), "--config", str(b.cfg_b), *args], env=env,
-                       cwd=b.tmp, capture_output=True, text=True, timeout=900)
+    r = run_child([sys.executable, str(b.runner), "--config", str(b.cfg_b), *args], env=env,
+                  cwd=b.tmp, timeout=900)
     out = r.stdout + r.stderr
     assert "Traceback" not in out, out[-3000:]
     if ok is not None:
@@ -113,11 +113,10 @@ def test_each_library_keeps_its_own_build_history(two):
 
 def _run_c(b, cfg, *args, ok=True):
     """A command of a config written by `setup --to`: its own [output] (no $FOURIER_CURATED_DIR)."""
-    import subprocess
     env = b.env()
     env["FOURIER_CURATED_DIR"] = ""
-    r = subprocess.run([sys.executable, str(b.runner), "--config", str(cfg), *args], env=env,
-                       cwd=b.tmp, capture_output=True, text=True, timeout=900)
+    r = run_child([sys.executable, str(b.runner), "--config", str(cfg), *args], env=env,
+                  cwd=b.tmp, timeout=900)
     out = r.stdout + r.stderr
     assert "Traceback" not in out, out[-3000:]
     if ok is not None:

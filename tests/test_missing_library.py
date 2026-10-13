@@ -9,13 +9,13 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
 from fourier.packs import manifests
+from childproc import run_child
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_first_run import Sandbox, _flat, _has  # noqa: E402
@@ -26,8 +26,7 @@ pytestmark = [pytest.mark.slow, pytest.mark.xdist_group("missing_library")]
 
 
 def _run(b: Sandbox, *args, ok=True):
-    r = subprocess.run([sys.executable, str(b.runner), *args], env=b.env(), cwd=b.tmp,
-                       capture_output=True, text=True, timeout=900)
+    r = run_child([sys.executable, str(b.runner), *args], env=b.env(), cwd=b.tmp, timeout=900)
     out = r.stdout + r.stderr
     assert "Traceback" not in out, f"fourier {' '.join(args)}:\n{out[-3000:]}"
     if ok is not None:
