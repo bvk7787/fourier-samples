@@ -3560,6 +3560,34 @@
    "flags": 34
   }
  },
+ "curate_config.DRUM_HITS_FOLDER_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "^(?!.*(?:steel|tongue|hand ?pans?|(?<![a-z])(?:hang|slit|log|tank)(?![a-z])))(?:.*(?<![a-z])drum ?(?:hits?|one ?shots?|shots|sounds|kits?)(?![a-z])|.*(?<![a-z])one ?shots? drums?$|(?:\\d+\\W*)?drums?$)",
+   "flags": 34
+  }
+ },
+ "curate_config.KEY_NOISE_NAME_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])key ?(?:releases?|rels?|press(?:es)?|offs?|clicks?|noises?)(?![a-z])|(?<![a-z])(?:release|rel|pedal|damper|hammer|key|mech(?:anical)?)s? ?noises?(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.KEY_NOISE_CATS": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "ACOUSTIC",
+    "PADS",
+    "PIANO",
+    "STABS",
+    "SUB",
+    "SYNTH",
+    "VOX"
+   ]
+  }
+ },
  "curate_config.DRUM_NAME_RULES": {
   "type": "list",
   "value": [
