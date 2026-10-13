@@ -2227,6 +2227,64 @@ def _cross_copies(results, skip=(), pins=None):
                 out.setdefault(c, {})[src] = win
     return out, vecs
 
+
+def _entry_roots(paths):
+    """{source: (the root the build retunes from, pYIN's root)} from the database, as _mkrec
+    reads them (the resolver's root, own_root_midi); {} without one."""
+    from ..db.session import db_exists, session_scope
+    want = sorted(set(paths))
+    if not want or not db_exists():
+        return {}, {}
+    try:
+        with session_scope() as s:
+            fb, out = _fallback(s), {}
+            q0 = sample_select("path", "base_note", "base_note_confidence", "root_note", "own_root_midi",
+                               session=s)
+            for i in range(0, len(want), 500):
+                for r in fetch(s, q0.where(Sample.path.in_(want[i:i + 500]))):
+                    out[r.path] = (_resolve.root(r, fb).value, getattr(r, "own_root_midi", None))
+            return out, _folder_number_roots(s, want)
+    except Exception:          # never a failed build: without roots, only the names' notes count
+        return {}, {}
+
+
+def _cross_one_note(results, skip=(), pins=None, roots=None, prev=None):
+    """{category: {source dropped: (category kept, source kept, the C both play)}}: one note per
+    set and C (_retune_conflicts) across categories. Each retuned category keeps one per set
+    and C among its own picks (_one_note_per_c_picked), but categories are built apart, so two
+    can pick two notes of one set onto one C (a SUB F#1 +6 and a SYNTH D#2 -3, both C2). The
+    note _retune_conflicts keeps stays (a Keep where it was rated, else the smallest shift in
+    whole semitones, then the category's previous build's pick, then the exact shift); the
+    other leaves its category, which isn't refilled (as with the copies). Only true sets
+    (identity.set_key, numbers that track the pitch), only notes retuned by a name's note or a
+    numbered set, RETUNE_CATS with the set cap. skip: (category, source) already on their way
+    out. roots: ({source: (root, pYIN root)}, the numbered files' folders' roots), from the
+    database when None; prev: {category: the previous build's sources}, the latest archived
+    build's when None."""
+    from .curate_config import SIBLING_CAP_CATS
+    pins = pins or {}
+    ents = [(c, e) for c, _s, es in results if c in RETUNE_CATS and c in SIBLING_CAP_CATS
+            for e in es or [] if e.get("src") and (c, e["src"]) not in skip]
+    if len({c for c, e in ents if e.get("retune") is not None}) < 2:
+        return {}
+    own, folder = roots if roots is not None else _entry_roots(e["src"] for _c, e in ents)
+    rec, groups = [], defaultdict(list)
+    for c, e in ents:
+        tune, pyin = own.get(e["src"], (None, None))
+        old = prev.get(c, ()) if prev is not None else set().union(*_previous_families(c).values())
+        groups[c].append(len(rec))
+        rec.append(dict(path=e["src"], cat=c, retune=e.get("retune"), root_src=e.get("root_src"),
+                        root_midi=e.get("root_midi"), tune=tune, own_root=pyin,
+                        pin=pins.get(e["src"]) == c, incumbent=e["src"] in old))
+    out: dict = {}
+    for i, b in _retune_conflicts(list(groups.values()), rec, folder).items():
+        if rec[i]["cat"] == rec[b]["cat"]:
+            continue              # (within a category its own pass decided)
+        p = _played_note(rec[b])
+        out.setdefault(rec[i]["cat"], {})[rec[i]["path"]] = (
+            rec[b]["cat"], rec[b]["path"], None if p is None else _note_name(12 * int(round(p / 12))))
+    return out
+
 _NAME_OVERRIDES = [
     (tuple(s.lower() for s in ((subs,) if isinstance(subs, str) else subs)), cat)
     for subs, cat in NAME_OVERRIDES
@@ -6771,10 +6829,10 @@ def _named_home(src, cats):
 
 
 def _dedupe_across(out_dir, results, log=None):
-    """Keep a source file in one category only (_dup_winner), and one recording under two
-    names in one category only (_cross_copies): drop the other exported copies, their
-    manifest entries and their families' counts, and record each copy in its category's why
-    log. Returns files dropped."""
+    """Keep a source file in one category only (_dup_winner), one recording under two names in
+    one category only (_cross_copies) and one note of a set on each C across categories
+    (_cross_one_note): drop the other exported copies, their manifest entries and their
+    families' counts, and record each in its category's why log. Returns files dropped."""
     from .ratings import keep_pins
     pins = keep_pins()
     where = defaultdict(list)
@@ -6792,6 +6850,10 @@ def _dedupe_across(out_dir, results, log=None):
     copies, vecs = _cross_copies(results, {(c, s) for c, ss in drop.items() for s in ss}, pins)
     for c, gone in copies.items():
         drop.setdefault(c, set()).update(gone)
+    # (on what stays, so a note leaves only for one the master holds)
+    notes = _cross_one_note(results, {(c, s) for c, ss in drop.items() for s in ss}, pins)
+    for c, gone in notes.items():
+        drop.setdefault(c, set()).update(gone)
     if dups:
         _why_dups(out_dir, dups)
     if copies:
@@ -6799,6 +6861,11 @@ def _dedupe_across(out_dir, results, log=None):
         if log:
             log(f"{sum(map(len, copies.values()))} recording(s) picked by two categories under two "
                 f"names kept in one (CROSS_COPY_COS, COPY_XCORR)")
+    if notes:
+        _why_notes(out_dir, notes)
+        if log:
+            log(f"{sum(map(len, notes.values()))} note(s) of multisample sets left out: another "
+                f"category plays their set on the same C (one note per C across categories)")
     n = 0
     for category, summary, entries in results:
         gone = drop.get(category)
@@ -6841,6 +6908,19 @@ def _why_copies(out_dir, copies, vecs):
         if not ids:
             continue
         _why_drop(out_dir, c, doc, "cross_copy", ids)
+
+
+def _why_notes(out_dir, notes):
+    """Add each note _cross_one_note took out of a category to its why log: reason "cross_note",
+    [the category that kept its set's note, that note's name, the C both play]."""
+    sid = _sample_ids({s for gone in notes.values() for s in gone})
+    for c, gone in notes.items():
+        doc = why_log.read(out_dir, c)
+        if doc is None:
+            continue
+        ids = {str(sid[s]): [kc, os.path.basename(ks), cn] for s, (kc, ks, cn) in gone.items() if s in sid}
+        if ids:
+            _why_drop(out_dir, c, doc, "cross_note", ids)
 
 
 def _why_dups(out_dir, dups):

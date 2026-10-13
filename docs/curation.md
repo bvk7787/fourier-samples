@@ -703,6 +703,7 @@ what it exported (less what the dedupe took out), and `counts` has each reason's
 rule that leaves a file out writes its own reason, with a detail `fourier why` puts into words:
 `sibling_capped` (over a multisample set's cap in a folder; the cap and the notes the folder
 keeps), `one_note_per_c` (retuned onto a C its set already plays; the kept note and the C),
+`cross_note` (the same across categories; the category and note that stayed, and the C),
 `long_wavetable` (its length and `WAVE_MAX_DUR`), `fx_folder` (an FX folder's sound, never
 PADS: `FX_FOLDER_NOT`; where it went), `rated_drop`, `rated_misfiled` (the file's own rating,
 or the rated sibling of its set), `copy`, `twins`, `mostly_silent`, the gates and caps above, and
@@ -761,8 +762,9 @@ never across tempo folders or below a band's minimum. Then:
   again without it (`_one_note_per_c_picked`, so a note leaves only for one that ships; verify
   fails a master where one didn't; a detected root counts when the name states the note, and
   so do bare numbers that track the measured pitch, Identity above). Numbered takes retuned by
-  a measured root ("Saw Lead 02", "Saw Lead 05") may be different patches and all stay. The same note of one patch picked by two categories (a SUB and a PADS
-  organ both on C3) isn't caught: each category is built on its own.
+  a measured root ("Saw Lead 02", "Saw Lead 05") may be different patches and all stay. Categories are built on their own, so two of them can pick two notes of
+  one set onto one C (a SUB F#1 +6 and a SYNTH D#2 -3, both C2): the cross-category dedupe
+  (3.4) keeps one of them.
 - **Small folders** (not tempo-banded): under 15 records, or given under 15 files by the budget,
   merges into its nearest same-band folder (`FOLDER_MIN_FILES`).
 - **Splits** (not tempo-banded): a folder filled to 120 from a pool of 240+ splits in two
@@ -837,6 +839,19 @@ The sources are compared, never the exports, which a retune or trim changes. `fo
 names the copy that stayed and where, and `fourier verify` checks the master for any left the
 same way. On an 11,500-file master that's about 1,300 pairs to compare by audio. (A looser
 prefilter in verify alone would only fail builds on pairs the build never compared.)
+
+**One note per set and C across categories** (`_cross_one_note`): after every category has
+picked (after the two dedupes above, so a note leaves only for one that stays), the retuned categories' picks are read as the
+category rule above reads them, all categories together: notes of one true set (a stated note,
+velocity or round robin in one source folder, or numbers that track the pitch, read on the
+whole folder; never a numbered series) retuned onto one C. The note that rule keeps stays (a
+Keep where it was rated, else the smallest shift in whole semitones, then the category's
+previous build's pick, then the exact shift), with its velocity layers wherever they are; the
+other leaves its category. Like the copies, it isn't refilled: a category picks from its own
+pool in its own worker, and a second round for a few files isn't worth a category's build, so
+the category ships that many fewer than its budget (its why log's `files`). The category records
+`cross_note` (the category and note that stayed, the C), and `fourier verify` fails a master with
+a set's two notes on one C in two categories, and a note left for one the master doesn't hold.
 
 ### 3.5 Library scale
 

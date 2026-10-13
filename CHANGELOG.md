@@ -46,6 +46,14 @@ change the CLI or the config).
   Press", "Key Off", a pedal's noise, `KEY_NOISE_NAME_RE`) stay out of the tonal categories
   (`KEY_NOISE_CATS`, why reason `key_noise`), and verify fails a master holding one. A note's
   "rel" take is still a note.
+- One note per set and C across categories: two categories built apart could each pick a note
+  of one multisample set retuned onto the same C (an F#1 +6 in SUB, a D#2 -3 in SYNTH, both C2).
+  After every category has picked, the cross-category dedupe keeps the one the category rule
+  would (a Keep, else the smaller shift, then the previous build's pick) and takes the other out
+  of its category, unrefilled, as a copy is (`_cross_one_note`). Only true sets (a stated note,
+  velocity or round robin in one folder, or numbers that track the pitch) and retuned notes
+  count. `fourier why` gives the reason (`cross_note`: the category and note that stayed, the
+  C), and `fourier verify` fails a master with a set's two notes on one C in two categories.
 - One note per set and C now runs on a category's picks: a note leaves only for a note of its
   set the category ships, and its folder picks again without it. Run before the picks, it could
   leave a note for one that then lost its own place, taking whole instruments out of a master;

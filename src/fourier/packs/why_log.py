@@ -67,6 +67,7 @@ FILTER_WORDS = {
     "over_budget": "over the budget",
     "sibling_capped": "over a multisample set's cap in a folder",
     "one_note_per_c": "notes of a set retuned onto a C it already plays",
+    "cross_note": "notes of a set another category plays on the same C",
     "long_wavetable": "wavetables for a wavetable synth",
     "fx_folder": "FX-folder sounds (never {cat})",
     "homed_elsewhere": "routed to another category",
@@ -285,6 +286,11 @@ def describe(reason: str, detail, doc: dict, name_of=lambda sid: str(sid), place
         kept, c = (detail if isinstance(detail, list) and len(detail) == 2 else ("another note", "C"))
         return (f"retuned to C it would play {c}, which its set already plays in {cat} as {kept} "
                 f"(one note per C)")
+    if reason == "cross_note":
+        kc, kept, c = (detail if isinstance(detail, list) and len(detail) == 3
+                       else ("another category", "another note", None))
+        return (f"retuned to C it would play {c or 'a C'}, which its set already plays in {kc} as {kept} "
+                f"(one note per C across categories)")
     if reason == "long_wavetable":
         got = (f" ({detail[0]:g} s, over WAVE_MAX_DUR {detail[1]:g} s)"
                if isinstance(detail, list) and len(detail) == 2 else "")

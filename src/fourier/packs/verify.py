@@ -518,9 +518,9 @@ def check_leavers(ctx):
 
 
 def check_one_note_kept(ctx):
-    """A note left out for another note of its set on the same C (why log: one_note_per_c)
-    left for a note the category ships (curate._one_note_per_c_picked), never for one that
-    lost its own place."""
+    """A note left out for another note of its set on the same C (why log: one_note_per_c, and
+    cross_note across categories) left for a note the category ships
+    (curate._one_note_per_c_picked, _cross_one_note), never for one that lost its own place."""
     from . import why_log
     if not why_log.folder(ctx.root).is_dir():
         return
@@ -535,6 +535,12 @@ def check_one_note_kept(ctx):
             kept = det[0] if isinstance(det, list) and det else None
             if kept and kept not in names[c]:
                 gone.append((f"{c}: sample {sid}", f"left for {kept}, which {c} doesn't hold"))
+        # (across categories, curate._cross_one_note: [the category kept in, the note, the C])
+        for sid, det in ((d.get("out") or {}).get("cross_note") or {}).items():
+            n += 1
+            kc, kept = (det[0], det[1]) if isinstance(det, list) and len(det) > 1 else (None, None)
+            if kc and kept and kept not in names[kc]:
+                gone.append((f"{c}: sample {sid}", f"left for {kc}'s {kept}, which {kc} doesn't hold"))
     if n:
         yield Result(FAIL if gone else PASS, f"a note left out for another note of its set on its C left for "
                                              f"one the category holds ({n} left out)", _list(gone))
@@ -567,51 +573,77 @@ def _number_root(ctx, e):
     return v
 
 
-def check_pitch(ctx):
-    """Tonal one-shots play the C their names promise: at most one note of a multisample set
-    on each C a category plays, and a file named for C plays C by its pitch readings."""
+def _set_notes_on_c(ctx, ents):
+    """{(set key, C octave): [(the note it was retuned from, category, entry)]} of these (category,
+    entry) pairs' set notes retuned onto a C (curate._retune_conflicts): notes of one set
+    (identity.set_key, or numbers that track the picks' roots, retuned or not: number_sets,
+    _number_root); a velocity layer or round robin of the same note is the same note."""
     from . import curate as C
     from . import identity as _id
+    # (the build's roots for numbers, curate._number_root: the root it retunes from, which
+    # the manifest records as root_midi of a detected root, else pYIN's)
+    # (on the whole folder of a numbered file, as the build reads it, where the database is here)
+    items = {e["src"]: _number_root(ctx, e) for _c, e in ents}
+    items.update({p: r for p, r in (ctx.num_roots or {}).items() if r is not None})
+    numbered = _id.number_sets(items.items())
+    groups = defaultdict(list)
+    for c, e in ents:
+        if e.get("retune") is None:
+            continue              # (a set's notes not retuned count only toward reading it)
+        if e.get("root_src") != "name" and not C._states_note(e["src"]) and e["src"] not in numbered:
+            continue
+        # (the note it was retuned from: pYIN's where the build followed it, else its name's)
+        src = float(e["root_midi"]) if e.get("root_src") == "pyin" and e.get("root_midi") is not None \
+            else C._name_root_midi(os.path.basename(e["src"]))
+        if src is None and e.get("root_midi") is not None:
+            src = float(e["root_midi"])
+        k = _id.set_key(e["src"]) or numbered.get(e["src"])
+        if k is None or src is None:
+            continue
+        groups[(k, int(round((src + e["retune"]) / 12)))].append((int(round(src)), c, e))
+    return groups
+
+
+def _two_notes(ctx, ids):
+    """True when a set's notes on one C (_set_notes_on_c) hold two notes: two not rated Keep, or
+    one not among the Keeps' (Keeps stay)."""
+    free = {n for n, c, e in ids if not ctx.pinned(c, e)}
+    kept = {n for n, c, e in ids if ctx.pinned(c, e)}
+    return len(free) > 1 or bool(free and kept and not free <= kept)
+
+
+def check_pitch(ctx):
+    """Tonal one-shots play the C their names promise: at most one note of a multisample set
+    on each C a category plays, and across categories, and a file named for C plays C by its
+    pitch readings."""
+    from . import curate as C
     from .curate_config import RETUNE_CATS, SIBLING_CAP_CATS
     tonal = [(c, e) for c, e in ctx.entries if c in RETUNE_CATS and not e.get("loop_row")]
-    # one note per C (curate._one_per_retune_target): notes of one set (identity.set_key, or
-    # numbers that track the picks' roots, retuned or not: number_sets, _number_root) that
-    # retune onto the same C; a velocity layer or round robin of the same note is the same note. Keeps stay.
+    # one note per C (curate._one_per_retune_target): notes of one set that retune onto the
+    # same C (_set_notes_on_c). Keeps stay.
     by_cat = defaultdict(list)
     for c, e in tonal:
         if c in SIBLING_CAP_CATS:
-            by_cat[c].append(e)
+            by_cat[c].append((c, e))
     same_c = []
     for c, ents in sorted(by_cat.items()):
-        # (the build's roots for numbers, curate._number_root: the root it retunes from, which
-        # the manifest records as root_midi of a detected root, else pYIN's)
-        # (on the whole folder of a numbered file, as the build reads it, where the database is here)
-        items = {e["src"]: _number_root(ctx, e) for e in ents}
-        items.update({p: r for p, r in (ctx.num_roots or {}).items() if r is not None})
-        numbered = _id.number_sets(items.items())
-        groups = defaultdict(list)
-        for e in ents:
-            if e.get("retune") is None:
-                continue              # (a set's notes not retuned count only toward reading it)
-            if e.get("root_src") != "name" and not C._states_note(e["src"]) and e["src"] not in numbered:
-                continue
-            # (the note it was retuned from: pYIN's where the build followed it, else its name's)
-            src = float(e["root_midi"]) if e.get("root_src") == "pyin" and e.get("root_midi") is not None \
-                else C._name_root_midi(os.path.basename(e["src"]))
-            if src is None and e.get("root_midi") is not None:
-                src = float(e["root_midi"])
-            k = _id.set_key(e["src"]) or numbered.get(e["src"])
-            if k is None or src is None:
-                continue
-            groups[(k, int(round((src + e["retune"]) / 12)))].append((int(round(src)), e))
-        for (k, octv), ids in groups.items():
-            free = {n for n, e in ids if not ctx.pinned(c, e)}
-            kept = {n for n, e in ids if ctx.pinned(c, e)}
-            if len(free) > 1 or (free and kept and not free <= kept):
-                names = sorted(f"{c}/{e['out']}" for _n, e in ids)
+        for (k, octv), ids in _set_notes_on_c(ctx, ents).items():
+            if _two_notes(ctx, ids):
+                names = sorted(f"{c}/{e['out']}" for _n, _c, e in ids)
                 same_c += [(n, f"C{octv - 1} with {len(names) - 1} other note(s) of its set") for n in names]
     yield Result(FAIL if same_c else PASS, "one note of a multisample set on each C (notes retuned onto a "
                  "C their set already plays left out)", _list(same_c))
+    # ...and across categories (curate._cross_one_note, after every category has picked): its
+    # loop-classed notes too, as the build retunes them
+    across = []
+    every = [(c, e) for c, e in ctx.entries if c in RETUNE_CATS and c in SIBLING_CAP_CATS]
+    for (k, octv), ids in _set_notes_on_c(ctx, every).items():
+        if len({c for _n, c, _e in ids}) > 1 and _two_notes(ctx, ids):
+            names = sorted(f"{c}/{e['out']}" for _n, c, e in ids)
+            across += [(n, f"C{octv - 1} with {len(names) - 1} other note(s) of its set in another category")
+                       for n in names]
+    yield Result(FAIL if across else PASS, "one note of a multisample set on each C across categories (a "
+                 "note another category plays its set on left out)", _list(across))
     # a file retuned to C or named for it plays C, as the build's pitch trust has it (a retune
     # or a name to C needs two of name, Sononym and pYIN to agree: curate._check_name_pitches,
     # _check_detected_roots, _fill_roots): a FAIL where the reading the build retuned by plus
@@ -1461,8 +1493,7 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
     if session is not None:
         from . import curate as _C
         from .curate_config import RETUNE_CATS as _RC
-        ctx.num_roots = _C._folder_number_roots(session, [e["src"] for c, e in ctx.entries
-                                                          if c in _RC and not e.get("loop_row")])
+        ctx.num_roots = _C._folder_number_roots(session, [e["src"] for c, e in ctx.entries if c in _RC])
     out = []
     for fn in (check_manifest, check_sets, check_budgets, check_naming, check_ratings, check_leavers,
                check_one_note_kept,
