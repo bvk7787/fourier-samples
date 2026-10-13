@@ -25,7 +25,7 @@ def review():
     \b
       fourier review rate "Kick 01" keep
       fourier review rate "Snare Tight 03" misfiled --to CLAPS
-      fourier review import ratings.csv   # columns: path (or name), rating, category
+      fourier review import ratings.csv   # columns: path (or name), rating, category, scope
       fourier review queue                # the next files to listen to, in <master>/_REVIEW
       fourier review score                # a build against the ratings
       fourier review misfiles --dry-run
@@ -61,24 +61,33 @@ AFTER = {"keep": "the next build keeps it in {cat}",
 @click.argument("verdict", type=click.Choice(["keep", "drop", "misfiled", "clear"], case_sensitive=False))
 @click.option("--to", "move_to", default=None, metavar="CATEGORY",
               help="With misfiled: the category it belongs in (the next build puts it there)")
+@click.option("--set", "whole_set", is_flag=True, default=False,
+              help="With drop or misfiled: the rating covers the file's whole set (every note of "
+                   "the instrument or patch), not one note")
 @click.option("--from", "master_dir", default=None,
               help="Master the file is in (default: your master)")
-def rate(query, verdict, move_to, master_dir):
+def rate(query, verdict, move_to, whole_set, master_dir):
     """Rate one of the master's files: keep (it stays), drop (the next build leaves it out) or
     misfiled (the next build moves it to another category; --to names which); clear removes
     a rating given here or imported (also one whose file is gone from the master or the
-    library). QUERY is what `fourier why` takes: a source path, a master path
-    (KICKS/family/file.wav) or a piece of a file name or library path. When it matches
-    several files, you pick one.
+    library). A rating covers every edition of the file's recording (a .wav and its .aif, a
+    copy in another pack); a drop covers one note of a multisample set unless --set, and a
+    misfiled its multisample set (--set: the patch's takes too). QUERY is what `fourier why`
+    takes: a source path, a master path (KICKS/family/file.wav) or a piece of a file name or
+    library path. When it matches several files, you pick one.
 
     \b
       fourier review rate "Kick 01" keep
       fourier review rate KICKS/punchy/Kick_01.wav drop
+      fourier review rate "Pad C3" drop --set
       fourier review rate "Snare Tight 03" misfiled --to CLAPS
       fourier review rate "Kick 01" clear
     """
     from ..packs.ratings import apply_tags, find_rateable, harvest, set_ratings, uses_live
     say = lambda m: console.print(m, markup=False, highlight=False)
+    if whole_set and verdict.lower() not in ("drop", "misfiled"):
+        say(f"--set goes with drop or misfiled, not {verdict.lower()}")
+        raise SystemExit(2)
     master_dir = _master_or_stop(master_dir)
     if verdict.lower() == "clear":
         if move_to:
@@ -106,7 +115,7 @@ def rate(query, verdict, move_to, master_dir):
     if live:             # Live's tags first, so the stored rating and the tag agree after
         harvest(master_dir, log=lambda m: None)
     try:
-        set_ratings(master_dir, [(t, verdict, move_to)])
+        set_ratings(master_dir, [(t, verdict, move_to, "set" if whole_set else None)])
     except ValueError as e:
         say(str(e))
         raise SystemExit(2) from None
@@ -117,7 +126,7 @@ def rate(query, verdict, move_to, master_dir):
     if v == "misfiled" and move_to:
         from ..packs.ratings import _category_named
         what = f"the next build moves it to {_category_named(move_to)}"
-    say(f"{t['path']}: {v.capitalize()} ({what})")
+    say(f"{t['path']}: {v.capitalize()}{' (the whole set)' if whole_set else ''} ({what})")
 
 
 # where a stored rating came from: Live's browser (its tag wins at every harvest) or here
@@ -166,14 +175,16 @@ def _clear(query, master_dir, say) -> None:
 @click.option("--dry-run", is_flag=True, default=False, help="Match the rows and report, store nothing")
 def import_ratings(csv_path, master_dir, dry_run):
     """Import ratings from a CSV file with a header row: `path` (or `name`: anything `review
-    rate` takes), `rating` (keep, drop or misfiled) and an optional `category` (for
-    misfiled: the category it belongs in). Rows that match no file, or several, are listed
-    and skipped (exit 1); the rest are stored as `review rate` stores them.
+    rate` takes), `rating` (keep, drop or misfiled), an optional `category` (for misfiled: the
+    category it belongs in) and an optional `scope` (drop or misfiled: `set` for the file's
+    whole set, as `review rate --set`; else `file`). Rows that match no file, or several, are
+    listed and skipped (exit 1); the rest are stored as `review rate` stores them.
 
     \b
-      path,rating,category
-      KICKS/punchy/Kick_01.wav,keep,
-      Snare Tight 03,misfiled,CLAPS
+      path,rating,category,scope
+      KICKS/punchy/Kick_01.wav,keep,,
+      Snare Tight 03,misfiled,CLAPS,
+      Pad C3,drop,,set
     """
     from ..packs.ratings import apply_tags, harvest, read_ratings_csv, set_ratings, uses_live
     say = lambda m: console.print(m, markup=False, highlight=False)
@@ -192,7 +203,7 @@ def import_ratings(csv_path, master_dir, dry_run):
         set_ratings(master_dir, rated, source="csv")
         if live:
             apply_tags(master_dir, log=lambda m: None)
-    counts = {v: sum(1 for _t, x, _m in rated if x == v) for v in ("keep", "drop", "misfiled")}
+    counts = {v: sum(1 for _t, x, *_m in rated if x == v) for v in ("keep", "drop", "misfiled")}
     say(f"{'would rate' if dry_run else 'rated'} {len(rated)} files ({counts['keep']} keep, "
         f"{counts['drop']} drop, {counts['misfiled']} misfiled); {len(skipped)} rows skipped")
     if skipped:

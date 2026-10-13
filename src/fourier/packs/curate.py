@@ -896,11 +896,11 @@ def compute_homes(session, emb_n, id2row, log=print):
         # a musical phrase homes in PHRASES ahead of every one-shot vote (and of the acoustic
         # reservation: a guitar riff is a phrase), unless it was rated Misfiled there
         if phrases_on and _is_phrase(r, fallback) and PHRASES_CATEGORY not in misfiled.categories(
-                r.path, emb_n[id2row[r.id]]) and _name_reserved(r.filename) in (None, PHRASES_CATEGORY):
+                r.path, file_hash=r.file_hash, dur=r.duration_s) and _name_reserved(r.filename) in (None, PHRASES_CATEGORY):
             # without Sononym: a loop that PHRASES' CLAP gate would turn away (it sounds like a
             # drum break) and a drum-loop category's gate clearly takes is that one's
             _rh = _clap_rehome(emb_n[id2row[r.id]], anchors, misfiled.categories(
-                r.path, emb_n[id2row[r.id]])) if fallback and _row_is_loop(r) else None
+                r.path, file_hash=r.file_hash, dur=r.duration_s)) if fallback and _row_is_loop(r) else None
             if _rh:
                 homes[r.id] = _rh
                 support[(r.id, _rh)] = 1
@@ -926,7 +926,7 @@ def compute_homes(session, emb_n, id2row, log=print):
         # drums is the drum rule's (below), not the acoustic or organ reservation's
         _drum = _drum_name_wins(_fn, _canonical_of(r), ab_tags, r.rel_path or r.path, fallback) \
             if is_oneshot and not is_loop else None
-        if _drum and _drum in misfiled.categories(r.path, emb_n[id2row[r.id]]):
+        if _drum and _drum in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
             _drum = None
         if _acoustic_tagged(ab_tags, _fn, pack) and not ORCH_PACK_EXCLUDE.search(pack) and not _drum:
             continue
@@ -957,7 +957,7 @@ def compute_homes(session, emb_n, id2row, log=print):
         # picks between several candidates
         if snd and cand and not ab_cats and r.id in snd and _weak_path(r):
             _s = _sound_home(snd[r.id], is_oneshot and not is_loop, is_loop and not is_oneshot,
-                             misfiled.categories(r.path, emb_n[id2row[r.id]]), SOUND_MODEL_OVERRIDE_MIN)
+                             misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s), SOUND_MODEL_OVERRIDE_MIN)
             if _s and (_s not in cand or len(cand) > 1) and _name_reserved(_fn) in (None, _s):
                 homes[r.id] = _s
                 support[(r.id, _s)] = 1
@@ -973,7 +973,7 @@ def compute_homes(session, emb_n, id2row, log=print):
                 _hl = is_loop and not is_oneshot and bool(snd) and _held_loop(r)
                 _s = _sound_home(snd.get(r.id), (is_oneshot and not is_loop) or _hl,
                                  is_loop and not is_oneshot and not _hl,
-                                 misfiled.categories(r.path, emb_n[id2row[r.id]])) if snd else None
+                                 misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s)) if snd else None
                 if _s and _name_reserved(_fn) in (None, _s):
                     homes[r.id] = _s
                     support[(r.id, _s)] = 1
@@ -989,7 +989,7 @@ def compute_homes(session, emb_n, id2row, log=print):
                                 (is_oneshot and not is_loop) or (not is_oneshot and not is_loop and _held(r))
                                 or _hl,
                                 is_loop and not is_oneshot and not _hl,
-                                misfiled.categories(r.path, emb_n[id2row[r.id]]))
+                                misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s))
                 if _c:
                     homes[r.id] = _c
                     support[(r.id, _c)] = 1
@@ -1029,21 +1029,21 @@ def compute_homes(session, emb_n, id2row, log=print):
         # (curate_config SCRATCH_NAME_RE; SCRATCHES was folded into FX)
         _scr = _oneshot and _scratch_named(_fn, r.rel_path)
         if _scr and cand & SCRATCH_FROM and SCRATCH_HOME not in misfiled.categories(
-                r.path, emb_n[id2row[r.id]]):
+                r.path, file_hash=r.file_hash, dur=r.duration_s):
             cand = {SCRATCH_HOME}
             ab_cats = ab_cats | {SCRATCH_HOME}
             n_named_drums += 1
         # a named riser / downlifter / sweep homes in FX (not PADS or SYNTH); a
         # file no classifier gave a shape counts as a one-shot here, as verify has it
         if not is_loop and not _scr and cand & FX_TRANSITION_FROM and _is_fx_transition(_fn) \
-                and "FX" not in misfiled.categories(r.path, emb_n[id2row[r.id]]):
+                and "FX" not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
             cand = {"FX"}
             ab_cats = ab_cats | {"FX"}
         # a file named as exactly one kind of drum homes in that drum category
         _dn = _drum_named_in(_fn, r.rel_path or r.path, fallback, _canonical_of(r), ab_tags) \
             if (_oneshot and not _scr) else None
         if _dn and "VOX" not in cand and cand & DRUM_NAME_FROM and _dn not in misfiled.categories(
-                r.path, emb_n[id2row[r.id]]):
+                r.path, file_hash=r.file_hash, dur=r.duration_s):
             if cand != {_dn}:
                 n_named_drums += 1
             cand = {_dn}
@@ -1052,7 +1052,7 @@ def compute_homes(session, emb_n, id2row, log=print):
         # folder or an acoustic-percussion pack homes in PERC; a file no
         # classifier gave a shape counts as a one-shot here, as verify has it
         if not is_loop and not _scr and "SYNTH" in cand and _perc_sourced(r.rel_path, _fn) \
-                and "PERC" not in misfiled.categories(r.path, emb_n[id2row[r.id]]):
+                and "PERC" not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
             cand = {"PERC"}
             ab_cats = ab_cats | {"PERC"}
         # a file named as keys isn't a drum (a "Piano Thud" is no kick, a "Piano Low 02" no tom)
@@ -1071,12 +1071,12 @@ def compute_homes(session, emb_n, id2row, log=print):
         # classifier or Live calls it a loop: verify holds neither rule on those)
         if not _keyz and not _dn and _is_named_stab(_fn, r.duration_s, r.n_events, is_oneshot and not is_loop) \
                 and cand & STAB_CHORD_FROM and not (_is_fx_transition(_fn) and not _is_loop_row(r)) \
-                and "STABS" not in misfiled.categories(r.path, emb_n[id2row[r.id]]):
+                and "STABS" not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
             cand = (cand - STAB_CHORD_FROM) | {"STABS"}
             ab_cats = ab_cats | {"STABS"}                    # counts as one vote
             n_chord_stabs += 1
         # rated Misfiled in a category: re-home to the next-best candidate
-        _mc = misfiled.categories(r.path, emb_n[id2row[r.id]])
+        _mc = misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s)
         if _mc:
             cand = cand - _mc
             if not cand:
@@ -3436,11 +3436,12 @@ def _cluster_by_tempo(P, bpms, edges, floor, kmax=30, kmin=8, kdiv=800, files=No
 # ---------------------------------------------------------------------------
 # Multisample siblings
 # ---------------------------------------------------------------------------
-# Notes / velocity layers / numbered takes of one multisample set are interchangeable
-# for routing: a verdict on one covers the set. Siblings share a pack and a name once
-# note, velocity and number tokens are removed, and sound at least loosely alike
-# (SIBLING_COS: real siblings span a wide range of CLAP similarity, so the name carries
-# the decision and CLAP only stops an unrelated sound).
+# Notes / velocity layers / numbered takes of one pack's patch (_sibling_key: a pack and a
+# name once note, velocity and number tokens are removed): the soft-layer rule and the review
+# queue's siblings, which must also sound at least loosely alike (SIBLING_COS: real siblings
+# span a wide range of CLAP similarity, so the name carries the decision and CLAP only stops
+# an unrelated sound). What a rating, the set cap and one note per C count as one sound is
+# packs/identity.py's.
 _SIB_NOTE = re.compile(r"^[a-g](?:#|b|s)?-?\d$")
 # a note with a sampler's hex code after it, ending the name ("Pad_f#34b00ff")
 _SIB_NOTE_CODE = re.compile(r"^[a-g](?:#|b|s)?\d(?=[0-9a-f]*[a-f])[0-9a-f]{4,8}$")
@@ -3549,60 +3550,106 @@ def _states_note(path):
 
 
 class _MisfiledIndex:
-    """Misfiled ratings expanded to multisample siblings. categories(path, vec) returns
-    every category the file or a sibling of it was rated Misfiled in (a scattered set can
-    be misfiled in two folders at once); category() returns one of them, else None."""
+    """Misfiled ratings with their reach (identity.Reach: the file's recording and editions,
+    its multisample set, a set-wide rating's patch). categories(path, file_hash=, dur=)
+    returns every category the file, a copy or edition of it, or its set was rated Misfiled
+    in (a scattered set can be misfiled in two folders at once); category() returns one of
+    them, else None."""
 
-    def __init__(self, misfiled, vec_of=lambda src: None):
+    def __init__(self, misfiled, reach=None):
         self.exact = dict(misfiled)
-        self.by_key = defaultdict(list)
-        self._rated = defaultdict(list)          # {sibling key: [(category, rated source)]}
-        for src, cat in misfiled.items():
-            k = _sibling_key(src)
-            if k is not None:
-                self.by_key[k].append((cat, vec_of(src)))
-                self._rated[k].append((cat, src))
+        self.reach = reach if reach is not None else _id.Reach(misfiled=self.exact)
 
-    def rated_by(self, path, category):
+    def rated_by(self, path, category, file_hash=None, dur=None):
         """The file whose Misfiled rating keeps `path` out of `category`, for the why log:
-        None when it's the file's own, else the rated sibling's name."""
+        None when it's the file's own, else the rated copy's, edition's or set-mate's name."""
         if self.exact.get(path) == category:
             return None
-        got = sorted(os.path.basename(s) for c, s in self._rated.get(_sibling_key(path), ()) if c == category)
-        return got[0] if got else None
+        r = self.reach
+        got = [s for s in r._same(path, file_hash, dur, r.misf) if r.misf[s] == category]
+        k = r.set_of(path)
+        if k is not None:
+            got += [s for s, c in r.misf.items() if c == category and r.set_of(s) == k]
+        if not got and r.misf_scoped:
+            pk = _id.patch_key(path)
+            got += [s for s, c in r.misf.items() if c == category and _id.patch_key(s) == pk]
+        names = sorted(os.path.basename(s) for s in got)
+        return names[0] if names else None
 
-    def categories(self, path, vec=None):
-        out = set()
+    def categories(self, path, vec=None, file_hash=None, dur=None):
+        out = self.reach.misfiled(path, file_hash, dur)
         c = self.exact.get(path)
         if c is not None:
             out.add(c)
-        for cat, v in self.by_key.get(_sibling_key(path), ()):
-            if v is None or vec is None or float(v @ vec) >= SIBLING_COS:
-                out.add(cat)
         return out
 
-    def category(self, path, vec=None):
+    def category(self, path, vec=None, file_hash=None, dur=None):
         c = self.exact.get(path)
         if c is not None:
             return c
-        cats = self.categories(path, vec)
+        cats = self.categories(path, file_hash=file_hash, dur=dur)
         return min(cats) if cats else None
 
 
-def _misfiled_index(misfiled, emb_n, id2row, pid=None):
-    """Build a _MisfiledIndex; `pid` ({path: sample id}) avoids a DB lookup."""
+def _misfiled_index(misfiled, emb_n=None, id2row=None, pid=None):
+    """A _MisfiledIndex over these Misfiled ratings, reaching as _rating_reach does (the
+    set tier replaced the CLAP check, SIBLING_COS, that emb_n and id2row served)."""
     if not misfiled:
         return _MisfiledIndex({})
-    if pid is None:
-        from ..db.session import session_scope
-        with session_scope() as s:
-            pid = {p: i for i, p in s.execute(
-                select(Sample.id, Sample.path).where(Sample.path.in_(list(misfiled))))}
+    return _MisfiledIndex(misfiled, _rating_reach(misfiled=misfiled))
 
-    def vec_of(src):
-        i = pid.get(src)
-        return emb_n[id2row[i]] if i is not None and i in id2row else None
-    return _MisfiledIndex(misfiled, vec_of)
+
+_REACH: dict = {}
+
+
+def _rating_reach(misfiled=None, drops=None, scopes=None):
+    """identity.Reach over the stored ratings (or these: misfiled {source: category}, drops
+    {source: the category rated in}, scopes {source: "set"}): each rated file's hash and
+    length, and the multisample
+    sets of its folder, read with their roots so numbers that track the pitch count
+    (identity.set_keys), from the database; without one, by names. Cached per process."""
+    from .ratings import drop_categories, misfiled_map, rating_scopes
+    misfiled = misfiled_map() if misfiled is None else dict(misfiled)
+    drops = drop_categories() if drops is None else dict(drops)
+    scopes = rating_scopes() if scopes is None else dict(scopes)
+    rated = sorted(set(drops) | set(misfiled))
+    try:
+        from ..db.session import db_exists, db_path_in_use
+        where = str(db_path_in_use()) if db_exists() else None
+    except Exception:
+        where = None
+    key = (where, tuple(sorted(misfiled.items())), tuple(sorted(drops.items())), tuple(sorted(scopes)))
+    if key not in _REACH:
+        try:
+            facts, members = _rated_facts(rated) if where and rated else ({}, {})
+        except Exception:               # a database this can't read: by names, as without one
+            facts, members = {}, {}
+        _REACH.clear()
+        _REACH[key] = _id.Reach(set(drops), misfiled, facts, members, drop_cats=drops, scopes=scopes)
+    return _REACH[key]
+
+
+def _rated_facts(rated):
+    """({source: (file hash, seconds)} of these rated sources, {path: set key} of every file in
+    their folders, identity.set_keys on the roots the build retunes from), from the database."""
+    from sqlalchemy import or_
+    from ..db.session import session_scope
+    facts, rows = {}, []
+    folders = sorted({os.path.dirname(p) for p in rated})
+    with session_scope() as s:
+        fb = _fallback(s)
+        for i in range(0, len(rated), 900):
+            for r in s.execute(select(Sample.path, Sample.file_hash, Sample.duration_s)
+                               .where(Sample.path.in_(rated[i:i + 900]))):
+                facts[r[0]] = (r[1], r[2])
+        q0 = sample_select("path", "base_note", "base_note_confidence", "root_note", session=s)
+        for i in range(0, len(folders), 200):
+            q = q0.where(or_(*[Sample.path.like(f.replace("%", "\\%").replace("_", "\\_") + "/%", escape="\\")
+                               for f in folders[i:i + 200]]))
+            rows += [r for r in fetch(s, q) if os.path.dirname(r.path or "") in set(folders)]
+    members = {p: k for p, k in _id.set_keys((r.path, _resolve.root(r, fb).value) for r in rows).items()
+               if k is not None}
+    return facts, members
 
 
 def _row_override(r):
@@ -4001,10 +4048,15 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         pia_anchor = Tp.mean(0); pia_anchor /= np.linalg.norm(pia_anchor) + 1e-9
         pia_anti = Tpa.mean(0); pia_anti /= np.linalg.norm(pia_anti) + 1e-9
 
-    from .ratings import drop_set, keep_pins, misfiled_map
+    from .ratings import keep_pins, misfiled_map
     pins = keep_pins()
-    drops = drop_set()
+    # a rating reaches its file's byte copies and editions (and a set-wide one its set); a
+    # dropped note's slot never refills from its own set (identity.Reach)
+    reach = _rating_reach()
+    drops = reach.drops
     misfiled = _misfiled_index(misfiled_map(), emb_n, id2row)
+    _prev_here = set().union(*_previous_families(category).values()) \
+        if category and _previous_families(category) else set()
     rec, seen_hash, seen_ck, fm = [], _Seen(), set(), set()
     held = []                    # (score margin, row, pack, rel): gated by CLAP alone (the floor)
     phrases_on = PHRASES_CATEGORY in CATEGORIES
@@ -4061,6 +4113,17 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             stats["dropped"] = stats.get("dropped", 0) + 1
             _out(r, "rated_drop")
             continue                     # rated Drop: out of every category
+        _dsrc = reach.dropped(r.path, r.file_hash, r.duration_s) if pins.get(r.path) != category else None
+        if _dsrc:
+            stats["dropped"] = stats.get("dropped", 0) + 1
+            _out(r, "rated_drop", os.path.basename(_dsrc))
+            continue                     # a copy or edition of a Drop, or in a set-wide Drop's set
+        if _prev_here and r.path not in _prev_here and pins.get(r.path) != category:
+            _dsrc = reach.refill_of(r.path, category)
+            if _dsrc:
+                stats["drop_set_refills"] = stats.get("drop_set_refills", 0) + 1
+                _out(r, "drop_set_refill", os.path.basename(_dsrc))
+                continue                 # would refill a dropped note's slot from its own set
         if exclude_ids and r.id in exclude_ids:
             # already in the base release: it still claims its byte-hash / content-twin slot,
             # so an identical copy from another pack isn't added as "new"
@@ -4071,7 +4134,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         # rated Misfiled here (itself or a sibling, by you or the detector): never back in
         # this folder. An explicit Keep on the file itself wins over a sibling's verdict.
         if category and pins.get(r.path) != category \
-                and category in misfiled.categories(r.path, emb_n[id2row[r.id]]):
+                and category in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
             stats["misfiled_out"] = stats.get("misfiled_out", 0) + 1
             _out(r, "rated_misfiled", misfiled.rated_by(r.path, category))
             continue
@@ -4085,7 +4148,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             # (a loop CLAP re-homed here, without Sononym: what this category is)
             _ph = (category == PHRASES_CATEGORY) if (rehomed and r.id in rehomed) else (
                 _is_phrase(r, fallback) and PHRASES_CATEGORY not in misfiled.categories(
-                    r.path, emb_n[id2row[r.id]]))
+                    r.path, file_hash=r.file_hash, dur=r.duration_s))
             if _ph != (category == PHRASES_CATEGORY):
                 stats["phrase_out" if _ph else "not_phrase"] = \
                     stats.get("phrase_out" if _ph else "not_phrase", 0) + 1
@@ -4214,7 +4277,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         # (unless it's a phrase you rated Misfiled in PHRASES: that one may come back)
         if category in LOOP_DIR_ONESHOT_CATS and (r.duration_s or 0) > LOOP_DIR_ONESHOT_MAX_S \
                 and _in_loop_folder(rel) and PHRASES_CATEGORY not in misfiled.categories(
-                    r.path, emb_n[id2row[r.id]]):
+                    r.path, file_hash=r.file_hash, dur=r.duration_s):
             stats["loop_folder"] = stats.get("loop_folder", 0) + 1
             _out(r, "loop_folder")
             continue
@@ -4240,7 +4303,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         if category in DRUM_NAME_FROM and cfg["kind"] == "oneshot":
             _dn = SCRATCH_HOME if _scratch_named(r.filename, rel) else _drum_named_in(
                 r.filename, rel, fallback, _canonical_of(r), _as_list(r.ableton_tags))
-            if _dn and _dn != category and _dn not in misfiled.categories(r.path, emb_n[id2row[r.id]]):
+            if _dn and _dn != category and _dn not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
                 stats["named_elsewhere"] = stats.get("named_elsewhere", 0) + 1
                 _out(r, "named_elsewhere", _dn)
                 continue
@@ -4249,7 +4312,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         elif cfg["kind"] == "instrument" and any("OneShot" in c for c in _as_list(getattr(r, "classes", None))) \
                 and not any("Loop" in c for c in _as_list(getattr(r, "classes", None))):
             _dn = _drum_name_wins(r.filename, _canonical_of(r), _as_list(r.ableton_tags), rel, fallback)
-            if _dn and _dn not in misfiled.categories(r.path, emb_n[id2row[r.id]]):
+            if _dn and _dn not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
                 stats["named_elsewhere"] = stats.get("named_elsewhere", 0) + 1
                 _out(r, "named_elsewhere", _dn)
                 continue
