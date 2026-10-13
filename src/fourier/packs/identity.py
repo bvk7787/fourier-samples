@@ -23,9 +23,10 @@ from __future__ import annotations
 
 import os
 import re
+from bisect import bisect_left, bisect_right
 from collections import defaultdict
 
-from .curate_config import EDITION_DUR_TOL, EDITION_SUFFIX_RE, NUMBER_NOTE_TOL, SIBLING_SETS_ONLY
+from .curate_config import EDITION_DUR_TOL, EDITION_SUFFIX_RE, NUMBER_NOTE_TOL, NUMBER_SET_MAJORITY, SIBLING_SETS_ONLY
 
 _VEL = re.compile(r"^(?:v|vel|velocity|layer)\d+$|^(?:ppp|pp|p|mp|mf|f|ff|fff)$")
 _DYN = re.compile(r"^(?:ppp|pp|p|mp|mf|f|ff|fff)$")
@@ -181,13 +182,21 @@ def _number_key(path):
     return (_where(path)[2], " ".join(words)), nums
 
 
+def _near12(a, b):
+    """Two offsets in semitones agree within NUMBER_NOTE_TOL, octaves aside."""
+    d = abs(a - b) % 12
+    return min(d, 12 - d) <= NUMBER_NOTE_TOL
+
+
 def number_sets(items):
     """{path: set key} of the files named by a patch and bare numbers whose numbers are notes:
     in one source folder, for one of the name's numbers, each file's measured root less that
-    number agrees within NUMBER_NOTE_TOL semitones across at least three numbers (0-127)
-    ("Qzv Lead 059" / "061" / "062" rooted at 58.8, 60.8, 61.8). Numbers that don't track the
-    pitch are takes, a series ("Qzv Lead 01" / "02" both at C3). items: [(path, root midi or
-    None)]."""
+    number agrees within NUMBER_NOTE_TOL semitones across at least three numbers (0-127), and
+    octaves aside across at least NUMBER_SET_MAJORITY of the rooted files ("Qzv Lead 059" /
+    "061" / "062" rooted at 58.8, 60.8, 61.8). A reading off by an octave, or a file the pack
+    numbered a note off, doesn't unmake the set; numbers that agree only octaves aside
+    ("02" / "06" / "10" at 67, 71 and 63) don't make one. Numbers that don't track the pitch are takes,
+    a series ("Qzv Lead 01" / "02" both at C3). items: [(path, root midi or None)]."""
     groups = defaultdict(list)
     for path, root in items:
         nk = _number_key(path)
@@ -197,11 +206,14 @@ def number_sets(items):
     for (key, n), members in groups.items():
         rooted = [(nums, float(r)) for _p, nums, r in members if r is not None]
         for pos in range(n):
-            vals = {nums[pos] for nums, _r in rooted}
-            if len(vals) < 3 or max(vals) > 127:
+            if len({nums[pos] for nums, _r in rooted}) < 3 or max(nums[pos] for nums, _r in rooted) > 127:
                 continue        # (two numbers may agree with two roots by chance)
             off = [r - nums[pos] for nums, r in rooted]
-            if max(off) - min(off) <= NUMBER_NOTE_TOL:
+            srt = sorted(off)
+            best = max(srt, key=lambda c: bisect_right(srt, c + NUMBER_NOTE_TOL) - bisect_left(srt, c - NUMBER_NOTE_TOL))
+            exact = {nums[pos] for (nums, _r), o in zip(rooted, off) if abs(o - best) <= NUMBER_NOTE_TOL}
+            agree = [o for o in off if _near12(o, best)]          # (a reading an octave off agrees)
+            if len(exact) >= 3 and len(agree) >= NUMBER_SET_MAJORITY * len(rooted):
                 out.update({p: key for p, _n, _r in members})
                 break
     return out

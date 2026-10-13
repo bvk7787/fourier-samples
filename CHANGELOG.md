@@ -25,6 +25,27 @@ change the CLI or the config).
 
 ### Fixed
 
+- `fourier verify` now fails a master that breaks one of the build's invariants, so a
+  regression like single cycles removed as copies of one another can't pass again: every file
+  left out as a copy has its keeper in the master, and a WAVES cycle leaves only as an edition
+  of its keeper by name (the why logs, with the database); at most one note of a multisample set
+  on each C (numbers that track the roots count, read as the build reads them); a file retuned
+  to C plays C by the reading it was retuned by (and pYIN's, for a detected root), and a file
+  named for C fails only where Sononym and pYIN agree on another note: one reading alone
+  against the name warns, as the build's pitch trust leaves it be (never a new analysis; a
+  fifth over the named note warns too);
+  the retune within its category's cap (3 in VOX, PIANO and ACOUSTIC); loops whole beats within
+  10 ms at their tempo and inside their folder's tempo lead, not mostly silence, and not
+  starting 12-45 ms late on digital silence; kit slots filled by their role, not far under its
+  level or a second take of one drum when the pack has another; no copy or edition of a Drop,
+  and no copy, edition or set mate of a Misfiled file back in its category. Each lists the
+  first 10 files it catches and how many. A pYIN fill (a file with no root) is no longer
+  retuned onto a C another note of its numbered set already plays. A numbered set is read on
+  every file of its source folder (not only a category's candidates), on Sononym's root where
+  it's sure and pYIN's elsewhere, and holds when three numbers agree and two thirds of the
+  rooted files agree octaves aside (`NUMBER_SET_MAJORITY`), so a root read an octave off or
+  one file the pack numbered a note off no longer unmakes it (two notes of one sampled guitar
+  both landed on C4).
 - Every rule that leaves a file out of a category now writes its own reason to the why log, so
   a build can say why each file left: the multisample set cap (`sibling_capped`, with the notes
   the folder keeps; its first pass is now counted, so the build log's "extra notes of

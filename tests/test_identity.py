@@ -128,6 +128,25 @@ def test_numbers_are_notes_only_when_they_track_the_pitch():
     assert I.number_sets([(p(f"Acme/Ms/Kick {n}.wav"), 30.0 + n) for n in (1, 2, 3)]) == {}   # generic
 
 
+def test_a_numbered_set_survives_a_reading_off_by_an_octave_or_a_note():
+    """A sampled instrument numbered by MIDI note plus a constant ("Vqx Gtr-73" plays 59): a
+    root read an octave off, or one file the pack numbered a note off, doesn't unmake the set,
+    as long as most of the rooted files agree."""
+    gtr = [(p(f"Acme/Ms/Vqx_Gtr-{n}.wav"), n - 13.82) for n in (53, 57, 61, 65, 69, 73, 77, 81)]
+    gtr += [(p("Acme/Ms/Vqx_Gtr-85.wav"), 85 - 13.82 + 12.0),        # an octave error
+            (p("Acme/Ms/Vqx_Gtr-96.wav"), 96 - 12.86)]                 # numbered a note off
+    got = I.number_sets(gtr)
+    assert len(got) == 10 and len(set(got.values())) == 1
+    # Sononym an octave off for a whole stretch of the low notes: still one set
+    env = [(p(f"Acme/Ms/Qzv Env Pwm {n:03d}.wav"), float(n - 12 + (12 if n < 40 else 0))) for n in range(29, 50)]
+    assert len(I.number_sets(env)) == 21
+    # numbers that agree only octaves aside are no set (a fifth up each step, wrapping)
+    assert I.number_sets([(p(f"Acme/Ms/Qzv Saw {n:02d}.wav"), r) for n, r in ((2, 67.0), (6, 71.0), (10, 63.0))]) == {}
+    # most of them disagreeing is no set: three agree out of seven rooted
+    few = gtr[:3] + [(p(f"Acme/Ms/Vqx_Gtr-{n}.wav"), 60.0 + k * 0.9) for k, n in enumerate((88, 90, 92, 94))]
+    assert I.number_sets(few) == {}
+
+
 def test_series_are_never_sets():
     k = I.patch_key
     assert k(p("Acme/Fx/Hinge07.wav")) is None and k(p("Acme/Fx/Lever01.wav")) is None
@@ -184,6 +203,32 @@ def test_one_note_per_c_reads_numbers_that_track_the_pitch():
     assert C._one_per_retune_target([[0, 1, 2]], rec) == ([[0, 1, 2]], 0)
 
 
+
+def test_one_note_per_c_reads_the_whole_folder():
+    """A numbered set is read on its whole source folder (curate._folder_number_roots), so the
+    three of its notes a category's candidates hold are the set its other notes say it is."""
+    rec = [_rt(f"Qzv Env Pwm {n:03d}.wav", n - 12.0 + d) for n, d in ((59, 0.02), (61, 0.04), (62, 0.04))]
+    rec += [dict(path=p(f"Acme/Ms/Qzv Env Pwm {n:03d}.wav"), tune=None, own_root=None, retune=None)
+            for n in (20, 21, 22)]                 # roots the candidates don't carry
+    roots = {p(f"Acme/Ms/Qzv Env Pwm {n:03d}.wav"): n - 12.0 for n in range(20, 40)}
+    assert C._one_per_retune_target([[0, 1, 2, 3, 4, 5]], rec)[1] == 2   # three agree: a set already
+    rec[2]["tune"] = 49.5                                                  # one off: two of three
+    rec[2]["retune"] = round(48 - 49.5, 2)
+    assert C._one_per_retune_target([[0, 1, 2, 3, 4, 5]], rec)[1] == 0
+    groups, n = C._one_per_retune_target([[0, 1, 2, 3, 4, 5]], rec, roots=roots)
+    assert n == 2 and 0 in groups[0] and {1, 2}.isdisjoint(groups[0])    # the folder says: a set
+
+
+def test_one_note_per_c_reads_pyin_where_sononym_isnt_sure():
+    """Notes of a numbered set Sononym reads with little confidence (no root the build retunes
+    from) are still the set by pYIN's roots, so two of its notes never land on one C."""
+    rec = [_rt(f"Vqx_Gtr-{n}.wav", n - 13.82) for n in (73, 77)]
+    rec += [dict(path=p(f"Acme/Ms/Vqx_Gtr-{n}.wav"), tune=None, own_root=n - 13.82, retune=None)
+            for n in (53, 57, 61)]
+    groups, n = C._one_per_retune_target([[0, 1, 2, 3, 4]], rec)
+    assert n == 1 and groups == [[0, 2, 3, 4]]            # 73 (+0.82) keeps C4 over 77 (-3.18)
+
+
 def test_one_round_robin_a_note_and_velocity():
     names = ["vqxP_C1_v2_RR1", "vqxP_C1_v2_RR2", "vqxP_C1_v3_RR2", "vqxP_C3_v2_RR2", "Qzv Pad C3"]
     rec = [dict(path=p(f"Acme/Str/{n}.wav")) for n in names]
@@ -208,3 +253,38 @@ def test_a_kit_takes_one_take_of_a_drum():
 def test_names_stay_library_neutral():
     assert os.path.basename(I.__file__) == "identity.py"
     assert I.edition_name(p("Acme/X/Hit 87 Cleanup.wav")) == I.edition_name(p("Acme/Y/Hit 87.aif")) == "hit 87"
+
+
+def test_folder_number_roots_reads_the_whole_folder(tmp_path):
+    """The build's and verify's numbered-set roots come from every file of a numbered file's
+    source folder: Sononym's sure root, else pYIN's; other folders and unnumbered names aside."""
+    from fourier.db import session as S
+    from fourier.db.models import Sample, SampleFeatures, SononymMeta
+    from fourier.metadata.rows import forget_current
+    old = (S._engine, S._SessionLocal)
+    S._engine = S._SessionLocal = None
+    try:
+        S.init_db(tmp_path / "t.db")
+        forget_current()
+        lib = "/l/SampleLibrary/Acme/Ms"
+        with S.session_scope() as s:
+            for i, (n, son, conf, own) in enumerate(((40, 52.0, 0.9, 52.1), (41, 70.0, 0.1, 53.0),
+                                                     (42, None, None, None))):
+                s.add(Sample(id=i + 1, path=f"{lib}/Qzv Env Pwm {n:03d}.wav", rel_path=f"Acme/Ms/Qzv Env Pwm {n:03d}.wav",
+                             filename=f"Qzv Env Pwm {n:03d}.wav", duration_s=1.0))
+                if son is not None:
+                    s.add(SononymMeta(sample_id=i + 1, base_note=son, base_note_confidence=conf))
+                s.add(SampleFeatures(sample_id=i + 1, own_root_midi=own))
+            s.add(Sample(id=9, path="/l/SampleLibrary/Acme/Other/Qzv Env Pwm 043.wav",
+                         rel_path="Acme/Other/Qzv Env Pwm 043.wav", filename="Qzv Env Pwm 043.wav", duration_s=1.0))
+        with S.session_scope() as s:
+            got = C._folder_number_roots(s, [f"{lib}/Qzv Env Pwm 040.wav", f"{lib}/Pad.wav"])
+            assert C._folder_number_roots(s, [f"{lib}/Pad.wav"]) == {}         # no numbered name
+        assert {k: v for k, v in got.items() if v is not None} == {f"{lib}/Qzv Env Pwm 040.wav": 52.0,
+                                                                  f"{lib}/Qzv Env Pwm 041.wav": 53.0}
+        assert C._folder_number_roots(None, [f"{lib}/Qzv Env Pwm 040.wav"]) == {}
+    finally:
+        forget_current()
+        if S._engine is not None:
+            S._engine.dispose()
+        S._engine, S._SessionLocal = old

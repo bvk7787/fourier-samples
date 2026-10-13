@@ -94,6 +94,11 @@ class _Ctx:
         self.copies = None        # [((cat, src), (cat, src))] one recording in two categories, or None (no DB)
         self.hat_s = None         # {src path: how long it sounds (rules._hat_seconds)} or None (no DB)
         self.copies_within = None  # [((cat, src), (cat, src))] one recording twice in one category, or None
+        self.dur = None           # {src path: seconds, as the build judged it} or None (no DB)
+        self.id_path = None       # {sample id: src path} of the why logs' copies, or None (no DB)
+        self.pyin = None          # {src path: pYIN pitch (own analysis, or the build's cache)} or None
+        self.son_root = None      # {src path: the root the build retunes from (metadata.resolve.root)} or None
+        self.num_roots = None     # {path: root} of the numbered files' folders (curate._folder_number_roots) or None
 
     def path(self, c, e):
         return self.root / c / e["out"]
@@ -112,6 +117,11 @@ def _item(x) -> str:
         head, *rest = x
         return f"{head} ({', '.join(str(r) for r in rest)})" if rest else str(head)
     return str(x)
+
+
+def _list(items):
+    """An invariant's offenders: how many, and the first 10."""
+    return _fmt(items, 10)
 
 
 def _fmt(items, n=3):
@@ -136,7 +146,7 @@ def check_manifest(ctx):
     bad = [f"{c}/{e['out']}" for c, e in ctx.entries + ctx.set_entries   # the sets' copies too
            if e.get("out_md5") and ctx.path(c, e).exists()
            and hashlib.md5(ctx.path(c, e).read_bytes()).hexdigest() != e["out_md5"]]
-    yield Result(FAIL if bad else PASS, "out_md5 matches every file", _fmt(bad))
+    yield Result(FAIL if bad else PASS, "out_md5 matches every file", _list(bad))
     nomd5 = [f"{c}/{e['out']}" for c, e in ctx.entries if not e.get("out_md5")]
     nomd5 += [f"{c}/{e['out']}" for c, e in ctx.set_entries if not e.get("out_md5")]
     yield Result(FAIL if nomd5 else PASS, "every file has an out_md5 (releases and locks rely on it)",
@@ -185,11 +195,56 @@ def check_sets(ctx):
             by_kit[e["family"]].add(_role(*ent[e["came_from"]]))
     thin = [(k, sorted(set(KIT_REQUIRED) - r)) for k, r in by_kit.items() if not set(KIT_REQUIRED) <= r]
     yield Result(FAIL if thin else PASS, "every kit has kick, snare, closed and open hat", _fmt(thin))
+    if not ctx.man.get("base"):        # (an additive build keeps its release's kits as they are)
+        yield from _check_kit_slots(ctx, ent)
     from .sets import slice_ready
     loose = [f"SLICE/{e['out']}" for s, e in ctx.set_entries if s == "SLICE"
              and ((e.get("came_from") not in ent) or not slice_ready(ent[e["came_from"]][1]))]
     yield Result(FAIL if loose else PASS, "SLICE holds only straight, cleanly slicing loops of 1, 2 or 4 bars",
                  _fmt(loose))
+
+
+def _check_kit_slots(ctx, ent):
+    """Each kit slot as sets._kits fills it, from its pack's (or drum machine's) files in the
+    master: a file whose name fits the slot (sets._slot_candidates: no closed hat as the open
+    hat), not one more than KIT_UNDER_DB under its role's level when the pack has another that
+    isn't, and not a second take of a drum (sets._stem) when the pack has another drum."""
+    from .curate import _machine_label, _pack_key2
+    from .sets import KIT_UNDER_DB, _quiet_check, _role, _slot_candidates, _stem
+    pool = defaultdict(lambda: defaultdict(list))
+    for c, e in ctx.entries:
+        r = _role(c, e)
+        if r:
+            mach = _machine_label(e["src"])
+            pool[("*", mach) if mach else (_pack_key2(e["src"]), None)][r].append((c, e))
+    kits = defaultdict(lambda: defaultdict(list))
+    for s, e in ctx.set_entries:
+        if s == "KITS" and e.get("came_from") in ent:
+            ce = ent[e["came_from"]]
+            kits[e["family"]][_role(*ce)].append(ce)
+    quiet = _quiet_check(ctx.root)
+    wrong, soft, twice = [], [], []
+    for kit, roles in sorted(kits.items()):
+        for r, picks in roles.items():
+            mach = _machine_label(picks[0][1]["src"])
+            key = ("*", mach) if mach else (_pack_key2(picks[0][1]["src"]), None)
+            cands = _slot_candidates(r, pool[key].get(r, []))
+            ids = {id(x[1]) for x in cands}
+            rest = [x for x in cands if not any(x[1] is p[1] for p in picks)]
+            for ce in picks:
+                where = f"KITS/{kit}/{os.path.basename(ce[1]['out'])}"
+                if id(ce[1]) not in ids:
+                    wrong.append((where, r))
+                elif quiet(ce) and any(not quiet(x) for x in rest):
+                    soft.append((where, r))
+            stems = [_stem(ce) for ce in picks]
+            if len(set(stems)) < len(stems) and any(_stem(x) not in stems and not quiet(x) for x in rest):
+                twice += [(f"KITS/{kit}/{os.path.basename(ce[1]['out'])}", r) for ce in picks]
+    yield Result(FAIL if wrong else PASS, "kit slots filled by their role (names that fit the slot)", _list(wrong))
+    yield Result(FAIL if soft else PASS, f"no kit slot more than {KIT_UNDER_DB:g} dB under its role's level "
+                 "when its pack has another", _list(soft))
+    yield Result(FAIL if twice else PASS, "no kit holds two takes of one drum when its pack has another drum",
+                 _list(twice))
 
 
 def _allowed(ctx):
@@ -412,11 +467,24 @@ def check_ratings(ctx):
     src_cat = defaultdict(set)
     for c, e in ctx.entries:
         src_cat[e.get("src")].add(c)
-    leak = [p for p in ctx.drops if p in src_cat]
-    yield Result(FAIL if leak else PASS, "no Drop in the master", _fmt(map(os.path.basename, leak)))
-    back = [(os.path.basename(p), c) for p, c in ctx.misf.items()
-            if c in src_cat.get(p, set()) and ctx.pins.get(p) != c]
-    yield Result(FAIL if back else PASS, "no Misfiled file back in its folder", _fmt(back))
+    # a rating reaches as the build has it (curate._rating_reach, identity.Reach): a Drop its
+    # file's byte copies and editions, and a set-wide one its set; a Misfiled its copies,
+    # editions and multisample set in the rated category. A Keep there wins, as in the build.
+    from . import curate as C
+    from .ratings import drop_categories, rating_scopes
+    reach = C._rating_reach(misfiled=ctx.misf, drops=drop_categories(ctx.store_path),
+                            scopes=rating_scopes(ctx.store_path))
+    leak, back = [], []
+    for c, e in ctx.entries:
+        p = e.get("src")
+        h, d = _hash_of(ctx, p), (ctx.dur or {}).get(p)
+        by = p if p in ctx.drops else None if ctx.pins.get(p) == c else reach.dropped(p, h, d)
+        if by:
+            leak.append((f"{c}/{e['out']}", "rated" if by == p else f"as {os.path.basename(by)}"))
+        if ctx.pins.get(p) != c and c in reach.misfiled(p, h, d):
+            back.append((f"{c}/{e['out']}", "rated" if ctx.misf.get(p) == c else "its copy, edition or set"))
+    yield Result(FAIL if leak else PASS, "no Drop in the master", _list(leak))
+    yield Result(FAIL if back else PASS, "no Misfiled file back in its folder", _list(back))
     lost = {p: c for p, c in ctx.pins.items() if c not in src_cat.get(p, set())}
     # a Keep whose source is gone (moved or deleted, or marked missing by the library walk)
     # can't be placed: passed over with a warning, as the build does
@@ -446,6 +514,172 @@ def check_leavers(ctx):
     n = sum(1 for r in rows if r["change"] == "left" and not r.get("to"))
     yield Result(WARN if bare else PASS, f"every file that left since the previous build has a logged "
                                          f"reason ({n} left)", _fmt(bare, 5))
+
+
+def _hash_of(ctx, src):
+    """A source's file hash from the database (verify_master's prof), else None."""
+    return (ctx.prof.get(src) or (None,) * 4)[3] if ctx.prof else None
+
+
+def _retune_limit(category):
+    """The most a file of this category may be retuned: RETUNE_MAX_SEMIS whole semitones
+    (fine tuning never tips it, so up to half a semitone more), else 6 (a tritone either way)."""
+    from .curate_config import RETUNE_MAX_SEMIS
+    cap = RETUNE_MAX_SEMIS.get(category)
+    return 6.0 if cap is None else min(6.0, float(cap) + 0.5)
+
+
+def _number_root(ctx, e):
+    """The root curate._number_root reads for a manifest entry: the root the build retunes
+    from (a detected root's root_midi, else Sononym's or a chunk's), else pYIN's (Fourier's
+    own analysis, the build's cache, or the pitch it retuned by)."""
+    if e.get("root_src") in ("detect", "chunk") and e.get("root_midi") is not None:
+        return float(e["root_midi"])
+    v = (ctx.son_root or {}).get(e["src"])
+    if v is None:
+        v = (ctx.pyin or {}).get(e["src"])
+    if v is None and e.get("root_src") == "pyin":
+        v = e.get("root_midi")          # (the pYIN pitch the build retuned by)
+    return v
+
+
+def check_pitch(ctx):
+    """Tonal one-shots play the C their names promise: at most one note of a multisample set
+    on each C a category plays, and a file named for C plays C by its pitch readings."""
+    from . import curate as C
+    from . import identity as _id
+    from .curate_config import RETUNE_CATS, SIBLING_CAP_CATS
+    tonal = [(c, e) for c, e in ctx.entries if c in RETUNE_CATS and not e.get("loop_row")]
+    # one note per C (curate._one_per_retune_target): notes of one set (identity.set_key, or
+    # numbers that track the picks' roots, retuned or not: number_sets, _number_root) that
+    # retune onto the same C; a velocity layer or round robin of the same note is the same note. Keeps stay.
+    by_cat = defaultdict(list)
+    for c, e in tonal:
+        if c in SIBLING_CAP_CATS:
+            by_cat[c].append(e)
+    same_c = []
+    for c, ents in sorted(by_cat.items()):
+        # (the build's roots for numbers, curate._number_root: the root it retunes from, which
+        # the manifest records as root_midi of a detected root, else pYIN's)
+        # (on the whole folder of a numbered file, as the build reads it, where the database is here)
+        items = {e["src"]: _number_root(ctx, e) for e in ents}
+        items.update({p: r for p, r in (ctx.num_roots or {}).items() if r is not None})
+        numbered = _id.number_sets(items.items())
+        groups = defaultdict(list)
+        for e in ents:
+            if e.get("retune") is None:
+                continue              # (a set's notes not retuned count only toward reading it)
+            if e.get("root_src") != "name" and not C._states_note(e["src"]) and e["src"] not in numbered:
+                continue
+            # (the note it was retuned from: pYIN's where the build followed it, else its name's)
+            src = float(e["root_midi"]) if e.get("root_src") == "pyin" and e.get("root_midi") is not None \
+                else C._name_root_midi(os.path.basename(e["src"]))
+            if src is None and e.get("root_midi") is not None:
+                src = float(e["root_midi"])
+            k = _id.set_key(e["src"]) or numbered.get(e["src"])
+            if k is None or src is None:
+                continue
+            groups[(k, int(round((src + e["retune"]) / 12)))].append((int(round(src)), e))
+        for (k, octv), ids in groups.items():
+            free = {n for n, e in ids if not ctx.pinned(c, e)}
+            kept = {n for n, e in ids if ctx.pinned(c, e)}
+            if len(free) > 1 or (free and kept and not free <= kept):
+                names = sorted(f"{c}/{e['out']}" for _n, e in ids)
+                same_c += [(n, f"C{octv - 1} with {len(names) - 1} other note(s) of its set") for n in names]
+    yield Result(FAIL if same_c else PASS, "one note of a multisample set on each C (notes retuned onto a "
+                 "C their set already plays left out)", _list(same_c))
+    # a file retuned to C or named for it plays C, as the build's pitch trust has it (a retune
+    # or a name to C needs two of name, Sononym and pYIN to agree: curate._check_name_pitches,
+    # _check_detected_roots, _fill_roots): a FAIL where the reading the build retuned by plus
+    # its retune isn't C, or where Sononym and pYIN agree on another note (the build retunes or
+    # renames those); a warning where one reading alone disagrees with the name, which the
+    # build leaves be (a low-confidence root, a chord, a low bass). pYIN a fifth over the
+    # source's named note may be locked onto its 3rd harmonic (the name may be right): a
+    # warning too.
+    off, alone, fifth, bare = [], [], [], []
+    for c, e in tonal:
+        if e.get("retune") is None and C._name_root_pc(os.path.basename(e["out"]), bare=ctx.fallback) != 0:
+            continue
+        rs, rt = e.get("root_src"), float(e.get("retune") or 0.0)
+        py = (ctx.pyin or {}).get(e["src"])
+        if rs in ("pyin", "detect", "chunk") and e.get("root_midi") is not None:
+            # the reading it was retuned by, and for a detected root pYIN's too (the build
+            # retunes by one only where pYIN agrees: _check_detected_roots)
+            for by, who in ((float(e["root_midi"]), "its root"), (py if rs == "detect" else None, "pYIN")):
+                if by is not None and abs(C._pc_off(float(by) + rt, 0)) >= 0.5:
+                    off.append((f"{c}/{e['out']}", f"plays {float(by) + rt:.2f} by {who} ({float(by):.2f}, "
+                                f"retuned {rt:+.2f})"))
+                    break
+            continue
+        son = (ctx.son_root or {}).get(e["src"])
+        if py is None and son is None:
+            son = e.get("pitch_conflict")       # (no database: the reading that contradicted the name)
+        heard = [float(x) for x in (py, son) if x is not None]
+        wrong = [x for x in heard if abs(C._pc_off(x + rt, 0)) >= 0.5]
+        if not wrong:
+            continue
+        played = wrong[0] + rt
+        item = (f"{c}/{e['out']}", f"plays {C._note_name(int(round(played)))} ({played:.2f})"
+                + (" by pYIN and Sononym" if len(wrong) == 2 else " by " + ("pYIN" if py is not None
+                                                                          and wrong[0] == float(py) else "Sononym")))
+        named = C._name_root_midi(os.path.basename(e["src"]))
+        if named is None and rs in ("name", None):
+            # a chord or key ("Cmin": pYIN reads one of its notes) or a note without an octave
+            # ("Bass C"): the build checks no pitch against such a name
+            bare.append(item)
+        elif named is not None and py is not None and int(round(C._pc_off(round(float(py)), named))) == -5:
+            fifth.append(item)        # pYIN a fifth over the name: the build leaves the name be
+        elif len(wrong) == 2 and C._pitches_agree(py, son):
+            off.append(item)
+        else:
+            alone.append(item)
+    yield Result(FAIL if off else PASS, "files retuned to C or named for it play C (within half a "
+                 "semitone: the reading the build retuned by, or Sononym and pYIN where they agree)", _list(off))
+    if alone:
+        yield Result(WARN, "files named for C that one pitch reading hears as another note (the other "
+                     "readings agree with the name or read nothing, so the build keeps it: check by ear)",
+                     _list(alone))
+    if fifth:
+        yield Result(WARN, "files named for C whose pitch reads a fifth over the named note (maybe its "
+                     "3rd harmonic: check by ear)", _list(fifth))
+    if bare:
+        yield Result(WARN, "files named for a C chord or key, or a C without an octave, whose pitch reads "
+                     "another note (the build checks no such name: check by ear)", _list(bare))
+
+
+def check_copies(ctx):
+    """What the copy prune left out, by this master's why logs (curate._drop_copies, the cross-
+    category copies): every copy's keeper is in the master (a copy leaves only when its keeper
+    stays), and a synthetic single cycle (identity.comparable) leaves only as an edition of its
+    keeper by name (two different waveforms correlate like one recording). Needs the database
+    (the logs name sample ids)."""
+    from . import identity as _id
+    from . import why_log
+    from .curate_config import CATEGORIES
+    docs = {c: why_log.read(ctx.root, c) for c in ctx.cats}
+    left = [(c, reason, int(sid), int(k)) for c, d in docs.items() if d
+            for reason in ("copy", "cross_copy") for sid, k in ((d.get("out") or {}).get(reason) or {}).items()
+            if isinstance(k, int) or str(k).isdigit()]
+    if not left:
+        return
+    if ctx.id_path is None:
+        yield Result(WARN, "every copy left out has its keeper in the master", "skipped (no DB)")
+        return
+    where = defaultdict(set)
+    for c, e in ctx.entries:
+        where[e["src"]].add(c)
+    orphan, cycles = [], []
+    for c, reason, sid, k in sorted(left):
+        p, kp = ctx.id_path.get(sid), ctx.id_path.get(k)
+        name = os.path.basename(p or str(sid))
+        if kp is None or not (c in where.get(kp, ()) if reason == "copy" else where.get(kp)):
+            orphan.append((f"{c}/{name}", f"keeper {os.path.basename(kp or str(k))} not in the master"))
+        if reason == "copy" and not _id.comparable(CATEGORIES.get(c, {}).get("kind")) and p and kp \
+                and not _id.editions(p, kp, (ctx.dur or {}).get(p), (ctx.dur or {}).get(kp)):
+            cycles.append((f"{c}/{name}", f"left as a copy of {os.path.basename(kp)}"))
+    yield Result(FAIL if orphan else PASS, "every copy left out has its keeper in the master", _list(orphan))
+    yield Result(FAIL if cycles else PASS, "no single cycle left out as a copy of another wave (editions "
+                 "by name only)", _list(cycles))
 
 
 def _gone_keeps(pins: dict) -> dict:
@@ -597,13 +831,13 @@ def check_routing(ctx):
             durs[(c, e["out"])] = None
     wout = [(c, e["out"]) for c, e in ctx.entries if c != C.WAVES_CATEGORY and not ctx.pinned(c, e)
             and C._is_wave(_rel(e["src"]), (durs[(c, e["out"])] or 0) + 0.01)]
-    yield Result(FAIL if wout else PASS, "no waves outside WAVES", _fmt(wout))
+    yield Result(FAIL if wout else PASS, "no waves outside WAVES", _list(wout))
     # a wave-folder file over the cap is a wavetable for a wavetable synth: in no category
     # (the master's length: trimming only shortens, so one over the cap had a source over it)
     wlong = [(c, e["out"], round(durs[(c, e["out"])], 2)) for c, e in ctx.entries
              if durs[(c, e["out"])] and C._is_long_wavetable(_rel(e["src"]), durs[(c, e["out"])])]
     yield Result(FAIL if wlong else PASS, f"no wavetables longer than {C.WAVE_MAX_DUR:g} s (out of scope)",
-                 _fmt(wlong))
+                 _list(wlong))
     if C.WAVES_CATEGORY in ctx.cats:
         nonw = [e["out"] for c, e in ctx.entries if c == C.WAVES_CATEGORY and not C.WAVE_PATH_RE.search(os.path.dirname(e["src"]))]
         yield Result(FAIL if nonw else PASS, "WAVES holds only waves", _fmt(nonw))
@@ -626,7 +860,7 @@ def check_routing(ctx):
     many = [(c, f, k[1], n) for (c, f, k), n in sets.items() if n > sibling_cap(c)]
     _by = ", ".join(f"{c} {n}" for c, n in sorted(SIBLING_CAP_BY_CAT.items()) if c in SIBLING_CAP_CATS)
     yield Result(FAIL if many else PASS, f"at most {SIBLING_CAP} notes of one multisample set a folder"
-                 + (f" ({_by})" if _by else ""), _fmt(many))
+                 + (f" ({_by})" if _by else ""), _list(many))
     # (a rated Keep still lands there: pins win over require_tempo, as the build has it)
     unpinned = {(c, e["family"]) for c, e in ctx.entries if not ctx.pinned(c, e)}
     free = [(c, f["family"]) for c, fl in ctx.fams.items() for f in fl
@@ -638,17 +872,33 @@ def check_routing(ctx):
     # (C._whole_beats; a tempo the name states within C.NAME_TEMPO_TOL_MS, its silent ends
     # aside, _name_tempo_fits) and at its folder tempo (_fold_keeps_beats); a tempo the WAV's
     # ACID chunk states is as stated
+    # (within NAME_TEMPO_TOL_MS over the whole loop: an analyzer's tempo is snapped to the
+    # length, and a stated one, its silent ends aside, is taken only that close)
     offb = []
     for c, e in ctx.entries:
         d, bpm = durs.get((c, e["out"])), e.get("bpm")
         if c not in loopish or ctx.pinned(c, e) or not d or not bpm or e.get("bpm_src") == "acid":
             continue
-        ok = (C._name_tempo_fits(d, bpm, True, str(ctx.path(c, e))) if e.get("bpm_src") == "name"
-              else C._whole_beats(d, bpm))
+        ok = (C._name_tempo_fits(d, bpm, True, str(ctx.path(c, e))) if e.get("bpm_src") in ("name", "folder")
+              else C._whole_beats(d, bpm, C.NAME_TEMPO_TOL_MS))
         if not ok or not C._fold_keeps_beats(d, bpm, e.get("bpm_fold") or bpm):
             n, off = C._beats_off(d, bpm)
-            offb.append((c, e["out"], f"{n}{'+' if d * bpm / 60.0 > n else '-'}{off:.2f} beats at {bpm:g}"))
-    yield Result(FAIL if offb else PASS, "loops are whole beats at their tempo", _fmt(offb))
+            offb.append((c, e["out"], f"{n}{'+' if d * bpm / 60.0 > n else '-'}{off:.2f} beats at {bpm:g} "
+                         f"({off * 60000.0 / bpm:.0f} ms)"))
+    yield Result(FAIL if offb else PASS, "loops are whole beats at their tempo", _list(offb))
+    # a folder's tempo lead (naming.tempo_lead) holds every loop's folder tempo: a range
+    # "120-130bpm" (rounded), one tempo "126bpm" within its spread
+    band = []
+    for c, e in ctx.entries:
+        t = e.get("bpm_fold") or e.get("bpm")
+        if c not in loopish or not t:
+            continue
+        m = re.search(r"(?:^|-)(\d{3})-(\d{3})bpm(?:-|$)", e["family"])
+        one = None if m else re.search(r"(?:^|-)(\d{3})bpm(?:-|$)", e["family"])
+        if (m and not int(m.group(1)) - 0.5 <= t <= int(m.group(2)) + 0.5) \
+                or (one and abs(t - int(one.group(1))) > 2.5):
+            band.append((f"{c}/{e['out']}", f"{t:g} BPM"))
+    yield Result(FAIL if band else PASS, "loops inside their folder's tempo range", _list(band))
     lf = [(c, e["out"]) for c, e in ctx.entries if c in LOOP_DIR_ONESHOT_CATS and not ctx.pinned(c, e)
           and (durs.get((c, e["out"])) or 0) > LOOP_DIR_ONESHOT_MAX_S + 0.05
           and C._in_loop_folder(_rel(e["src"])) and ctx.misf.get(e["src"]) != "PHRASES"]
@@ -729,13 +979,13 @@ def check_routing(ctx):
             if h and CATEGORIES.get(c, {}).get("kind") != "instrument":
                 fh[h].add(c)
         twins += [sorted(cs) for cs in fh.values() if len(cs) > 1]
-    yield Result(FAIL if twins else PASS, "no identical audio in two categories", _fmt(twins))
+    yield Result(FAIL if twins else PASS, "no identical audio in two categories", _list(twins))
     if ctx.copies is not None:
         both = [(a, b) for a, b in ctx.copies
                 if not (ctx.pins.get(a[1]) == a[0] and ctx.pins.get(b[1]) == b[0])]   # both Keeps: as rated
         yield Result(FAIL if both else PASS, "no recording in two categories under two names "
                      "(CLAP, then the audio)",
-                     _fmt(f"{a[0]}/{os.path.basename(a[1])} = {b[0]}/{os.path.basename(b[1])}" for a, b in both))
+                     _list(f"{a[0]}/{os.path.basename(a[1])} = {b[0]}/{os.path.basename(b[1])}" for a, b in both))
     if ctx.copies_within is not None:
         both = [(a, b) for a, b in ctx.copies_within
                 if not (ctx.pins.get(a[1]) == a[0] and ctx.pins.get(b[1]) == b[0])]   # both Keeps: as rated
@@ -867,7 +1117,7 @@ def check_bands(ctx):
                                   pack=C._pack_of(_rel(e["src"]), e["src"]), rel=_rel(e["src"]))}
             if e.get("band") not in got:
                 wrong.append((e["out"], e.get("band"), "/".join(sorted(got))))
-        yield Result(FAIL if wrong else PASS, f"{cat} files are in the right {bt} band", _fmt(wrong))
+        yield Result(FAIL if wrong else PASS, f"{cat} files are in the right {bt} band", _list(wrong))
 
 
 def check_audio(ctx):
@@ -878,6 +1128,7 @@ def check_audio(ctx):
     from .curate_config import QUIET_RMS_DB, ONESHOT_RMS_CEIL_DB, END_HOT_DB
     dc, wdc, wlen, tails, quiet, leads, hot, ends, stereo_bad = [], [], [], [], [], [], [], [], []
     hard, seams, tiny, phase_bad, phase_warn = [], [], [], [], []
+    silent, late = [], []             # loops: mostly silence; a late start the build rotates
     from .curate_config import LEVEL_CATS, LEVEL_TOL_DB
     st = defaultdict(list)            # (category, folder) -> [(file, short-term dB, room to lift)]
     for c, e in ctx.entries:
@@ -943,6 +1194,14 @@ def check_audio(ctx):
             _a = np.abs(x).max(axis=1)
             if max(_a[0], _a[-1]) > pk * 10 ** (C.EDGE_HOT_DB / 20):
                 seams.append((c, e["out"], round(float(_a[0]), 3), round(float(_a[-1]), 3)))
+            if not ctx.pinned(c, e):
+                # (the build judged the source: a fade or a cut lead-in moves the share a little)
+                _sh = C.silent_share_audio(x, sr)
+                if _sh > C.LOOP_SILENT_SHARE_MAX + 0.01:
+                    silent.append((f"{c}/{e['out']}", f"{_sh:.0%} silent"))
+                _ls = _late_start(x, sr) if e.get("bpm") else 0.0
+                if _ls:
+                    late.append((f"{c}/{e['out']}", f"{_ls * 1000:.0f} ms of silence first"))
         if x.shape[1] == 2 and _k != "waves":
             from .curate_config import PHASE_WARN_CORR, phase_fix_limits
             _corr, _loss = C.phase_stats(x)
@@ -974,6 +1233,11 @@ def check_audio(ctx):
     yield Result(FAIL if phase_bad else PASS, "no stereo file cancels in mono (one channel flipped)", _fmt(phase_bad))
     yield Result(WARN if phase_warn else PASS, "stereo files partly out of phase (check by ear)", _fmt(phase_warn))
     yield Result(FAIL if seams else PASS, "loops start and end quietly (no click at the loop point)", _fmt(seams))
+    yield Result(FAIL if silent else PASS, f"no loop more than {C.LOOP_SILENT_SHARE_MAX:.0%} silence "
+                 "(LOOP_SILENT_SHARE_MAX)", _list(silent))
+    from .curate_config import ROTATE_MAX_MS, ROTATE_MIN_MS
+    yield Result(FAIL if late else PASS, f"no loop starts {ROTATE_MIN_MS:g}-{ROTATE_MAX_MS:g} ms late on "
+                 "digital silence (rotated or cut to its first sound)", _list(late))
     if C.WAVES_CATEGORY in ctx.cats:
         yield Result(FAIL if tiny else PASS, f"single cycles at least {C.WAVE_MIN_SAMPLES} samples", _fmt(tiny))
     yield Result(FAIL if quiet else PASS, f"no near-silent one-shots (RMS under {QUIET_RMS_DB:.0f} dBFS)", _fmt(quiet))
@@ -981,13 +1245,13 @@ def check_audio(ctx):
     yield Result(FAIL if ends else PASS, "one-shots end quietly (faded, no click)", _fmt(ends))
     yield Result(FAIL if stereo_bad else PASS, "stereo only where it's real (KICKS / SUB mono, no near-mono stereo)",
                  _fmt(stereo_bad))
-    from .curate_config import RETUNE_CATS
+    from .curate_config import RETUNE_CATS, RETUNE_MAX_SEMIS
     rt = [(c, e["out"], e.get("retune")) for c, e in ctx.entries if c in RETUNE_CATS and not e.get("loop_row")
           and (e.get("retune") is None and not e.get("pitch_conflict")
                and C._retune_shift(c, os.path.basename(e["src"]), None, bare=ctx.fallback)[0] is not None
-               or (e.get("retune") is not None and abs(e["retune"]) > 6.0 + 1e-6))]
-    yield Result(FAIL if rt else PASS, "tonal one-shots with a named root retuned to C (at most 6 semitones)",
-                 _fmt(rt))
+               or (e.get("retune") is not None and abs(e["retune"]) > _retune_limit(c) + 1e-6))]
+    yield Result(FAIL if rt else PASS, "tonal one-shots with a named root retuned to C (at most 6 semitones, "
+                 "3 in " + "/".join(sorted(RETUNE_MAX_SEMIS)) + ")", _list(rt))
     stale = [(c, e["out"]) for c, e in ctx.entries if c in RETUNE_CATS and e.get("retune") is not None
              and e.get("root_src") == "name"
              and C._name_root_pc(os.path.basename(e["out"]), bare=ctx.fallback) not in (0, None)]
@@ -1015,6 +1279,28 @@ def check_audio(ctx):
     yield Result(FAIL if leads else PASS, "files start at the sound (leads trimmed at their category's trim_lead_db)", _fmt(leads))
 
 
+def _late_start(x, sr):
+    """Seconds of silence a loop's export still starts with that the build rotates or cuts
+    away (curate._silent_lead: before its first sound, LOOP_QUIET_DB from the peak, less
+    ROTATE_PREROLL_MS, within ROTATE_MIN_MS-ROTATE_MAX_MS, a millisecond in from either end),
+    when that silence is digital (under LOOP_PAD_DBFS: zeros or dither, a late cut beyond doubt);
+    else 0.0."""
+    from . import curate as C
+    from .curate_config import ROTATE_MAX_MS, ROTATE_MIN_MS, ROTATE_PREROLL_MS
+    a = np.square(x).max(axis=1) if x.ndim == 2 else np.square(x)
+    w = max(1, int(sr * 0.001))
+    env = np.sqrt(np.convolve(a, np.ones(w) / w, "same"))
+    pk = float(env.max()) if len(env) else 0.0
+    snd = np.nonzero(env > pk * 10 ** (C.LOOP_QUIET_DB / 20.0))[0] if pk > 0 else []
+    if not len(snd):
+        return 0.0
+    lead = snd[0] / sr - ROTATE_PREROLL_MS / 1000
+    if not (ROTATE_MIN_MS + 1) / 1000 <= lead <= (ROTATE_MAX_MS - 1) / 1000:
+        return 0.0
+    nz = np.nonzero(np.sqrt(a) > 10 ** (C.LOOP_PAD_DBFS / 20.0))[0]
+    return float(lead) if len(nz) and nz[0] / sr >= lead - 0.001 else 0.0
+
+
 def _copies_within(entries, vecs, dur=None):
     """[((cat, src), (cat, src))] picks of one category that hold one recording or a shorter
     cut of it, found as the build finds them (curate._copies_within: editions by name, then
@@ -1039,6 +1325,65 @@ def _copies_within(entries, vecs, dur=None):
                                      audio=comparable(CATEGORIES.get(c, {}).get("kind"))):
             out.append(((c, srcs[i]), (c, srcs[j])))
     return out
+
+
+def _why_ids(session, ctx):
+    """{sample id: path} of the samples this master's why logs name as copies and keepers."""
+    from sqlalchemy import select
+    from . import why_log
+    from ..db.models import Sample
+    ids = set()
+    for c in ctx.cats:
+        d = why_log.read(ctx.root, c) or {}
+        for reason in ("copy", "cross_copy"):
+            for sid, k in ((d.get("out") or {}).get(reason) or {}).items():
+                ids |= {int(x) for x in (sid, k) if isinstance(x, int) or str(x).isdigit()}
+    ids_ = sorted(ids)
+    out = {}
+    for i in range(0, len(ids_), 900):
+        out.update(dict(session.execute(select(Sample.id, Sample.path).where(Sample.id.in_(ids_[i:i + 900]))).all()))
+    return out
+
+
+def _pyin_readings(ctx, session=None):
+    """{source: pYIN pitch} of the master's tonal one-shots: Fourier's own analysis (the
+    database's own_root_midi), else what the build's pitch check read (curate.cached_pitch,
+    its cache only: verify runs no pitch tracker). None when the build checks no pitches
+    (FOURIER_NO_PITCH_CHECK), as it doesn't."""
+    if os.environ.get("FOURIER_NO_PITCH_CHECK"):
+        return None
+    from .curate import cached_pitch
+    from .curate_config import RETUNE_CATS
+    srcs = sorted({e["src"] for c, e in ctx.entries if c in RETUNE_CATS and not e.get("loop_row")})
+    got = {}
+    if session is not None and srcs:
+        from ..metadata.rows import fetch, sample_select
+        want = set(srcs)
+        got = {r.path: r.own_root_midi for r in fetch(session, sample_select("path", "own_root_midi", session=session))
+               if r.path in want and r.own_root_midi is not None}
+    for p in srcs:
+        if p not in got:
+            v = cached_pitch(p)
+            if v is not None:
+                got[p] = v
+    return got
+
+
+def _son_roots(ctx, session):
+    """{source: the root the build retunes from} of the master's tonal one-shots
+    (metadata.resolve.root: Sononym's base note when sure enough, else a chunk's without
+    Sononym), or None without the database."""
+    if session is None:
+        return None
+    from ..metadata import resolve as _resolve
+    from ..metadata.rows import fetch, sample_select
+    from .curate_config import RETUNE_CATS
+    want = {e["src"] for c, e in ctx.entries if c in RETUNE_CATS and not e.get("loop_row")}
+    if not want:
+        return {}
+    rows = fetch(session, sample_select("path", "base_note", "base_note_confidence", "root_note", session=session))
+    return {r.path: v for r in rows if r.path in want
+            and (v := _resolve.root(r, ctx.fallback).value) is not None}
 
 
 def verify_master(master_dir, session=None, audio=True, store_path=None, log=print):
@@ -1069,6 +1414,7 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
         ctx.dur = {r.path: r.duration_s for r in rows if r.path in srcs and r.duration_s is not None}
         ctx.hat_s = {r.path: C._hat_seconds(r.duration_s, r.attack_time_ms, r.decay_time_ms)
                      for r in rows if r.path in srcs}
+        ctx.id_path = _why_ids(session, ctx)
         if audio:
             members = sorted({(c, e["src"]) for c, e in ctx.entries if e.get("src")})
             vecs = C._copy_vectors({src for _c, src in members})
@@ -1076,9 +1422,16 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
                 cos = C.CROSS_COPY_COS
                 ctx.copies = [(members[i], members[j]) for i, j in C._cross_copy_pairs(members, vecs, cos=cos)]
                 ctx.copies_within = _copies_within(ctx.entries, vecs, ctx.dur)
+    ctx.pyin = _pyin_readings(ctx, session)
+    ctx.son_root = _son_roots(ctx, session)
+    if session is not None:
+        from . import curate as _C
+        from .curate_config import RETUNE_CATS as _RC
+        ctx.num_roots = _C._folder_number_roots(session, [e["src"] for c, e in ctx.entries
+                                                          if c in _RC and not e.get("loop_row")])
     out = []
     for fn in (check_manifest, check_sets, check_budgets, check_naming, check_ratings, check_leavers,
-               check_routing, check_bands,
+               check_copies, check_routing, check_bands, check_pitch,
                *( [check_audio] if audio else [])):
         out.extend(fn(ctx))
     _ok, vres = validate_master(str(master_dir), session=session, log=lambda *a: None)
