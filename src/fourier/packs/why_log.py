@@ -4,9 +4,11 @@ A build writes one small JSON file per category into its home
 (`$FOURIER_HOME/why/<master key>/<CATEGORY>.json`, packs/curate.left_out_doc): how many
 candidates the category found and kept, its minimum, and for each candidate it left out
 the step that did it (the per-vendor share, a near-duplicate and which file it repeats, a
-CLAP gate, the budget, ...), by sample id. Nothing of it goes into the master, its manifest
-or a release, so a build's files are the same with or without it; a file that can't be
-written is skipped, never a failed build.
+CLAP gate, the budget, ...), by sample id, and the sample id of each file the previous
+build held there ("prev", by its source path in that build's manifest), which the build
+changelog and `fourier verify` read to say why each one left. Nothing of it goes into the
+master, its manifest or a release, so a build's files are the same with or without it; a
+file that can't be written is skipped, never a failed build.
 
 The key is the master the build is for: `<master>.next` (a whole build on its way in) and
 the master itself share one, so `fourier why` finds the latest build's reasons.
@@ -61,6 +63,23 @@ FILTER_WORDS = {
     "copy": "copies of a recording {cat} kept (another edition or a shorter cut)",
     "dup_source": "picked by another category too, which kept them",
     "over_budget": "over the budget",
+    "sibling_capped": "over a multisample set's cap in a folder",
+    "one_note_per_c": "notes of a set retuned onto a C it already plays",
+    "long_wavetable": "wavetables for a wavetable synth",
+    "fx_folder": "FX-folder sounds (never {cat})",
+    "homed_elsewhere": "routed to another category",
+    "rated_drop": "rated Drop",
+    "rated_misfiled": "rated Misfiled here (the file or its set)",
+    "not_instrument": "not this instrument",
+    "not_phrase": "not musical phrases",
+    "not_wave": "not single-cycle waves",
+    "not_scratch_named": "not named as scratches",
+    "noise_named": "named as noise for {cat}",
+    "not_analyzed": "not analyzed (no CLAP embedding)",
+    "ir_preview": "impulse responses, previews and demos",
+    "hygiene": "clipped or over a minute long",
+    "missing": "gone from the library",
+    "not_candidate": "no longer offered to {cat}",
 }
 # the why dict's key (curate._readmit_gated) for candidates the floor readmitted past a check
 # after the CLAP gate: {sample id: [reason, detail]}; a doc's "readmitted"
@@ -106,6 +125,23 @@ def reason_for(doc: dict, sample_id: int) -> tuple[str, object] | None:
         if sid in ids:
             return reason, ids[sid]
     return None
+
+
+def prev_reason(doc: dict, src: str) -> tuple[str, object] | None:
+    """(reason, detail) a category left out a file the previous build held there (by its
+    source path in that build's manifest; the doc's "prev"), or None when none was recorded.
+    A file the database no longer knows is "missing"; every file of a category left empty
+    ("too_few") left with it."""
+    prev = doc.get("prev") or {}
+    if src not in prev:
+        return ("category_empty", doc.get("need")) if doc.get("status") == "too_few" else None
+    sid = prev[src]
+    if sid is None:
+        return "missing", None
+    got = reason_for(doc, sid)
+    if got is None and doc.get("status") == "too_few":
+        return "category_empty", doc.get("need")
+    return got
 
 
 def gate_result(doc: dict, sample_id) -> str | None:
@@ -231,5 +267,54 @@ def describe(reason: str, detail, doc: dict, name_of=lambda sid: str(sid), place
     if reason == "soft_layers":
         lvl = f" (peak {detail:g} dBFS)" if isinstance(detail, (int, float)) else ""
         return f"too quiet: a soft velocity layer{lvl} of a multisample whose louder take is a candidate"
+    if reason == "sibling_capped":
+        cap, kept = (detail if isinstance(detail, list) and len(detail) == 2 else ("?", []))
+        names = ", ".join(kept[:4]) + (f" and {len(kept) - 4} more" if len(kept) > 4 else "")
+        return (f"over its multisample set's cap: at most {cap} notes of one set in a {cat} folder "
+                f"(SIBLING_CAP)" + (f"; the folder keeps {names}" if names else ""))
+    if reason == "one_note_per_c":
+        kept, c = (detail if isinstance(detail, list) and len(detail) == 2 else ("another note", "C"))
+        return (f"retuned to C it would play {c}, which its set already plays in {cat} as {kept} "
+                f"(one note per C)")
+    if reason == "long_wavetable":
+        got = (f" ({detail[0]:g} s, over WAVE_MAX_DUR {detail[1]:g} s)"
+               if isinstance(detail, list) and len(detail) == 2 else "")
+        return f"a wavetable for a wavetable synth{got}, not a sample to play: out of every category"
+    if reason == "fx_folder":
+        went = f"; it went to {detail}" if detail else ""
+        return (f"an FX folder's sound the classifier hears as FX only: never {cat} "
+                f"(FX_FOLDER_NOT){went}")
+    if reason == "homed_elsewhere":
+        return (f"routed to {detail}" if detail else "routed to no category") + \
+            f" (`fourier why` on it says which rule); {cat} no longer takes it"
+    if reason == "rated_drop":
+        return "you rated it Drop: out of every category"
+    if reason == "rated_misfiled":
+        if detail:
+            return f"you rated {detail}, of the same multisample set, Misfiled in {cat}"
+        return f"you rated it Misfiled in {cat}"
+    if reason == "not_instrument":
+        by = {"pack": "its pack", "name": "its name", "tags": "Live's tags", "sound": "its sound (CLAP)"}
+        return f"not {cat}'s instrument by {by.get(detail, 'its pack, name or sound')}"
+    if reason == "not_phrase":
+        return f"not a musical phrase (marked as one, in whole bars): {cat} holds phrases only"
+    if reason == "not_wave":
+        return f"not a single-cycle wave (a wave folder's file no longer than WAVE_MAX_DUR): {cat} holds waves only"
+    if reason == "not_scratch_named":
+        return f"not named as a scratch: {cat}'s scratches are named ones"
+    if reason == "noise_named":
+        return f"its name has a word {cat} leaves out (the category's noise words)"
+    if reason == "not_analyzed":
+        return "not analyzed yet (no CLAP embedding in the index)"
+    if reason == "ir_preview":
+        return f"a {detail or 'impulse response, preview or demo'}, not a sample to play"
+    if reason == "hygiene":
+        return f"{detail or 'clipped or over a minute long'}: never picked"
+    if reason == "missing":
+        return "gone from the library (moved, renamed or deleted, or no longer in the database)"
+    if reason == "not_candidate":
+        return f"no longer a {cat} candidate: its labels, Live tags or pack no longer offer it there"
+    if reason == "category_empty":
+        return f"{cat} was left empty (too few samples for its minimum of {detail})"
     words = FILTER_WORDS.get(reason)
     return f"left out by {reason}" + (f" ({words})" if words else "")

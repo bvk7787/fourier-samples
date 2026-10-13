@@ -2,7 +2,10 @@
 
 Every --all build archives its manifest (~/.fourier/builds/<stamp>.json, next to the
 ratings store) and writes CHANGELOG.md into the master: folders renamed, split, merged,
-new or gone, and files added, removed or moved between categories. `fourier diff`
+new or gone, and files added, removed or moved between categories, with how many left or
+joined for each reason. Every file that left or joined, with its reason (the why log's for
+one that left; a refill, a move between categories or a rating for one that joined), goes to
+<stamp>.changes.csv beside the archived manifest, never into the master. `fourier diff`
 compares any two builds (a master folder, a manifest file, or an archived stamp).
 
 A folder in the new build is the same folder as an old one when at least MATCH_SHARE
@@ -10,11 +13,12 @@ of its files came from it; a different name then is a rename.
 """
 from __future__ import annotations
 
+import csv
 import os
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from . import manifests
+from . import manifests, why_log
 
 MATCH_SHARE = 0.5
 
@@ -196,16 +200,155 @@ def format_diff(d: dict) -> str:
     return "\n".join(lines)
 
 
+def _stamp(doc) -> str:
+    """The name a build's manifest is archived under (archive_build), from its build time."""
+    return (doc.get("generated") or "build").replace(":", "").replace("-", "")
+
+
+def previous_build(doc) -> dict | None:
+    """The archived build before this one (doc, a manifest): this library's latest archived
+    build older than doc's build time, or None (none, or doc has no build time)."""
+    if not doc.get("generated"):
+        return None
+    me = _stamp(doc)
+    for p in reversed(archived()):
+        if p.stem < me:
+            try:
+                return manifests.read(p)
+            except (OSError, ValueError):
+                return None
+    return None
+
+
+# a joiner's reasons, and a file that only moved between categories
+JOINED_WORDS = {"refill": "refills (picked from the pool in a freed slot)",
+                "moved_in": "moved in from another category",
+                "rated_in": "rated Keep here, or moved here by a rating"}
+MOVED_OUT = "moved_out"
+
+
+def change_rows(old: dict, new: dict, master_dir, pins=None) -> list[dict]:
+    """Every file that left a category or joined one from build `old` to `new`: dicts of
+    change ("left" / "joined"), category, file (its path in the category: out), src, reason
+    and detail. A leaver's reason is what new's why log (packs/why_log.py, beside master_dir)
+    recorded for it ("" when it recorded none), a joiner's "refill", "moved_in" (detail: the
+    category it came from) or "rated_in"; a leaver now in another category has `to`, that
+    category (MOVED_OUT when its old one recorded no reason). A file the library only moved
+    is neither."""
+    if pins is None:
+        from .ratings import keep_pins
+        pins = keep_pins()
+    fo, fn = _families(old), _families(new)
+    where_old = {s: c for c, fams in fo.items() for ss in fams.values() for s in ss}
+    where_new = {s: c for c, fams in fn.items() for ss in fams.values() for s in ss}
+    docs: dict = {}
+
+    def doc(cat):
+        if cat not in docs:
+            docs[cat] = why_log.read(master_dir, cat) or {}
+        return docs[cat]
+    names = {}                  # sample id -> file name, from the docs' previous-build files
+    for cat in fo:
+        for src, sid in (doc(cat).get("prev") or {}).items():
+            if sid is not None:
+                names[sid] = os.path.basename(src)
+
+    def name_of(sid):
+        return names.get(sid, f"sample {sid}")
+    rows = []
+    for cat in sorted(set(fo) | set(fn)):
+        eo, en = _entries_by_src(old, cat), _entries_by_src(new, cat)
+        so, sn = set(eo), set(en)
+        moved = _library_moves(old, new, cat, sn - so, so - sn)
+        gone_old, came_new = {a for a, _b in moved}, {b for _a, b in moved}
+        for src in sorted(so - sn - gone_old):
+            d = doc(cat)
+            got = why_log.prev_reason(d, src)
+            reason, text = "", ""
+            if got is not None:
+                reason, text = got[0], why_log.describe(*got, {**d, "category": cat}, name_of=name_of)
+                # routed to a category that left it out in turn: what that one recorded too
+                there = got[1] if got[0] == "homed_elsewhere" else None
+                sid = (d.get("prev") or {}).get(src)
+                if there and src not in where_new and sid is not None:
+                    more = why_log.reason_for(doc(there), sid)
+                    if more is not None:
+                        text += f"; {there}: " + why_log.describe(*more, {**doc(there), "category": there},
+                                                                  name_of=name_of)
+            to = where_new.get(src)
+            if to:
+                reason = reason or MOVED_OUT
+                text = f"now in {to}" + (f": {text}" if text else "")
+            rows.append(dict(change="left", category=cat, file=eo[src].get("out", ""), src=src,
+                             reason=reason, detail=text, to=to))
+        for src in sorted(sn - so - came_new):
+            if src in where_old:
+                reason, text = "moved_in", f"from {where_old[src]}"
+            elif pins.get(src) == cat:
+                reason, text = "rated_in", ""
+            else:
+                reason, text = "refill", ""
+            rows.append(dict(change="joined", category=cat, file=en[src].get("out", ""), src=src,
+                             reason=reason, detail=text))
+    return rows
+
+
+def format_reasons(rows, csv_path=None) -> str:
+    """The changelog's count of files that left or joined, by reason."""
+    left = [r for r in rows if r["change"] == "left" and not r.get("to")]
+    moved = [r for r in rows if r["change"] == "left" and r.get("to")]
+    joined = [r for r in rows if r["change"] == "joined"]
+    lines = ["## Why files left or joined", "",
+             f"{len(left)} left the master, {len(joined)} joined "
+             f"({len(moved)} of them moved between categories)."
+             + (f" Every file with its reason: {csv_path}" if csv_path else ""), ""]
+
+    def counts(rs, words):
+        c = Counter(r["reason"] or "" for r in rs)
+        return [f"- {n} {k or 'no reason recorded (`fourier verify` warns)'}"
+                + (f": {words[k].format(cat='its category')}" if k in words else "")
+                for k, n in sorted(c.items(), key=lambda kv: (-kv[1], kv[0]))]
+    if left:
+        lines += ["Left:"] + counts(left, why_log.FILTER_WORDS) + [""]
+    if moved:
+        lines += ["Moved to another category:"] + counts(moved, why_log.FILTER_WORDS) + [""]
+    if joined:
+        lines += ["Joined:"] + counts(joined, JOINED_WORDS) + [""]
+    return "\n".join(lines)
+
+
+CSV_FIELDS = ["change", "category", "file", "src", "reason", "detail"]
+
+
+def changes_csv(new: dict) -> Path:
+    """Where a build's per-file changes go: beside its archived manifest (builds_dir()),
+    named by its build time; never in the master."""
+    return builds_dir() / f"{_stamp(new)}.changes.csv"
+
+
 def write_changelog(out_dir, log=print) -> Path | None:
-    """Write CHANGELOG.md into out_dir, against the latest archived build."""
+    """Write CHANGELOG.md into out_dir, against the latest archived build, and every file
+    that left or joined with its reason to changes_csv() (outside the master)."""
     out = Path(out_dir)
     mp = out / "manifest.json"
     prev = latest_archived()
     if not mp.exists() or prev is None:
         return None
     try:
-        d = diff_manifests(manifests.read(prev), manifests.read(mp))
-        (out / "CHANGELOG.md").write_text(format_diff(d))
+        old, new = manifests.read(prev), manifests.read(mp)
+        text = format_diff(diff_manifests(old, new))
+        try:
+            rows = change_rows(old, new, out)
+            dest = changes_csv(new)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            with open(dest, "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=CSV_FIELDS, extrasaction="ignore")
+                w.writeheader()
+                w.writerows(rows)
+            text += "\n" + format_reasons(rows, dest)
+        except Exception as e:                     # the reasons never cost the changelog
+            log(f"changelog reasons skipped: {e}")
+        (out / "CHANGELOG.md").write_text(text)
         return out / "CHANGELOG.md"
     except Exception as e:                         # a changelog never fails a build
         log(f"changelog skipped: {e}")
@@ -220,7 +363,6 @@ def archive_build(out_dir) -> Path | None:
     new = manifests.read(mp)
     bd = builds_dir()
     bd.mkdir(parents=True, exist_ok=True)
-    stamp = (new.get("generated") or "build").replace(":", "").replace("-", "")
-    dest = bd / f"{stamp}.json"
+    dest = bd / f"{_stamp(new)}.json"
     dest.write_text(mp.read_text())
     return dest
