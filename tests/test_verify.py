@@ -292,3 +292,23 @@ def test_stab_length_is_judged_as_the_build_judged_it():
     ctx = SimpleNamespace(dur={"/lib/fx_stab_x.wav": 4.000000476837158})
     d = _build_duration(ctx, "/lib/fx_stab_x.wav")
     assert d == 4.000000476837158 and not C._is_named_stab("fx_stab_x.wav", d, 1)
+
+
+def test_a_file_moved_into_fx_by_a_rating_keeps_the_band_the_build_gave_it(tmp_path):
+    """A Move-FX rating pins the file in FX, banded on the labels the database holds; its entry
+    records only the votes of where it came from, which can read as another FX band."""
+    files = _clean() + [("FX", "synth-sub-heavy", "fx1.wav", _hit(0.5), "V4/Pack/Qzv Drop.wav")]
+    root, store = _master(tmp_path, files)
+    man = json.loads((tmp_path / "master" / "manifest.json").read_text())
+    e = man["categories"]["FX"]["entries"][0]
+    e.update(band="synth", sononym=[], ableton=["Vocal"])          # banded "synth"; its votes read "misc"
+    (tmp_path / "master" / "manifest.json").write_text(json.dumps(man))
+
+    def fx_band_fails(ratings):
+        with open(store, "w") as f:
+            json.dump({"version": 1, "ratings": ratings}, f)
+        ok, res = verify_master(root, session=None, store_path=store, log=lambda *a: None)
+        return any(r.level == FAIL and r.check == "FX files are in the right fx band" for r in res)
+    assert fx_band_fails({})
+    src = f"{LIB}/V4/Pack/Qzv Drop.wav"
+    assert not fx_band_fails({src: {"verdict": "misfiled", "category": "VOX", "target": "FX"}})
