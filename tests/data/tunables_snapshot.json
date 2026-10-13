@@ -398,6 +398,10 @@
   "type": "float",
   "value": 0.75
  },
+ "curate.EDITION_COPY_COS": {
+  "type": "float",
+  "value": 0.85
+ },
  "curate.COPY_GATE_XCORR": {
   "type": "float",
   "value": 0.9
@@ -8475,7 +8479,7 @@
  "sets.KIT_TAKE_RE": {
   "type": "Pattern",
   "value": {
-   "$re": "[ _.-]+[a-z]{0,2}\\d+$",
+   "$re": "[ _.-]+[a-z]{0,2}\\d+[a-z]?$",
    "flags": 34
   }
  }

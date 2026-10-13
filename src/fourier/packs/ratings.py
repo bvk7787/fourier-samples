@@ -796,10 +796,25 @@ def misfiled_map(store_path=None):
     R = store["ratings"]
     m = {src: r["category"] for src, r in R.items() if r.get("verdict") == "misfiled"}
     # automatic detections (review.auto_misfile) apply unless a human rated the file
-    for src, a in store.get("auto_misfiled", {}).items():
-        if src not in R:
-            m.setdefault(src, a["category"])
+    m.update({src: c for src, c in _auto_misfiled(store).items() if src not in m})
     return _without_mirror_twins(m)
+
+
+def _auto_misfiled(store):
+    """{source: category} of the automatic misfile detections a human hasn't rated (one whose
+    other category is its own says nothing and is skipped)."""
+    R = store["ratings"]
+    return {src: a["category"] for src, a in store.get("auto_misfiled", {}).items()
+            if src not in R and a.get("category") and a.get("other") != a.get("category")}
+
+
+def auto_misfiled_srcs(store_path=None):
+    """The sources misfiled_map holds by an automatic detection, not a rating: they cover their
+    own recording and editions only, never their set (identity.Reach file_only)."""
+    try:
+        return set(_auto_misfiled(load_store(store_path)))
+    except (OSError, ValueError):
+        return set()
 
 
 # ---------------------------------------------------------------------------

@@ -25,6 +25,21 @@ change the CLI or the config).
 
 ### Fixed
 
+- One note per set and C now runs on a category's picks: a note leaves only for a note of its
+  set the category ships, and its folder picks again without it. Run before the picks, it could
+  leave a note for one that then lost its own place, taking whole instruments out of a master;
+  verify now fails a master where a note left for one it doesn't hold. Equal whole-semitone
+  shifts keep the previous build's note.
+- An automatic misfile detection covers its own file, copies and editions, never its whole
+  multisample set, a detection naming its own category is ignored, and the why log no longer
+  says "you rated" for one.
+- Two editions by name ("Hit 87" / "Hit 87 Dirty") are one recording only while CLAP hears them
+  at 0.85 or more (`EDITION_COPY_COS`): a drive or mastering chain that moved the sound further
+  made its own sound. A numbered set counts each number once (its editions and velocities are
+  one vote, and a number whose own files disagree is none), so a series of different hits in
+  several editions is no longer read as notes. A download part's number in an edition's
+  brackets ("Pack (WAV stereo 1)") no longer splits a pack from its other editions, so the set
+  cap counts one patch once, and a kit reads "_5b" as a take.
 - `fourier verify` now fails a master that breaks one of the build's invariants, so a
   regression like single cycles removed as copies of one another can't pass again: every file
   left out as a copy has its keeper in the master, and a WAVES cycle leaves only as an edition

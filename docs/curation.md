@@ -611,7 +611,9 @@ rule below that asks:
   compares names only (`identity.comparable`).
 - **Edition**: one recording released more than once, told by its names within one pack: a
   processed edition (a last name word `EDITION_SUFFIX_RE` matches: "Hit 87 Cleanup" beside
-  "Hit 87" or "Hit 87 Dirty", whatever their folders and trims), or one name in folders that
+  "Hit 87" or "Hit 87 Dirty", whatever their folders and trims; within a category, only while
+  CLAP hears them at 0.85 or more, `EDITION_COPY_COS`: a drive or a mastering chain that moved
+  the sound further made its own sound), or one name in folders that
   differ only by edition words (a `.wav` and an `.aif` side by side; mono/stereo or 16/24-bit
   twin folders) with lengths within 5% (`EDITION_DUR_TOL`); across two packs of one vendor, one
   name of two or more words at one length (a compilation's re-release). One name in two
@@ -731,9 +733,11 @@ never across tempo folders or below a band's minimum. Then:
   ending the name right after the note, or after the note and a velocity ("Pad_F#3-XQ1Z",
   "Pad-C3-127-86XQ"), isn't part of the name. In the retuned categories (`RETUNE_CATS`), a set's notes that
   retune onto the same C by the notes their names state are one sound (F#2, A#2, C3, D#3 and
-  E3 all play C3): first, across the category's folders, one note per set and C stays (a Keep's,
-  else the smallest shift, then the previous build's pick, then the lowest), with its velocity
-  layers (`_one_per_retune_target`; a detected root counts when the name states the note, and
+  E3 all play C3): among the category's picks, across its folders, one note per set and C stays
+  (a Keep's, else the smallest shift in whole semitones, then the previous build's pick, then
+  the exact shift and the lowest), with its velocity layers, and a folder that lost a note picks
+  again without it (`_one_note_per_c_picked`, so a note leaves only for one that ships; verify
+  fails a master where one didn't; a detected root counts when the name states the note, and
   so do bare numbers that track the measured pitch, Identity above). Numbered takes retuned by
   a measured root ("Saw Lead 02", "Saw Lead 05") may be different patches and all stay. The same note of one patch picked by two categories (a SUB and a PADS
   organ both on C3) isn't caught: each category is built on its own.
@@ -1223,7 +1227,7 @@ same, unrated.
 |---|---|
 | Keep | pinned in the rated category: force-accepted, restored after caps, picked first in its folder |
 | Drop | out of every category, with its byte copies and editions (`identity.Reach`); not its set's other notes, which never take its slot in the category it was rated in (one the previous build held stays) |
-| Misfiled | never back in that category, with its copies, editions and multisample set (the set tier: names that differ only by note, velocity or round robin in one source folder, not a numbered series); re-homed to its next candidate |
+| Misfiled | never back in that category, with its copies, editions and multisample set (the set tier: names that differ only by note, velocity or round robin in one source folder, not a numbered series); re-homed to its next candidate. An automatic detection (`fourier review misfiles`) covers its file, copies and editions only, and the why log says it was the detection, not you |
 | `--set` | `fourier review rate <file> drop --set` (or `misfiled --to <CAT> --set`, or a `scope` column of `set` in `review import`): the rating covers the file's whole set, or a described patch's takes and variant letters (`identity.patch_key`: "I don't want this instrument"); a numbered series of different sounds is never one |
 | Move-`<CAT>` | Misfiled where rated, pinned in `<CAT>` (fetched there even if no classifier offered it); retired names followed |
 

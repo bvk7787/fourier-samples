@@ -193,6 +193,10 @@ COPY_SHARE = _tunable("COPY_SHARE", 0.5)
 # (editions and cuts sat at 0.77 to 0.98, under NEAR_DUP_COS), first by a quick look at their
 # first COPY_GATE_SECONDS at COPY_GATE_RATE Hz (COPY_GATE_XCORR), then as above
 CATEGORY_COPY_COS = _tunable("CATEGORY_COPY_COS", 0.75)
+# two editions by name (identity.edition_pairs: "Hit 87" / "Hit 87 Dirty") are one recording
+# only when CLAP hears them this close: a processed edition (a drive, a mastering chain) that
+# moved the sound this far is its own sound
+EDITION_COPY_COS = _tunable("EDITION_COPY_COS", 0.85)
 COPY_GATE_XCORR = _tunable("COPY_GATE_XCORR", 0.9)
 COPY_GATE_SECONDS = _tunable("COPY_GATE_SECONDS", 1.0)
 COPY_GATE_RATE = _tunable("COPY_GATE_RATE", 8000)
@@ -1981,7 +1985,8 @@ def _gate_signal(path):
 def _copies_within(srcs, V, apart=None, new=None, sigs=None, cos=None, durs=None, audio=True):
     """[(i, j)] index pairs (i < j) of srcs, sources in one category, that hold one recording
     or a shorter cut of it: two editions by their names (identity.edition_pairs; durs, their
-    lengths), or CLAP cosine (rows of V, unit vectors) at least cos (CATEGORY_COPY_COS), not
+    lengths) that CLAP hears within EDITION_COPY_COS (synthetic single cycles: by names
+    alone), or CLAP cosine (rows of V, unit vectors) at least cos (CATEGORY_COPY_COS), not
     apart(i, j) (loops at other tempos), the quick look (_gate_signal, COPY_GATE_XCORR), then
     _same_recording. new: only pairs with at least one of these indices; sigs: a dict the
     quick look's signals are kept in between calls; audio False (synthetic single cycles,
@@ -1995,12 +2000,14 @@ def _copies_within(srcs, V, apart=None, new=None, sigs=None, cos=None, durs=None
              and not (apart is not None and apart(i, j))}
     if not audio:
         return sorted(named)
+    V = np.asarray(V, dtype="float32")
+    # (an edition processed into another sound stays: EDITION_COPY_COS)
+    named = {(i, j) for i, j in named if float(V[i] @ V[j]) >= EDITION_COPY_COS}
 
     def sig(i):
         if srcs[i] not in sigs:
             sigs[srcs[i]] = _gate_signal(srcs[i])
         return sigs[srcs[i]]
-    V = np.asarray(V, dtype="float32")
     S = V @ V.T
     pairs = []
     for i, j in zip(*np.nonzero(np.triu(S >= cos, 1))):
@@ -2107,7 +2114,7 @@ def _drop_copies(clusters, allocs, rec, emb_n, cfg, pick, stats, why=None, log=p
                     c["_pick"] = held + [i for i in got if i not in held][:max(0, want - len(held))]
                     new |= set(c["_pick"]) - before
     if gone:
-        stats["copy"] = len(gone)
+        stats["copy"] = stats.get("copy", 0) + len(gone)
         if why is not None:
             why.setdefault("copy", {}).update(gone)
         log(f"{len(gone)} pick(s) repeating another's recording (another edition or a shorter cut) "
@@ -2964,18 +2971,9 @@ def _number_items(pairs, roots=None):
     return list(got.items())
 
 
-def _one_per_retune_target(groups, rec, why=None, roots=None):
-    """Notes of one multisample set (identity.set_key) that export retunes onto the same C
-    (F#2, A#2, C3, D#3 and E3 all play C3) are one sound: across a category's folders keep
-    one note per set and C: a Keep's (Keeps always stay), else the one with the smallest
-    shift, then the previous build's pick, then the set's pitch order. The kept note's other
-    layers stay for _cap_siblings to choose from, as before. Only notes the names state count
-    (a measured root counts when the name states a note the root parser doesn't read,
-    "Pad_f#34b00ff"), or bare numbers that track the measured pitch (identity.number_sets on
-    every candidate's root, _number_root: "Lead 059" / "061"; "Saw Lead 02" and "Saw Lead
-    05" may be two patches); files not retuned are untouched. RETUNE_CATS only. Returns (groups, how many left out). `why`, a
-    dict, gets each note left out: {sample id: [the kept note's name, the C both play]}
-    (one_note_per_c). `roots`: the candidates' folders' other roots (_folder_number_roots)."""
+def _retune_conflicts(groups, rec, roots=None):
+    """{left-out index: kept index} of the notes of one multisample set that export retunes
+    onto the same C (_one_per_retune_target, _one_note_per_c_picked)."""
     numbered = _id.number_sets(_number_items([(rec[i]["path"], _number_root(rec[i])) for g in groups for i in g],
                                              roots))
     by = defaultdict(list)
@@ -2994,22 +2992,78 @@ def _one_per_retune_target(groups, rec, why=None, roots=None):
             if k is None or src is None:
                 continue
             by[(k, int(round((src + r["retune"]) / 12)))].append((i, int(round(src))))
-    drop = set()
+    lost = {}
     for ids in by.values():
         if len({n for _, n in ids}) < 2:
             continue
-        best = min(ids, key=lambda t: (not rec[t[0]].get("pin"), round(abs(rec[t[0]]["retune"]), 3),
-                                       not rec[t[0]].get("incumbent"), rec[t[0]]["tune"] is None,
-                                       rec[t[0]]["tune"] or 0, rec[t[0]]["path"]))
-        gone = {i for i, n in ids if n != best[1] and not rec[i].get("pin")}
-        drop |= gone
-        if why is not None and gone:
-            _c = _note_name(12 * int(round((best[1] + rec[best[0]]["retune"]) / 12)))
-            for i in gone:
-                why[rec[i]["id"]] = [os.path.basename(rec[best[0]]["path"] or ""), _c]
-    if not drop:
+        # a Keep's, else the smallest shift in whole semitones, then the previous build's
+        # pick (a few cents of fine tuning don't unseat it), then the exact shift
+        best = min(ids, key=lambda t: (not rec[t[0]].get("pin"), round(abs(rec[t[0]]["retune"])),
+                                       not rec[t[0]].get("incumbent"), round(abs(rec[t[0]]["retune"]), 3),
+                                       rec[t[0]]["tune"] is None, rec[t[0]]["tune"] or 0, rec[t[0]]["path"]))
+        lost.update({i: best[0] for i, n in ids if n != best[1] and not rec[i].get("pin")})
+    return lost
+
+
+def _why_one_note(lost, rec, why):
+    """why's one_note_per_c entries: {sample id: [the kept note's name, the C both play]}."""
+    if why is None:
+        return
+    for i, b in lost.items():
+        _c = _note_name(12 * int(round(_played_note(rec[b]) / 12))) if _played_note(rec[b]) is not None else None
+        why[rec[i]["id"]] = [os.path.basename(rec[b]["path"] or ""), _c]
+
+
+def _one_per_retune_target(groups, rec, why=None, roots=None):
+    """Notes of one multisample set (identity.set_key) that export retunes onto the same C
+    (F#2, A#2, C3, D#3 and E3 all play C3) are one sound: across a category's folders keep
+    one note per set and C: a Keep's (Keeps always stay), else the one with the smallest
+    shift in whole semitones, then the previous build's pick, then the exact shift and the
+    set's pitch order. The kept note's other layers stay. Only notes the names state count
+    (a measured root counts when the name states a note the root parser doesn't read,
+    "Pad_f#34b00ff"), or bare numbers that track the measured pitch (identity.number_sets on
+    every candidate's root and its folder's, _number_root: "Lead 059" / "061"; "Saw Lead 02"
+    and "Saw Lead 05" may be two patches); files not retuned are untouched. RETUNE_CATS only.
+    Returns (groups, how many left out). `why`, a dict, gets each note left out: {sample id:
+    [the kept note's name, the C both play]} (one_note_per_c). `roots`: the candidates'
+    folders' other roots (_folder_number_roots). The build runs it on its picks
+    (_one_note_per_c_picked), so a note leaves only for one that ships."""
+    lost = _retune_conflicts(groups, rec, roots)
+    _why_one_note(lost, rec, why)
+    if not lost:
         return groups, 0
-    return [g2 for g2 in ([i for i in g if i not in drop] for g in groups) if g2], len(drop)
+    return [g2 for g2 in ([i for i in g if i not in lost] for g in groups) if g2], len(lost)
+
+
+def _one_note_per_c_picked(clusters, allocs, rec, pick, why=None, roots=None):
+    """One note per set and C (_one_per_retune_target) among a category's picks: a note leaves
+    only for a note its folders keep, and a folder that lost one picks again without it
+    (pick(idxs, want)), its new picks checked in turn; the kept notes stay picked. Returns how
+    many left."""
+    every: dict = {}
+    for _ in range(50):
+        lost = _retune_conflicts([c["_pick"] for c in clusters if c["_pick"]], rec, roots)
+        if not lost:
+            break
+        every.update(lost)
+        keepers = set(lost.values())
+        for c, want in zip(clusters, allocs):
+            if any(i in lost for i in c["idxs"]):
+                c["idxs"] = [i for i in c["idxs"] if i not in lost]
+                if any(i in lost for i in c["_pick"]):
+                    got = pick(c["idxs"], want)
+                    held = [i for i in c["_pick"] if i in keepers and i not in got]
+                    c["_pick"] = held + [i for i in got if i not in held][:max(0, want - len(held))]
+    # (a note left for one that later left in turn left for the note that stayed)
+    final = {}
+    for i, k in every.items():
+        seen = {i}
+        while k in every and k not in seen:
+            seen.add(k)
+            k = every[k]
+        final[i] = k
+    _why_one_note(final, rec, why)
+    return len(final)
 
 
 def _one_per_round_robin(groups, rec):
@@ -3682,19 +3736,22 @@ class _MisfiledIndex:
 
     def rated_by(self, path, category, file_hash=None, dur=None):
         """The file whose Misfiled rating keeps `path` out of `category`, for the why log:
-        None when it's the file's own, else the rated copy's, edition's or set-mate's name."""
-        if self.exact.get(path) == category:
-            return None
+        None when it's the file's own, else the rated copy's, edition's or set-mate's name;
+        "@auto" (its own) or "@auto:<name>" (a copy's or edition's) for an automatic detection."""
         r = self.reach
+        if self.exact.get(path) == category:
+            return "@auto" if path in r.file_only else None
         got = [s for s in r._same(path, file_hash, dur, r.misf) if r.misf[s] == category]
         k = r.set_of(path)
         if k is not None:
-            got += [s for s, c in r.misf.items() if c == category and r.set_of(s) == k]
+            got += [s for s, c in r.misf.items() if c == category and r.set_of(s) == k and s not in r.file_only]
         if not got and r.misf_scoped:
             pk = _id.patch_key(path)
             got += [s for s, c in r.misf.items() if c == category and _id.patch_key(s) == pk]
-        names = sorted(os.path.basename(s) for s in got)
-        return names[0] if names else None
+        names = sorted((s in r.file_only, os.path.basename(s)) for s in got)
+        if not names:
+            return None
+        return ("@auto:" if names[0][0] else "") + names[0][1]
 
     def categories(self, path, vec=None, file_hash=None, dur=None):
         out = self.reach.misfiled(path, file_hash, dur)
@@ -3722,14 +3779,16 @@ def _misfiled_index(misfiled, emb_n=None, id2row=None, pid=None):
 _REACH: dict = {}
 
 
-def _rating_reach(misfiled=None, drops=None, scopes=None):
+def _rating_reach(misfiled=None, drops=None, scopes=None, auto=None):
     """identity.Reach over the stored ratings (or these: misfiled {source: category}, drops
     {source: the category rated in}, scopes {source: "set"}): each rated file's hash and
     length, and the multisample
     sets of its folder, read with their roots so numbers that track the pitch count
-    (identity.set_keys), from the database; without one, by names. Cached per process."""
-    from .ratings import drop_categories, misfiled_map, rating_scopes
+    (identity.set_keys), from the database; without one, by names. auto: the Misfiled
+    sources that are automatic detections (ratings.auto_misfiled_srcs). Cached per process."""
+    from .ratings import auto_misfiled_srcs, drop_categories, misfiled_map, rating_scopes
     misfiled = misfiled_map() if misfiled is None else dict(misfiled)
+    auto = (auto_misfiled_srcs() if auto is None else set(auto)) & set(misfiled)
     drops = drop_categories() if drops is None else dict(drops)
     scopes = rating_scopes() if scopes is None else dict(scopes)
     rated = sorted(set(drops) | set(misfiled))
@@ -3738,14 +3797,16 @@ def _rating_reach(misfiled=None, drops=None, scopes=None):
         where = str(db_path_in_use()) if db_exists() else None
     except Exception:
         where = None
-    key = (where, tuple(sorted(misfiled.items())), tuple(sorted(drops.items())), tuple(sorted(scopes)))
+    key = (where, tuple(sorted(misfiled.items())), tuple(sorted(drops.items())), tuple(sorted(scopes)),
+           tuple(sorted(auto)))
     if key not in _REACH:
         try:
             facts, members = _rated_facts(rated) if where and rated else ({}, {})
         except Exception:               # a database this can't read: by names, as without one
             facts, members = {}, {}
         _REACH.clear()
-        _REACH[key] = _id.Reach(set(drops), misfiled, facts, members, drop_cats=drops, scopes=scopes)
+        _REACH[key] = _id.Reach(set(drops), misfiled, facts, members, drop_cats=drops, scopes=scopes,
+                                file_only=auto)
     return _REACH[key]
 
 
@@ -6004,11 +6065,6 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     groups, _n_rr = _one_per_round_robin(groups, rec)
     if _n_rr:
         log(f"{category}: {_n_rr} round robins of a note and velocity already here left out")
-    if category in SIBLING_CAP_CATS and category in RETUNE_CATS:
-        groups, _n_rt = _one_per_retune_target(groups, rec, why=_why.setdefault("one_note_per_c", {}),
-                                               roots=_nroots)
-        if _n_rt:
-            log(f"{category}: {_n_rt} notes of multisample sets left out (retuned onto a C the set already plays)")
     _scap = sibling_cap(category)
     # the set cap's groups (identity.cap_key: true sets only in the drum categories)
     _numbered = _id.number_sets(_number_items([(r["path"], _number_root(r)) for r in rec], _nroots)) \
@@ -6176,6 +6232,20 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         c["_pick"] = medoid_pick(c["idxs"], want)
     _n_cloud = _drop_copies(clusters, _allocs, rec, emb_n, cfg, medoid_pick, stats, _why,
                             log=lambda m: log(f"{category}: {m}"))
+    if category in SIBLING_CAP_CATS and category in RETUNE_CATS:
+        # one note per set and C among the picks, so a note leaves only for one that ships; the
+        # folders that picked again are checked for copies in turn, and their new picks for notes
+        for _ in range(5):
+            _n_rt = _one_note_per_c_picked(clusters, _allocs, rec, medoid_pick,
+                                           why=_why.setdefault("one_note_per_c", {}), roots=_nroots)
+            if not _n_rt:
+                break
+            log(f"{category}: {_n_rt} notes of multisample sets left out (retuned onto a C the set already plays)")
+            _before = {i for c in clusters for i in c["_pick"]}
+            _n_cloud += _drop_copies(clusters, _allocs, rec, emb_n, cfg, medoid_pick, stats, _why,
+                                     log=lambda m: log(f"{category}: {m}"))
+            if {i for c in clusters for i in c["_pick"]} == _before:
+                break
     if _prev_srcs:
         _kept = sum(1 for c in clusters for i in c["_pick"] if rec[i]["incumbent"])
         _avail = sum(1 for r in rec if r["incumbent"])

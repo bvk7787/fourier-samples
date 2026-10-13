@@ -471,9 +471,9 @@ def check_ratings(ctx):
     # file's byte copies and editions, and a set-wide one its set; a Misfiled its copies,
     # editions and multisample set in the rated category. A Keep there wins, as in the build.
     from . import curate as C
-    from .ratings import drop_categories, rating_scopes
+    from .ratings import auto_misfiled_srcs, drop_categories, rating_scopes
     reach = C._rating_reach(misfiled=ctx.misf, drops=drop_categories(ctx.store_path),
-                            scopes=rating_scopes(ctx.store_path))
+                            scopes=rating_scopes(ctx.store_path), auto=auto_misfiled_srcs(ctx.store_path))
     leak, back = [], []
     for c, e in ctx.entries:
         p = e.get("src")
@@ -514,6 +514,29 @@ def check_leavers(ctx):
     n = sum(1 for r in rows if r["change"] == "left" and not r.get("to"))
     yield Result(WARN if bare else PASS, f"every file that left since the previous build has a logged "
                                          f"reason ({n} left)", _fmt(bare, 5))
+
+
+def check_one_note_kept(ctx):
+    """A note left out for another note of its set on the same C (why log: one_note_per_c)
+    left for a note the category ships (curate._one_note_per_c_picked), never for one that
+    lost its own place."""
+    from . import why_log
+    if not why_log.folder(ctx.root).is_dir():
+        return
+    names = defaultdict(set)
+    for c, e in ctx.entries:
+        names[c].add(os.path.basename(e.get("src") or ""))
+    gone, n = [], 0
+    for c in ctx.cats:
+        d = why_log.read(ctx.root, c) or {}
+        for sid, det in ((d.get("out") or {}).get("one_note_per_c") or {}).items():
+            n += 1
+            kept = det[0] if isinstance(det, list) and det else None
+            if kept and kept not in names[c]:
+                gone.append((f"{c}: sample {sid}", f"left for {kept}, which {c} doesn't hold"))
+    if n:
+        yield Result(FAIL if gone else PASS, f"a note left out for another note of its set on its C left for "
+                                             f"one the category holds ({n} left out)", _list(gone))
 
 
 def _hash_of(ctx, src):
@@ -906,11 +929,11 @@ def check_routing(ctx):
     # a file named as one kind of drum lives in that category, and a named scratch in FX
     # (a Keep, a loop or a Misfiled verdict there are exempt)
     from .curate_config import DRUM_NAME_FROM, SCRATCH_HOME
-    # (a Misfiled verdict, yours or the detector's, covers its copies, editions and multisample
-    # set too, as the build has it: curate._rating_reach)
-    from .ratings import drop_categories, rating_scopes
+    # (a Misfiled verdict covers its copies and editions, and a rating its multisample set
+    # too, as the build has it: curate._rating_reach)
+    from .ratings import auto_misfiled_srcs, drop_categories, rating_scopes
     _reach = C._rating_reach(misfiled=ctx.misf, drops=drop_categories(ctx.store_path),
-                             scopes=rating_scopes(ctx.store_path))
+                             scopes=rating_scopes(ctx.store_path), auto=auto_misfiled_srcs(ctx.store_path))
     wrong = []
     for c, e in ctx.entries:
         kind = CATEGORIES.get(c, {}).get("kind")
@@ -1431,6 +1454,7 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
                                                           if c in _RC and not e.get("loop_row")])
     out = []
     for fn in (check_manifest, check_sets, check_budgets, check_naming, check_ratings, check_leavers,
+               check_one_note_kept,
                check_copies, check_routing, check_bands, check_pitch,
                *( [check_audio] if audio else [])):
         out.extend(fn(ctx))
