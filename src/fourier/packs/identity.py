@@ -7,8 +7,9 @@
 - **edition**: one recording released more than once (`editions`): a .wav and an .aif of one
   name, mono and stereo or 16- and 24-bit twin folders, a raw take and its processed edition
   (a last name word EDITION_SUFFIX_RE matches: "_Cleanup", "_Dirty", "-Clean", "-Tube"), and
-  a compilation's re-release under another pack of its vendor. The names decide, with lengths
-  within EDITION_DUR_TOL.
+  a compilation's re-release under another pack of its vendor, and a stereo sound's two
+  channels as mono files ("Qzv Keys L C3" / "R C3"). The names decide, with lengths within
+  EDITION_DUR_TOL.
 - **set**: a multisample set, one instrument or patch in one source folder whose names differ
   only by note, velocity or round robin (`set_key`). A bare number is a note only when the
   numbers track the measured pitch (`number_sets`, NUMBER_NOTE_TOL).
@@ -17,7 +18,8 @@
 The set cap outside the drum categories also binds one named patch's numbered takes and
 variant letters ("Drop A 01".."Drop C 09", `patch_key`); in the drum categories
 (SIBLING_SETS_ONLY) only sets. Twins of one note and velocity that differ only by their round
-robin are one sound (`rr_key`), and so are a kit's two takes of one drum (`take_name`).
+robin ("rr2", or a bare number right after a velocity in a name stating a note: "Qzv_C2_v3_2")
+are one sound (`rr_key`), and so are a kit's two takes of one drum (`take_name`).
 """
 from __future__ import annotations
 
@@ -33,6 +35,7 @@ from .curate_config import EDITION_DUR_TOL, EDITION_SUFFIX_RE, NUMBER_NOTE_TOL, 
 _VEL = re.compile(r"^(?:v|vel|velocity|layer)\d+$|^(?:ppp|pp|p|mp|mf|f|ff|fff)$")
 _DYN = re.compile(r"^(?:ppp|pp|p|mp|mf|f|ff|fff)$")
 _RR = re.compile(r"^rr\d+$")
+_CHANNEL = re.compile(r"^(?:l|r|left|right)$")    # a mono file's channel of a stereo sound, as its own token
 _TAKE = re.compile(r"^take\d+$")
 _NUM = re.compile(r"^\d+$")
 _LETTER = re.compile(r"^[a-z]$")
@@ -112,9 +115,9 @@ def _edition_tokens(path):
 
 
 def edition_name(path):
-    """A file's name without its extension, edition words or a last processing word
-    ("Hit 87 Cleanup.wav", "Hit 87.aif" -> "hit 87")."""
-    return " ".join(_edition_tokens(path)[0])
+    """A file's name without its extension, edition words, a last processing word or a channel
+    ("Hit 87 Cleanup.wav", "Hit 87.aif" -> "hit 87"; "Keys L C3" -> "keys c3")."""
+    return " ".join(t for t in _edition_tokens(path)[0] if not _CHANNEL.match(t))
 
 
 def edition_key(path):
@@ -129,22 +132,36 @@ def _named(toks):
     return len(words) < len(toks) or not _generic(words)
 
 
+def _channel_twins(ta, tb):
+    """True when two names' tokens differ only by a standalone channel token, left in one and
+    right in the other ("keys l c3" / "keys r c3"; "left" / "right")."""
+    diff = [(x, y) for x, y in zip(ta, tb) if x != y] if len(ta) == len(tb) else []
+    return len(diff) == 1 and all(_CHANNEL.match(t) for t in diff[0]) and diff[0][0][0] != diff[0][1][0]
+
+
 def editions(a, b, dur_a=None, dur_b=None):
     """True when sources a and b are two editions of one recording by their names, in one
     pack: a processed edition (names that differ by a last processing word: "Hit 87" and
     "Hit 87 Cleanup", trimmed differently), or one name in folders that differ only by edition
     words (a .wav and an .aif side by side, mono/stereo or 16/24-bit twin folders) with
     lengths within EDITION_DUR_TOL (when both are known); across two packs of one vendor, one
-    distinctive name of one length (a compilation's re-release). One name in two folders of a
-    pack ("808/Kick 01", "909/Kick 01") is two recordings."""
+    distinctive name of one length (a compilation's re-release). A stereo sound's two channels
+    as mono files are two editions too: names that differ only by a standalone L / R (Left /
+    Right) token, in one folder, stating a note (a multisample's; a drum's or a loop's L / R
+    may be a hand or another part), whatever their lengths (each channel is trimmed at its own
+    silence). One name in two folders of a pack ("808/Kick 01", "909/Kick 01") is two
+    recordings."""
     if a == b:
         return False
     (ta, sa), (tb, sb) = _edition_tokens(a), _edition_tokens(b)
-    if not ta or ta != tb or not _named(ta):
+    channels = ta != tb and _channel_twins(ta, tb)
+    if not ta or (ta != tb and not channels) or not _named(ta):
         return False
     (va, pa, fa), (vb, pb, fb) = _where(a), _where(b)
     if va != vb:
         return False
+    if channels:
+        return fa == fb and sa == sb and _C()._states_note(a)
     if pa == pb and sa != sb:
         return True
     if dur_a and dur_b and abs(dur_a - dur_b) > EDITION_DUR_TOL * max(dur_a, dur_b):
@@ -289,12 +306,23 @@ def cap_key(path, category, numbered=None):
 
 # --- round robins and kit takes ------------------------------------------------------------------
 
+def _bare_rr(path, toks):
+    """True when toks (a name's, split) end with a bare round robin: a number right after a
+    velocity, in a name stating a note and no "rrN" ("Qzv_C2_v3_2"; a name without a note,
+    "Qzv Lead v2 01", may number a version's patches)."""
+    if len(toks) < 3 or not _NUM.match(toks[-1]) or any(_RR.match(t) for t in toks):
+        return False
+    st, note, vel = _parts(path)
+    return len(st) >= 3 and st[-1] == toks[-1] and vel[-2] and any(note[:-2])
+
+
 def rr_key(path):
     """(source folder, name less its round robin) of a file whose name numbers a round robin
-    ("Qzv_C2_v3_rr2"): its twins of the same note and velocity share it. None otherwise."""
+    ("Qzv_C2_v3_rr2", or bare after a velocity: "Qzv_C2_v3_2"): its twins of the same note
+    and velocity share it. None otherwise."""
     stem = os.path.splitext(os.path.basename(path or ""))[0].lower()
     toks = [t for t in _SPLIT.split(stem) if t]
-    rest = [t for t in toks if not _RR.match(t)]
+    rest = toks[:-1] if _bare_rr(path, toks) else [t for t in toks if not _RR.match(t)]
     if len(rest) == len(toks) or not rest:
         return None
     return _where(path)[2], " ".join(rest)
@@ -303,7 +331,10 @@ def rr_key(path):
 def rr_number(path):
     """A name's round robin number (0 when it has none)."""
     stem = os.path.splitext(os.path.basename(path or ""))[0].lower()
-    return next((int(t[2:]) for t in _SPLIT.split(stem) if _RR.match(t)), 0)
+    toks = [t for t in _SPLIT.split(stem) if t]
+    if _bare_rr(path, toks):
+        return int(toks[-1])
+    return next((int(t[2:]) for t in toks if _RR.match(t)), 0)
 
 
 def take_name(stem):

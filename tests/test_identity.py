@@ -107,6 +107,37 @@ def test_editions_are_copies_within_a_category():
     assert C._copies_within(srcs, W2, durs=[0.63, 0.60, 0.6], cos=0.95) == []
 
 
+def test_a_stereo_sounds_two_channels_are_editions():
+    """Mono files of a stereo sound's two channels (a standalone L / R token, one folder, a
+    name stating a note) are one recording, whatever their lengths; a copy prune keeps one
+    while CLAP hears them at EDITION_COPY_COS."""
+    left, right = p("Acme/Qzv/Keys/41_Vqx_L_QX9_A#2.wav"), p("Acme/Qzv/Keys/41_Vqx_R_QX9_A#2.wav")
+    assert I.editions(left, right, 7.3, 8.9) and I.edition_key(left) == I.edition_key(right)
+    assert I.editions(p("Acme/Qzv/Pad Left C3.wav"), p("Acme/Qzv/Pad Right C3.wav"))
+    srcs = [left, right, p("Acme/Qzv/Keys/41_Vqx_R_QX9_E3.wav")]
+    W = np.eye(3, dtype="float32")
+    W[1] = W[0]
+    assert C._copies_within(srcs, W, durs=[7.3, 8.9, 8.0]) == [(0, 1)]
+    assert C._copies_within(srcs, np.eye(3, dtype="float32"), durs=[7.3, 8.9, 8.0]) == []   # CLAP apart
+    # a rating on one channel covers the other
+    assert I.Reach(drops={left}, facts={left: (None, 7.3)}).dropped(right, dur=8.9) == left
+
+
+def test_l_and_r_that_arent_channels():
+    org = "Acme/Qzv/Keys/41_Vqx_{}_QX9_A#2.wav"
+    assert not I.editions(p(org.format("L")), p("Acme/Qzv/Keys 2/41_Vqx_R_QX9_A#2.wav"))      # another folder
+    assert not I.editions(p(org.format("L")), p(org.format("L2")))
+    assert not I.editions(p(org.format("L")), p("Acme/Qzv/Keys/41_Vqx_QX9_A#2.wav"))           # no channel
+    assert not I.editions(p(org.format("L")), p(org.format("Left")))                          # one side
+    assert not I.editions(p("Acme/Qzv/Keys/Vqx L C3.wav"), p("Acme/Qzv/Keys/Vqx R D3.wav"))   # two notes
+    # no note named: a hand drum's left and right hand, a loop's two parts
+    assert not I.editions(p("Acme/Perc/Qzvbongo L 05.wav"), p("Acme/Perc/Qzvbongo R 05.wav"), 0.4, 0.4)
+    assert not I.editions(p("Acme/Loops/Qzphase L.wav"), p("Acme/Loops/Qzphase R.wav"), 2.0, 2.0)
+    # a letter in a word or a note isn't a channel
+    assert not I.editions(p("Acme/Qzv/Vqxl C3.wav"), p("Acme/Qzv/Vqxr C3.wav"))
+    assert I.edition_name(p("Acme/Qzv/Lead Rr C3.wav")) == "lead rr c3"
+
+
 # --- set and series ---------------------------------------------------------------------------------
 
 def test_a_set_states_its_notes_velocities_or_round_robins():
@@ -249,6 +280,22 @@ def test_one_round_robin_a_note_and_velocity():
     rec[0]["pin"] = True                                  # and a Keep always does
     assert C._one_per_round_robin([[0, 1, 2, 3, 4]], rec) == ([[0, 2, 3, 4]], 1)
     assert I.rr_number(rec[1]["path"]) == 2 and I.rr_key(rec[4]["path"]) is None
+
+
+def test_a_bare_round_robin_after_a_velocity():
+    """A bare number right after a velocity, ending a name that states a note, is its round
+    robin ("_v4_1" / "_v4_2"): one stays."""
+    names = ["Vqx_Stac_D2_v4_1", "Vqx_Stac_D2_v4_2", "Vqx_Stac_D2_v2_1", "Vqx_Stac_E2_v4_2",
+             "Vqx Tuba A#2 PP 004", "Vqx Tuba A#2 PP 005"]
+    rec = [dict(path=p(f"Acme/Qzv/Stac/{n}.wav")) for n in names]
+    assert C._one_per_round_robin([[0, 1, 2, 3, 4, 5]], rec) == ([[0, 2, 3, 4]], 2)
+    assert I.rr_key(rec[0]["path"]) == I.rr_key(rec[1]["path"]) != I.rr_key(rec[2]["path"])
+    assert I.rr_number(rec[1]["path"]) == 2 and I.rr_number(rec[5]["path"]) == 5
+    # only then: no note (a version's numbered patches), no velocity, a number not last
+    for n in ("Qzv Lead v2 01", "Qzv_Lead_C2_7", "Qzv_C2_v3_1_Wet", "Qzv_v3_1", "Qzv_Pad_C2_v3_rr1_2"):
+        assert not I._bare_rr(p(f"Acme/X/{n}.wav"), [t for t in I._SPLIT.split(n.lower()) if t]), n
+    assert I.rr_key(p("Acme/X/Qzv Lead v2 01.wav")) is None
+    assert I.rr_key(p("Acme/X/Qzv_Pad_C2_v3_rr1_2.wav")) == (I._where(p("Acme/X/a.wav"))[2], "qzv pad c2 v3 2")
 
 
 def test_a_kit_takes_one_take_of_a_drum():
