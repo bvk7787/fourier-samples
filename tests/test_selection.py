@@ -561,8 +561,10 @@ def test_named_note_contradicted_by_the_audio_keeps_pitch_and_name(tmp_path):
     assert all(r["retune"] is not None for r in rs)
     assert _check_name_pitches([0, 1, 2], rs) == 1
     assert rs[0]["retune"] is None and abs(rs[0]["pitch_conflict"] - 69) < 0.3
-    assert rs[1]["retune"] == -3.0 and rs[2]["retune"] is not None
-    assert not _pitch_conflicts(0, 55.0) and not _pitch_conflicts(0, 43.0) and _pitch_conflicts(0, 45.0)
+    assert abs(rs[1]["retune"] + 3.0) < 0.05 and rs[2]["retune"] is not None     # pYIN's cents
+    # another note conflicts, a semitone or a fifth too; the same note in another octave doesn't
+    assert _pitch_conflicts(0, 55.0) and _pitch_conflicts(0, 43.0) and _pitch_conflicts(0, 61.0)
+    assert not _pitch_conflicts(0, 47.6) and not _pitch_conflicts(0, 36.4)
 
 
 def test_hard_start_faded_in_and_loop_point_joins_through_zero():

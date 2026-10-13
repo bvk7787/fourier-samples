@@ -1311,8 +1311,9 @@ def enrich_own(workers, force, limit):
     the librosa and events steps; metadata/resolve.py reads them all.
 
     Reads audio (pYIN is slow): the first run covers the library's tonal one-shots, later
-    runs only new ones. Nothing a build picks changes: with Sononym the build uses
-    Sononym's readings, and without it the fallback chain.
+    runs only new ones. Nothing a build picks changes (with Sononym the build uses
+    Sononym's readings, and without it the fallback chain), except where Sononym's root
+    isn't sure: there the pYIN root is the note a pitch window and a set's spread judge.
 
     Runs in `fourier tools analyze` (--only own).
     """

@@ -58,6 +58,18 @@ change the CLI or the config).
   numbered series. Bare numbers that track the measured pitch are notes for one note per C
   ("Lead 059" / "061" / "062" all on C3). Round robins of one note and velocity keep one, and a
   kit no longer takes two takes of one drum named by articulation or mic ("+OH").
+- Pitch trust: a retune to C needs two of the name's note, Sononym's root and pYIN's steady
+  pitch to agree within half a semitone (octaves aside), or one reading with nothing against
+  it. A Sononym root the audio contradicts (a C read as F) no longer moves a file off C, a name
+  a semitone off its audio is caught (only 2+ semitones were), a name Sononym and pYIN agree is
+  mislabeled is retuned by pYIN and named for its C, and one pYIN alone contradicts is named
+  for the note it plays (a fifth over the name, a harmonic lock, leaves it alone). Fine tuning
+  comes from pYIN's cents where it agrees (Sononym's left about 11 cents). The name parser no
+  longer reads a pack or device code as the note (`XY4zork_03`, a leading `E7_`) and reads
+  lowercase notes ending the name or before a sampler's hex code (`Pad_e3`, `Pad_g#36b00ff`),
+  so those names say the C they play. A multisample set's spread in a tonal category stays in
+  MIDI 24-96 (`SET_SPREAD_RANGE`; no more C-1 at 16 Hz while the set has notes inside it), and
+  the note window reads pYIN's root where Sononym isn't sure.
 
 - `fourier verify` no longer fails a file a Keep or a Move rating pinned into a banded
   category (FX, CYMBALS, PHRASES, ...) on its band: the build bands it on the labels the

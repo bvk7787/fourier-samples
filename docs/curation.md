@@ -366,7 +366,9 @@ one's source. With Sononym it chooses exactly what curation chose before it exis
 The why log records each pick's tempo and root sources (`sources`); `fourier why` says "the
 last build took: tempo from Sononym".
 
-Fourier's own analysis runs with or without Sononym and picks nothing: the librosa, events and
+Fourier's own analysis runs with or without Sononym and picks nothing (except where Sononym's
+root isn't sure: there its pYIN root is the note the pitch window and a multisample set's
+spread judge; see the selection gates and the sibling cap): the librosa, events and
 quality steps, and `fourier tools analyze --only own` (part of every analysis, so a build runs
 it on what's new). That finds each tonal one-shot's root by pYIN (one event, mostly harmonic,
 0.15-10 s), then the key of every sample Fourier calls tonal (a pYIN root, or mostly harmonic
@@ -519,8 +521,9 @@ String Snares" Live tags Pad).
 6. **Keep / Move pin or name override**: force-accepted, skipping every later gate (an override
    still can't put a wave outside WAVES); kept out of all other categories.
 7. Home filter (oneshot and loop kinds: home must be this category).
-8. Pitch window: a note with confidence > 0.4 outside `NOTE_WINDOW` (SUB C0-E4, SYNTH/STABS
-   C1-C7, PADS C1-A6, VOX C2-C7, PIANO A0-E7, ACOUSTIC C1-E7, default C1-C7).
+8. Pitch window: a note outside `NOTE_WINDOW` (SUB C0-E4, SYNTH/STABS C1-C7, PADS C1-A6, VOX
+   C2-C7, PIANO A0-E7, ACOUSTIC C1-E7, default C1-C7): Sononym's when its confidence is over
+   0.4, else pYIN's root from Fourier's own analysis (`own_root_midi`), when there is one.
 9. Mislabeled-loop guard: KICKS/SNARES/HATS/CLAPS drop an Ableton Loop/Drum Loop tag OR 7+
    onsets with a reliable tempo; TOMS/PERC/CYMBALS need both.
 10. Sample-chain guard (`fourier tools analyze --only events`): strict (drums, SUB, SYNTH,
@@ -706,7 +709,12 @@ never across tempo folders or below a band's minimum. Then:
   per note, spread across the register; Keeps stay. The group (`identity.cap_key`, Identity
   above) is a set, and outside the drum categories also one described patch's takes and variant
   letters (a processing word aside); in the drum categories (`SIBLING_SETS_ONLY`) a set only,
-  as a drum pack's numbered hits are a series of different drums. One word plus a number counts
+  as a drum pack's numbered hits are a series of different drums.
+  In the retuned categories the spread stays in the register a sampler
+  plays (`SET_SPREAD_RANGE`, MIDI 24-96, as exported): a set's notes outside it (a C-1 at 16 Hz,
+  a top key at 8 kHz) come in only when the set has no more notes inside it. A note is judged by
+  Sononym's root when it's sure, else by pYIN's (`own_root_midi`) or the name's, whose octave
+  may count from C3 = 60 or C4 = 60 (outside only when it is either way). One word plus a number counts
   only for a patch name, not a generic word like "kick". A note counts wherever the root parser finds one (glued to the
   name, "warmpadF#2", or below octave 0, "A-1"), and so does a lowercase note with a sampler's hex
   code after it ending the name ("Pad_f#34b00ff"); a pack's 4-character ID (capitals and digits)
@@ -1038,7 +1046,9 @@ cut in the middle to 46 characters (`STEM_MAX`). Collisions in a folder get `_2`
 (case-insensitive).
 
 - **Retuned names**: a file retuned to C by its named note says C (`_retuned_stem`: `Pad_A2`
-  +3 -> `Pad_C3`, `Stab_C#` -> `Stab_C`, `Dbmaj7` -> `Cmaj7`).
+  +3 -> `Pad_C3`, `Stab_C#` -> `Stab_C`, `Dbmaj7` -> `Cmaj7`, `Pad_g#36b00ff` -> `Pad_c46b00ff`,
+  keeping a lowercase note lowercase). A file whose named note the audio contradicts says the
+  note it plays (`_renoted_stem`, see [Retune](#retune)).
 - **Without Sononym**, a capital note letter ending a name is its note too (`_BARE_NOTE`:
   `808_F` -> `808_C`). A retuned file whose new name another file in the folder has says, in
   lowercase, the note it was in, which no rule reads as a note (`808_C_from-f`,
@@ -1100,19 +1110,31 @@ Then:
   several notes (a sung line, "B2-D3-E2") isn't retuned. A lengthened file is cut back to
   `DUR_CAP` with a fade.
 - **Root**: the filename's note with octave ("C#3", "Cs4", glued to a lowercase patch name as in
-  "warmpadF#3", or lowercase with a sharp, "g#3"; never after a capital or digit or before a
-  capital, so a model code like "ZA7" or the letters of a vendor code aren't notes), else a
+  "warmpadF#3", lowercase with a sharp, "g#3", or lowercase as the name's last token or before
+  a sampler's hex code ending it, "Pad_e3", "Pad_g#36b00ff"; never after a capital or digit,
+  and with a word boundary after it, so a model code like "ZA7", the letters of a vendor code
+  or a code glued to a word, "XY4zork_03", aren't notes; a letter and a digit leading the name
+  before a separator, a pack or device code like `E7_`, are never its note), else a
   chord root ("Dbmaj7"), else a bare key with an accidental ("Stab C#"), else the detected
   pitch in SYNTH, PIANO, VOX only (`RETUNE_DETECT_CATS`, confidence > 0.4). A detected pitch
-  that agrees with the name adds its fine tuning. A picked file retuned by a detected root
-  keeps its pitch unless pYIN hears a steady voiced note there too (the bar below: half the
-  frames voiced, spread under 0.5 semitone; `_check_detected_roots`): a sung phrase, a noise or
-  a hit isn't retuned by a pitch read off part of it.
-- **Contradicted names**: a picked file whose named note (with an octave) the audio clearly
-  contradicts keeps its pitch and name: pYIN on the steady part (half the frames voiced, spread
-  under 0.5 semitone, cached in `~/.fourier/cache/pitch`) 2+ semitones off, not a fourth or
-  fifth. The entry records `pitch_conflict` (a patch name can look like a note, and a pack can
-  be mislabeled).
+  that agrees with the name adds its fine tuning.
+- **Two readings agree**: a picked file is retuned to C (and named for it) only when two of its
+  name's note, Sononym's root (when sure) and pYIN's pitch agree within half a semitone,
+  octaves aside, or a single reading has nothing against it (a name alone, a pYIN pitch alone).
+  pYIN reads the steady part (half the frames voiced, spread under 0.5 semitone, cached in
+  `~/.fourier/cache/pitch`, the same reading as Fourier's own analysis); where it agrees, the
+  retune takes its cents, not Sononym's (a change under 5 cents, half pYIN's 10-cent step, is
+  left as it was). A retune from a detected root needs pYIN on the same
+  note (`_check_detected_roots`): a sung phrase, a noise or a hit isn't retuned by a pitch read
+  off part of it, and a root the audio contradicts (a C read as F) isn't followed; the file
+  keeps its pitch.
+- **Contradicted names** (`_check_name_pitches`): a named note pYIN contradicts by a semitone or
+  more, with Sononym not backing the name, keeps its pitch. Where Sononym and pYIN agree on
+  another note (the pack mislabeled it), pYIN retunes it to C within the caps (`root_src:
+  pyin`) and it's named for that C; otherwise it's named for the note pYIN hears, in the name's
+  own octave numbering (`Pad_G3` playing a G#: `Pad_G#3`). A pYIN pitch a fifth over the named
+  note (that note's 3rd harmonic, which pitch trackers lock onto) leaves the name and pitch
+  alone, and so does Sononym alone against the name. The entry records `pitch_conflict`.
 - **No root**: a picked file with no root (no note in its name, no sure Sononym reading) is
   retuned by a clear pYIN pitch within the same caps (`root_src: pyin`), smallest shift first,
   never onto a C another note of its set already plays in the category (names that state their
