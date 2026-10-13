@@ -516,11 +516,13 @@ String Snares" Live tags Pad).
    loop"). A Keep skips these.
 2. Soft layer: source peak under -19 dBFS while a sibling peaks 6+ dB louder (Keeps exempt).
 3. Impulse response, preview or long wavetable; clipped or over 60 s; rated Drop, or a byte copy
-   or an edition of a Drop, or in a set-wide Drop's set or patch (a Keep on the file itself
+   or an edition of a Drop (or a byte copy of such an edition under another name), or in a
+   set-wide Drop's set or patch (a Keep on the file itself
    wins); a note of a set one of whose notes was dropped here, when the previous build didn't
    hold it (a dropped note's slot never refills from its own set).
 4. Already in the base release (additive builds; still claims its dedup slot).
-5. Rated Misfiled here, itself, a copy or edition of it, or its multisample set (a Keep on the
+5. Rated Misfiled here, itself, a copy or edition of it (or a copy of that edition), or its
+   multisample set (a Keep on the
    file itself wins); name-reserved
    elsewhere; phrase mismatch (phrases only in PHRASES, PHRASES only phrases).
 6. **Keep / Move pin or name override**: force-accepted, skipping every later gate (an override
@@ -1226,8 +1228,8 @@ same, unrated.
 | Tag | Effect on the next build |
 |---|---|
 | Keep | pinned in the rated category: force-accepted, restored after caps, picked first in its folder |
-| Drop | out of every category, with its byte copies and editions (`identity.Reach`); not its set's other notes, which never take its slot in the category it was rated in (one the previous build held stays) |
-| Misfiled | never back in that category, with its copies, editions and multisample set (the set tier: names that differ only by note, velocity or round robin in one source folder, not a numbered series); re-homed to its next candidate. An automatic detection (`fourier review misfiles`) covers its file, copies and editions only, and the why log says it was the detection, not you |
+| Drop | out of every category, with its byte copies and editions, and the byte copies of those editions under any name (one recording; an edition of such a copy by its own name is not covered) (`identity.Reach`); not its set's other notes, which never take its slot in the category it was rated in (one the previous build held stays) |
+| Misfiled | never back in that category, with its copies, editions (and their byte copies) and multisample set (the set tier: names that differ only by note, velocity or round robin in one source folder, not a numbered series); re-homed to its next candidate. An automatic detection (`fourier review misfiles`) covers its file, copies and editions only, and the why log says it was the detection, not you |
 | `--set` | `fourier review rate <file> drop --set` (or `misfiled --to <CAT> --set`, or a `scope` column of `set` in `review import`): the rating covers the file's whole set, or a described patch's takes and variant letters (`identity.patch_key`: "I don't want this instrument"); a numbered series of different sounds is never one |
 | Move-`<CAT>` | Misfiled where rated, pinned in `<CAT>` (fetched there even if no classifier offered it); retired names followed |
 
@@ -1406,7 +1408,7 @@ files they catch and how many.
 | Structure | manifest matches disk; every file has a matching `out_md5` (what renders record in the device locks); set files are copies (kit files may be turned down by their `gain_db`); kit slots at or under their role's level; every kit has kick, snare, closed and open hat; each kit slot as `sets._kits` fills it from its pack's files in the master: a name that fits the slot (no closed or pack-coded hat as the open hat), not more than `KIT_UNDER_DB` under its role's level when the pack has another, not a second take of one drum (`sets._stem`) when the pack has another drum (not in an additive build, which keeps its release's kits); SLICE only straight, clean 1, 2 or 4 bar loops |
 | Budgets, folders | no category over budget (the recorded one where a surplus round or the library scale set it; under: WARN); no folder over 120; folders per category within the cap (tempo-banded: WARN); small categories near 45 files a folder (scaled: 24, a band keeping its folder; WARN); no folders under 15 (scaled: 3; WARN); most folders below the ceiling |
 | Naming | tonal folders use tonal words; whole traits; never both sides of a trait; siblings differing only by order or one missing word (WARN); no filler; tempo ranges on multiples of 5; names unique (word order, tempos within 2 BPM); folder names <= 44, file names canonical and <= 46; no "stab" in SYNTH; no keys words in SYNTH/SUB/FX/STABS; ACOUSTIC and PHRASES folders named for their majority instrument; naming phrases fit 40%; genre, machine and instrument words backed by 30%; note leads only in PIANO; no plucked names in SYNTH; no retired category folders |
-| Ratings | no Drop in the master, nor a byte copy or edition of one or a file in a set-wide Drop's set; no Misfiled file back, nor a copy, edition or multisample set mate of one in the rated category (a Keep there wins; `identity.Reach`, as the build reads it); every Keep present |
+| Ratings | no Drop in the master, nor a byte copy or edition of one (or a byte copy of that edition) or a file in a set-wide Drop's set; no Misfiled file back, nor a copy, edition or multisample set mate of one in the rated category (a Keep there wins; `identity.Reach`, as the build reads it); every Keep present |
 | Copies | from this master's why logs (needs the database): every file left out as a copy (in its category or another) has its keeper in the master; a synthetic single cycle (WAVES) left out as a copy only as an edition of its keeper by name, never by its audio |
 | Pitch | at most one note of a multisample set on each C a category plays (`identity.set_key`, or bare numbers tracking the roots as the build reads them, `number_sets`; velocity layers of one note are that note; Keeps stay); a file retuned to C plays C within half a semitone by the reading it was retuned by (and pYIN's, for a detected root), and a file named for C fails only where Sononym and pYIN agree on another note (never a new analysis); one reading alone against the name a WARN, as the build's pitch trust leaves it be, and a reading a fifth over the source's named note a WARN (maybe its 3rd harmonic) |
 | Routing | see [Routing checks](#routing-checks) |

@@ -468,8 +468,9 @@ def check_ratings(ctx):
     for c, e in ctx.entries:
         src_cat[e.get("src")].add(c)
     # a rating reaches as the build has it (curate._rating_reach, identity.Reach): a Drop its
-    # file's byte copies and editions, and a set-wide one its set; a Misfiled its copies,
-    # editions and multisample set in the rated category. A Keep there wins, as in the build.
+    # file's byte copies and editions (and their byte copies), and a set-wide one its set; a
+    # Misfiled its copies, editions and multisample set in the rated category. A Keep there
+    # wins, as in the build.
     from . import curate as C
     from .ratings import auto_misfiled_srcs, drop_categories, rating_scopes
     reach = C._rating_reach(misfiled=ctx.misf, drops=drop_categories(ctx.store_path),
@@ -929,8 +930,8 @@ def check_routing(ctx):
     # a file named as one kind of drum lives in that category, and a named scratch in FX
     # (a Keep, a loop or a Misfiled verdict there are exempt)
     from .curate_config import DRUM_NAME_FROM, SCRATCH_HOME
-    # (a Misfiled verdict covers its copies and editions, and a rating its multisample set
-    # too, as the build has it: curate._rating_reach)
+    # (a Misfiled verdict covers its copies and editions and theirs, and a rating its
+    # multisample set too, as the build has it: curate._rating_reach)
     from .ratings import auto_misfiled_srcs, drop_categories, rating_scopes
     _reach = C._rating_reach(misfiled=ctx.misf, drops=drop_categories(ctx.store_path),
                              scopes=rating_scopes(ctx.store_path), auto=auto_misfiled_srcs(ctx.store_path))
@@ -947,7 +948,9 @@ def check_routing(ctx):
                                                        e.get("ableton"))
         # (a name override wins, as in the build: "Kick_Cowbell_02" is a cowbell)
         if want and want != c and ctx.misf.get(e["src"]) != want \
-                and want not in _reach.misfiled(e["src"]) and C._name_override(fn) != c:
+                and want not in _reach.misfiled(e["src"], _hash_of(ctx, e["src"]),
+                                                (ctx.dur or {}).get(e["src"])) \
+                and C._name_override(fn) != c:
             wrong.append((c, e["out"], want))
     yield Result(FAIL if wrong else PASS, "files named as a drum (or a scratch) live in that category",
                  _fmt(wrong))
