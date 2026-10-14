@@ -58,7 +58,7 @@ rewrites many files at once, and a sync client can leave conflict copies beside 
 | `manifest.json` | build manifest (section 1.2) |
 | `loops.csv` | every drum loop: folder, file, bpm, bars, folder_bpm, bars_at_folder_bpm, swing_pct, slice_clean, slice_ready, swung |
 | `phrases.csv` | every phrase: folder, file, bpm, the key its pack states, and where that came from (`key_source`: name, folder or siblings) |
-| `CHANGELOG.md` | changes against the previous archived build |
+| `CHANGELOG.md` | changes against the previous archived build, and how many files left or joined for each reason |
 | `_REVIEW/` | review queue (hard links; never published or rendered) |
 
 ### 1.1 Categories, in play order
@@ -628,7 +628,20 @@ is left empty, and the build says how many candidates it found and what each ste
 per category why each candidate was left out (the cap, the near-duplicate it repeats, the gate,
 the budget, the cross-category dedupe) in `$FOURIER_HOME/why/` (`packs/why_log.py`), outside the
 master, for `fourier why <file>`: `kept` is the candidate pool the category picked from, `files`
-what it exported (less what the dedupe took out), and `counts` has each reason's count. Stable picks (3.4) come first in every spread cap (medoids taken among them), the
+what it exported (less what the dedupe took out), and `counts` has each reason's count. Every
+rule that leaves a file out writes its own reason, with a detail `fourier why` puts into words:
+`sibling_capped` (over a multisample set's cap in a folder; the cap and the notes the folder
+keeps), `one_note_per_c` (retuned onto a C its set already plays; the kept note and the C),
+`long_wavetable` (its length and `WAVE_MAX_DUR`), `fx_folder` (an FX folder's sound, never
+PADS: `FX_FOLDER_NOT`; where it went), `rated_drop`, `rated_misfiled` (the file's own rating,
+or the rated sibling of its set), `copy`, `twins`, `mostly_silent`, the gates and caps above, and
+`over_budget` only for a candidate the folders' picks passed over. A file routing sent to
+another category (`homed_elsewhere`, detail: that category) or that the category's own scope
+leaves out (`not_instrument`, `not_phrase`, `not_wave`, `noise_named`, a demo) is recorded only
+when the previous build held it here, since `fourier why` replays routing for the rest. The log
+also maps each of the previous build's files in the category to its sample id (`prev`); one
+the category never saw is `missing` (gone from the library), `homed_elsewhere` (a home or a
+Keep elsewhere) or `not_candidate` (its labels or tags no longer offer it). Stable picks (3.4) come first in every spread cap (medoids taken among them), the
 vendor cap's draw and near-dup groups. A quality score (lowered by clipping, DC over 2%, RMS
 under 0.004) only breaks near-dup and medoid ties.
 
@@ -1230,7 +1243,13 @@ A single-category build writes straight into the master and runs step 4 without 
 
 **Build diff** (`builddiff.py`): a new folder is the same as an old one when half its files came
 from it (a different name is a rename). `CHANGELOG.md` lists folders renamed, new and gone, and
-files added, removed or moved between categories. `fourier diff [OLD] [NEW]` compares any two
+files added, removed or moved between categories, then how many files left the master, joined
+it or moved, by reason: a leaver's is what the why log recorded (3.2), a joiner's `refill`,
+`moved_in` or `rated_in` (a Keep or a Move rating there). The full list, one row per file
+(`change, category, file, src, reason, detail`), goes to `~/.fourier/builds/<stamp>.changes.csv`
+beside the archived manifest, never into the master. `fourier verify` WARNs on a file the
+previous archived build held that left the master with no logged reason (nothing without a
+previous build or this master's why log). `fourier diff [OLD] [NEW]` compares any two
 masters, manifests or archived stamps (default: previous archive vs live master).
 
 **Publish** (`fourier publish`):

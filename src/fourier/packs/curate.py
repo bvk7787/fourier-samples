@@ -57,7 +57,7 @@ from ..settings import for_module as _for_module
 from . import manifests
 from .curate_config import NAMES, STEM_MAX, FAMILY_NAME_MAX  # noqa: F401
 from .curate_config import NAME_PHRASES, NAME_EXCLUDE_WORDS, NAME_SUPPORT_FULL, PACK_HOME, FOLDER_MAX
-from .curate_config import INSTRUMENT_ROOTS
+from .curate_config import INSTRUMENT_ROOTS, FX_FOLDER_NOT
 from .curate_config import VOX_CHOIR_RE, VOX_CHOIR_SHARE
 from .curate_config import SET_TOGETHER_SKIP, LEVEL_CATS, DRUM_LEVEL_CATS, DRUM_LEVEL_OVER_DB, LOOP_LIMIT_DB
 from .curate_config import RETUNE_CATS, RETUNE_DETECT_CATS, RETUNE_MAX_SEMIS, NOTE_LEAD_CATS
@@ -2781,11 +2781,12 @@ def _cap_siblings_fill(rest, rec, room):
     return pick
 
 
-def _cap_siblings(idxs, rec, cap=SIBLING_CAP):
+def _cap_siblings(idxs, rec, cap=SIBLING_CAP, why=None):
     """At most `cap` files of one multisample set (_sibling_key) in a folder, spread
     across the set's register (lowest, highest, then between), loudest velocity layer
     first (_prefer_loud_layers). A Keep always stays; files that belong to no set are
-    untouched."""
+    untouched. `why`, a dict, gets each file left out: {sample id: [cap, names the set
+    keeps in the folder]} (the why log's sibling_capped)."""
     sets, keep = defaultdict(list), []
     for i in idxs:
         k = _sibling_key(rec[i]["path"])
@@ -2817,10 +2818,17 @@ def _cap_siblings(idxs, rec, cap=SIBLING_CAP):
         else:
             pick = _spread_pick(rest, rec, room)
         keep += pins + pick
+    if why is not None:
+        ks = set(keep)
+        for g in sets.values():
+            gone = [i for i in g if i not in ks]
+            names = sorted(os.path.basename(rec[i]["path"] or "") for i in g if i in ks)
+            for i in gone:
+                why[rec[i]["id"]] = [cap, names]
     return sorted(keep)
 
 
-def _one_per_retune_target(groups, rec):
+def _one_per_retune_target(groups, rec, why=None):
     """Notes of one multisample set (_sibling_key) that export retunes onto the same C
     (F#2, A#2, C3, D#3 and E3 all play C3) are one sound: across a category's folders keep
     one note per set and C: a Keep's (Keeps always stay), else the one with the smallest
@@ -2828,7 +2836,8 @@ def _one_per_retune_target(groups, rec):
     layers stay for _cap_siblings to choose from, as before. Only notes the names state count
     ("Saw Lead 02" and "Saw Lead 05" may be two patches; a measured root counts when the name
     states a note the root parser doesn't read, "Pad_f#34b00ff"); files not retuned are
-    untouched. RETUNE_CATS only. Returns (groups, how many left out)."""
+    untouched. RETUNE_CATS only. Returns (groups, how many left out). `why`, a dict, gets
+    each note left out: {sample id: [the kept note's name, the C both play]} (one_note_per_c)."""
     by = defaultdict(list)
     for g in groups:
         for i in g:
@@ -2851,7 +2860,12 @@ def _one_per_retune_target(groups, rec):
         best = min(ids, key=lambda t: (not rec[t[0]].get("pin"), round(abs(rec[t[0]]["retune"]), 3),
                                        not rec[t[0]].get("incumbent"), rec[t[0]]["tune"] is None,
                                        rec[t[0]]["tune"] or 0, rec[t[0]]["path"]))
-        drop |= {i for i, n in ids if n != best[1] and not rec[i].get("pin")}
+        gone = {i for i, n in ids if n != best[1] and not rec[i].get("pin")}
+        drop |= gone
+        if why is not None and gone:
+            _c = _note_name(12 * int(round((best[1] + rec[best[0]]["retune"]) / 12)))
+            for i in gone:
+                why[rec[i]["id"]] = [os.path.basename(rec[best[0]]["path"] or ""), _c]
     if not drop:
         return groups, 0
     return [g2 for g2 in ([i for i in g if i not in drop] for g in groups) if g2], len(drop)
@@ -3074,6 +3088,80 @@ def _moved_paths() -> dict:
             seen.add(cur)
         if cur != old:
             out[old] = cur
+    return out
+
+
+def _previous_sources(category) -> dict:
+    """{source path in the latest archived build: where it is now} for a category, as
+    _previous_families has them but also when the build isn't sticky (FOURIER_NO_STICKY):
+    the files whose leaving the why log explains (prev) and the changelog lists."""
+    _previous_families(category)                     # loads the archived build once
+    doc, now = _PREV_FAMS.get("doc"), _PREV_FAMS.get("moves") or {}
+    if doc is None and os.environ.get("FOURIER_NO_STICKY"):
+        if "unsticky" not in _PREV_FAMS:
+            try:
+                from .builddiff import latest_archived
+                last = latest_archived()
+                d = manifests.read(last) if last is not None else None
+            except Exception:
+                d = None
+            _PREV_FAMS["unsticky"] = (d, _moved_paths() if d else {})
+        doc, now = _PREV_FAMS["unsticky"]
+    return {e["src"]: now.get(e["src"], e["src"])
+            for e in (((doc or {}).get("categories") or {}).get(category) or {}).get("entries", [])}
+
+
+def _missing_ids(session, ids) -> set:
+    """The ones of these sample ids a library walk marked missing (missing_files)."""
+    from ..metadata.rows import missing_marked
+    ids = sorted({int(i) for i in ids})
+    if not ids:
+        return set()
+    try:
+        if not missing_marked(session):
+            return set()
+        got = set()
+        for k in range(0, len(ids), 500):
+            got |= {int(x) for (x,) in session.execute(text(
+                "SELECT sample_id FROM missing_files WHERE sample_id IN (%s)"
+                % ",".join(str(i) for i in ids[k:k + 500])))}
+        return got
+    except Exception:          # the why log is best effort, never a failed build
+        return set()
+
+
+def _why_prev(session, category, prev, rows, why, homes, picked=()):
+    """The why log's record of the previous build's files (prev: {source path there: where it
+    is now}): {source there: sample id or None}, for the changelog and `fourier verify`. Each
+    one that wasn't among this category's candidates (`rows`) and that no step recorded gets
+    the reason it wasn't: gone from the library or the database (missing), routed to another
+    category (homed_elsewhere: a home, or a Keep there) or no longer offered to this one
+    (not_candidate: its labels, tags or pack no longer say it is one)."""
+    if not prev:
+        return {}
+    pid = {r.path: int(r.id) for r in rows}
+    need = sorted({p for p in prev.values() if p not in pid})
+    pid.update(_sample_ids(need) if need else {})
+    out = {old: pid.get(now) for old, now in prev.items()}
+    seen = {i for ids in why.values() for i in ids}
+    fetched = {int(r.id) for r in rows}
+    lost = [(now, out[old]) for old, now in sorted(prev.items())
+            if now not in picked and (out[old] is None or (out[old] not in seen and out[old] not in fetched))]
+    if not lost:
+        return out
+    gone = _missing_ids(session, [i for _p, i in lost if i is not None])
+    from .ratings import keep_pins
+    pins = keep_pins()
+    for now, i in lost:
+        if i is None or i in gone:
+            if i is not None:
+                why.setdefault("missing", {})[i] = None
+            continue
+        home = pins.get(now) or (homes or {}).get(i)
+        if home and home != category:
+            why.setdefault("homed_elsewhere", {})[i] = home
+        else:
+            why.setdefault("not_candidate", {})[i] = None
     return out
 
 
@@ -3421,10 +3509,20 @@ class _MisfiledIndex:
     def __init__(self, misfiled, vec_of=lambda src: None):
         self.exact = dict(misfiled)
         self.by_key = defaultdict(list)
+        self._rated = defaultdict(list)          # {sibling key: [(category, rated source)]}
         for src, cat in misfiled.items():
             k = _sibling_key(src)
             if k is not None:
                 self.by_key[k].append((cat, vec_of(src)))
+                self._rated[k].append((cat, src))
+
+    def rated_by(self, path, category):
+        """The file whose Misfiled rating keeps `path` out of `category`, for the why log:
+        None when it's the file's own, else the rated sibling's name."""
+        if self.exact.get(path) == category:
+            return None
+        got = sorted(os.path.basename(s) for c, s in self._rated.get(_sibling_key(path), ()) if c == category)
+        return got[0] if got else None
 
     def categories(self, path, vec=None):
         out = set()
@@ -3758,8 +3856,7 @@ def _twin(r, seen_hash, stats, out) -> None:
     """A byte-identical copy of a file the category already took: counted with the twins and
     recorded for `fourier why` (the why log's "twins", the id of the file it repeats)."""
     stats["twins"] += 1
-    if seen_hash.get(r.file_hash) is not None:
-        out(r, "twins", seen_hash[r.file_hash])
+    out(r, "twins", seen_hash.get(r.file_hash))     # (None: a base release's file took it)
 
 
 def _readmit_gated(rec, held, floor, category, support, id2row, seen_hash, seen_ck, fm, stats,
@@ -3799,7 +3896,8 @@ def _readmit_gated(rec, held, floor, category, support, id2row, seen_hash, seen_
 
 def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category=None,
                     exclude_ids=None, routed_ids=None, wave_hashes=None, mirrors=None,
-                    floor=0, why=None, gate=None, fallback=False, clap_homed=None, rehomed=None):
+                    floor=0, why=None, gate=None, fallback=False, clap_homed=None, rehomed=None,
+                    prev=None):
     """Home filter, noise filter, byte-hash + content-twin dedup, CLAP gates,
     acoustic near-duplicate prune.
 
@@ -3813,12 +3911,20 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
     category's candidates was left out: {reason: {sample id: detail}}. `gate`, a dict, gets
     each CLAP-gated candidate's scores: {sample id: [score, anti score(, 1 if readmitted)]}.
     `clap_homed`: the ids the CLAP fallback homed here (without Sononym): a loop among them
-    cleared the drum loops' CLAP gate by a margin, which stands in for drum evidence."""
+    cleared the drum loops' CLAP gate by a margin, which stands in for drum evidence.
+    `prev`: the previous build's sources here (paths as they are now); a row that only
+    routing or the category's own scope keeps out (homed_elsewhere, not_instrument, ...) is
+    recorded in `why` for these only, which is what a build's changelog explains (`fourier
+    why` replays routing for the rest), so the why log stays small."""
     noise = re.compile(cfg["noise"], re.I)
 
     def _out(r, reason, detail=None):
         if why is not None:
             why.setdefault(reason, {})[r.id] = detail
+
+    def _out_prev(r, reason, detail=None):
+        if prev and r.path in prev:
+            _out(r, reason, detail)
 
     stats = dict(twins=0, gated_out=0, total=0, near_dup=0, note_gated=0, loop_gated=0,
                  nondrum_gated=0)
@@ -3871,9 +3977,11 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
     for r in rows:
         if r.id not in id2row or not r.path or (noise.search(r.filename or "")
                                                 and pins.get(r.path) != category):
+            _out_prev(r, "noise_named" if r.id in id2row else "not_analyzed")
             continue
         if mirrors and r.path in mirrors:
             stats["mirror_copies"] = stats.get("mirror_copies", 0) + 1
+            _out(r, "mirror_copies")
             continue                     # a copy in a mirror folder
         if cfg.get("path_exclude") and cfg["path_exclude"].search(r.rel_path or r.path):
             stats["style_excluded"] = stats.get("style_excluded", 0) + 1
@@ -3888,18 +3996,23 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                 continue                 # too quiet to normalize, and a louder take exists
         if _is_ir(r.rel_path, r.path):
             stats["impulse_responses"] = stats.get("impulse_responses", 0) + 1
+            _out(r, "ir_preview", "impulse response")
             continue                     # a reverb impulse response: never a sample to play
         if _is_preview(r.rel_path, r.path):
             stats["previews"] = stats.get("previews", 0) + 1
+            _out(r, "ir_preview", "preview")
             continue                     # a preset / kit preview render: a demo, not a sample
         if _is_long_wavetable(r.rel_path or library_rel(r.path or ""), r.duration_s):
             stats["long_wavetables"] = stats.get("long_wavetables", 0) + 1
+            _out(r, "long_wavetable", [round(float(r.duration_s), 2), WAVE_MAX_DUR])
             continue                     # a wavetable for a wavetable synth: never a sample to play
         # hygiene: drop clipped samples and corrupt multi-minute files
         if r.is_clipped or (r.duration_s and r.duration_s > 60):
+            _out_prev(r, "hygiene", "clipped" if r.is_clipped else "over 60 s")
             continue
         if r.path in drops:
             stats["dropped"] = stats.get("dropped", 0) + 1
+            _out(r, "rated_drop")
             continue                     # rated Drop: out of every category
         if exclude_ids and r.id in exclude_ids:
             # already in the base release: it still claims its byte-hash / content-twin slot,
@@ -3913,9 +4026,11 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         if category and pins.get(r.path) != category \
                 and category in misfiled.categories(r.path, emb_n[id2row[r.id]]):
             stats["misfiled_out"] = stats.get("misfiled_out", 0) + 1
+            _out(r, "rated_misfiled", misfiled.rated_by(r.path, category))
             continue
         _rv = _name_reserved(r.filename or "")
         if category and _rv and _rv != category and pins.get(r.path) != category:
+            _out_prev(r, "homed_elsewhere", _rv)
             continue                     # reserved to another category by name
         # phrases live in PHRASES only, and PHRASES holds phrases only (a Keep wins; a phrase
         # rated Misfiled in PHRASES may go back to a one-shot home)
@@ -3927,12 +4042,17 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             if _ph != (category == PHRASES_CATEGORY):
                 stats["phrase_out" if _ph else "not_phrase"] = \
                     stats.get("phrase_out" if _ph else "not_phrase", 0) + 1
+                if _ph:
+                    _out_prev(r, "homed_elsewhere", PHRASES_CATEGORY)
+                else:
+                    _out_prev(r, "not_phrase")
                 continue
         _ovi, _ov = _row_override(r)
         # a rated Keep pins the file to the category it was rated in (wins over overrides)
         _pin = pins.get(r.path)
         _home = _pin or _ov
         if _home is not None and _home != category:
+            _out_prev(r, "homed_elsewhere", _home)
             continue
         if _home == category:
             rel = r.rel_path or (r.path or "")
@@ -3963,6 +4083,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             ck = _content_key(pack, r.filename, r.duration_s)
             if ck in seen_ck:
                 stats["twins"] += 1
+                _out(r, "twins")
                 continue
             seen_ck.add(ck)
             if r.file_hash:
@@ -3976,6 +4097,12 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             rec.append(_d)
             continue
         if use_home and homes.get(r.id) != category:
+            # (an FX folder's file the classifier hears as FX only: never PADS, _fx_folder_veto)
+            if category in FX_FOLDER_NOT and not _fx_folder_veto(
+                    {category}, _canonical_of(r), r.rel_path or library_rel(r.path or "")):
+                _out(r, "fx_folder", homes.get(r.id))
+            else:
+                _out_prev(r, "homed_elsewhere", homes.get(r.id))
             continue
         # pitch window: drop a confidently-detected note outside [nmin, nmax] for
         # pitched categories (keeps out piercing top-octave notes / sub-sonic mislabels)
@@ -4021,6 +4148,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             continue
         rel = r.rel_path or (r.path or "")
         if cfg["kind"] != "instrument" and DEMO_PATH.search(rel):
+            _out_prev(r, "ir_preview", "demo")
             continue
         pack = _pack_of(r.rel_path, r.path)
         if PACK_HOME.get(pack, category) != category:
@@ -4032,6 +4160,8 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             if category != WAVES_CATEGORY:
                 stats["wave_out"] = stats.get("wave_out", 0) + 1
                 _out(r, "wave_out")
+            else:
+                _out_prev(r, "not_wave")
             continue
         # a long file from a loop folder isn't a one-shot pad / bass / synth / stab / vox
         # (unless it's a phrase you rated Misfiled in PHRASES: that one may come back)
@@ -4057,6 +4187,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             continue
         if cfg.get("scratch_names") and not _scratch_named(r.filename, rel):
             stats["not_scratch_named"] = stats.get("not_scratch_named", 0) + 1
+            _out(r, "not_scratch_named")
             continue
         # named as another drum, or as a scratch: it belongs there (unless rated Misfiled there)
         if category in DRUM_NAME_FROM and cfg["kind"] == "oneshot":
@@ -4105,14 +4236,17 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                 continue
             _abt = _as_list(r.ableton_tags)
             if cfg.get("pack_exclude") and cfg["pack_exclude"].search(pack):
+                _out_prev(r, "not_instrument", "pack")
                 continue
             if cfg.get("name_exclude") and cfg["name_exclude"].search(r.filename or ""):
+                _out_prev(r, "not_instrument", "name")
                 continue
             # a named wind / brass one-shot or an orchestra-folder file is ACOUSTIC's, as
             # compute_homes has it for the other categories (without Live's tags to say
             # otherwise, a horn patch could reach PIANO)
             if category != "ACOUSTIC" and not _pin and not ORCH_PACK_EXCLUDE.search(pack) and (
                     _is_wind_named(r.filename, _abt) or _orch_path(r.rel_path) is not None):
+                _out_prev(r, "homed_elsewhere", "ACOUSTIC")
                 continue
             # keep foreign instruments out (e.g. classical guitar / strings out of PIANO),
             # unless the filename names this instrument (an auto-tag can misname a piano)
@@ -4120,6 +4254,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                     cfg.get("ableton_exclude_unless_name")
                     and (cfg["ableton_exclude_unless_name"].search(r.filename or "")
                          or (cfg.get("chord_band") and _is_organ_named(r.filename)))):
+                _out_prev(r, "not_instrument", "tags")
                 continue
             in_pack = bool(cfg["pack_re"].search(pack)) or (
                 bool(cfg.get("ableton_any")) and _acoustic_tagged(_abt, r.filename, pack, cfg["ableton_any"])) or (
@@ -4134,10 +4269,13 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                        float(v @ pia_anchor) >= cfg.get("clap_min", 0.28):
                         ok = True
                 if not ok:
+                    _out_prev(r, "not_instrument", "sound")
                     continue
             elif not in_pack:
+                _out_prev(r, "not_instrument", "pack")
                 continue
         elif INST_ROUTED_PACKS.search(pack):
+            _out_prev(r, "homed_elsewhere", "an instrument category")
             continue
         stats["total"] += 1
         if excl:
@@ -4189,6 +4327,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         ck = _content_key(pack, r.filename, r.duration_s)
         if ck in seen_ck:
             stats["twins"] += 1
+            _out(r, "twins")
             continue
         seen_ck.add(ck)
         if r.file_hash:
@@ -5279,11 +5418,15 @@ class TooFewSamples(RuntimeError):
 
 def left_out_doc(category, status, n, floor, stats, why, **extra) -> dict:
     """What `fourier why` reads for one category (packs/why_log.py): how many candidates it
-    found and kept, its minimum, and why each candidate it left out was left out."""
+    found and kept, its minimum, and why each candidate it left out was left out. A reason
+    the selection's stats don't count (a set's cap, one note per C, ...) counts its files."""
     readmitted = why.get(why_log.READMITTED) or {}
+    counts = {k: int(v) for k, v in stats.items() if isinstance(v, int) and v}
+    counts.update({k: len(ids) for k, ids in why.items()
+                   if ids and k not in counts and k != why_log.READMITTED})
     return dict(category=category, status=status, kept=n, need=floor,
                 found=int(stats.get("total", 0)),
-                counts={k: int(v) for k, v in stats.items() if isinstance(v, int) and v},
+                counts=counts,
                 out={reason: {str(k): v for k, v in ids.items()} for reason, ids in why.items()
                      if ids and reason != why_log.READMITTED},
                 **({"readmitted": {str(k): v for k, v in readmitted.items()}} if readmitted else {}),
@@ -5392,6 +5535,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     # loops CLAP re-homed here (without Sononym: _clap_rehome, either way between the loop categories)
     _rehomed = {sid for sid, vt in votes.items() if (vt or {}).get("rehomed") == category
                 and homes.get(sid) == category}
+    # the previous build's files here, whose leaving the why log explains (sticky or not)
+    _prev_all = _previous_sources(category)
     rec, fm, stats = _select_records(rows, cfg, emb_n, id2row, homes, support, category,
                                      # (chord stabs are STABS' own, not a routed share; nor
                                      # are the CLAP fallback's homes)
@@ -5408,13 +5553,15 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                                      wave_hashes=_wave_hashes(session),
                                      mirrors=_mirror_dups(session),
                                      floor=floor, why=_why, gate=_gate,
-                                     fallback=_fallback(session))
+                                     fallback=_fallback(session), prev=set(_prev_all.values()))
     n = len(rec)
     # each CLAP-gated candidate's scores, for `fourier why` (a gated category only)
     _gate_doc = dict(gate={str(k): v for k, v in _gate.items()},
                      gate_min=cfg.get("break_min", 0.30)) if _gate else {}
     if n < floor:
+        _prev_ids = _why_prev(session, category, _prev_all, rows, _why, homes)
         _why_doc = left_out_doc(category, "too_few", n, floor, stats, _why, **_gate_doc,
+                                **({"prev": _prev_ids} if _prev_ids else {}),
                                 **_clap_doc(_clap_ids, _rehomed, _sound),
                                 # (without Sononym: the candidates it had, which `fourier why
                                 # --unrecognized` doesn't count as placed nowhere)
@@ -5532,12 +5679,15 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     dims = naming_dims(category, cfg)
     clusters = []
     if category in SIBLING_CAP_CATS and category in RETUNE_CATS:
-        groups, _n_rt = _one_per_retune_target(groups, rec)
+        groups, _n_rt = _one_per_retune_target(groups, rec, why=_why.setdefault("one_note_per_c", {}))
         if _n_rt:
             log(f"{category}: {_n_rt} notes of multisample sets left out (retuned onto a C the set already plays)")
     _scap = sibling_cap(category)
+    n_sib = 0
     if category in SIBLING_CAP_CATS:
-        groups = [_cap_siblings(g, rec, cap=_scap) for g in groups]
+        _before = sum(map(len, groups))
+        groups = [_cap_siblings(g, rec, cap=_scap, why=_why.setdefault("sibling_capped", {})) for g in groups]
+        n_sib = _before - sum(map(len, groups))
     if not cfg.get("tempo_bands"):
         # a folder under FOLDER_MIN_FILES merges into the nearest folder of its band
         _gb = [Counter(rec[i].get("band") for i in g).most_common(1)[0][0] if g else None for g in groups]
@@ -5558,11 +5708,10 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         groups = _split_capped_groups(groups, P, _planned, ceil, fmax, rec)
         if len(groups) < _ng:
             log(f"{category}: {_ng - len(groups)} folder(s) under {_fmin} files merged into a neighbor")
-    n_sib = 0
     for idxs in groups:
         if category in SIBLING_CAP_CATS:
             _before = len(idxs)
-            idxs = _cap_siblings(idxs, rec, cap=_scap)
+            idxs = _cap_siblings(idxs, rec, cap=_scap, why=_why["sibling_capped"])
             n_sib += _before - len(idxs)
         c = dict(idxs=idxs)
         for key in ["br", "atk", "dec", "sub", "noi", "har", "cr"]:
@@ -5955,10 +6104,14 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         f"{stats.get('near_dup', 0)} near-dups pruned, {stats.get('loop_gated', 0)} loops dropped")
     # why each candidate that isn't in the master was left out, beside the build (not in it)
     _picked = {e["src"] for e in file_entries}
+    # (a candidate a step after the selection left out has that step's reason: a set's cap,
+    # one note per C, a copy; the rest the folders' picks passed over)
+    _said = {i for got in _why.values() for i in got}
     _why["over_budget"] = {r["id"]: None for r in rec if r["path"] not in _picked and r["id"] not in _quiet_ids
-                           and r["id"] not in _why.get("copy", ())}
+                           and r["id"] not in _said}
     if _quiet_ids:
         _why["too_quiet"] = {i: QUIET_RMS_DB for i in sorted(_quiet_ids)}
+    _prev_ids = _why_prev(session, category, _prev_all, rows, _why, homes, _picked)
     # the source of each picked file's tempo and root (metadata/resolve.py), for `fourier why`
     _fb = _fallback(session)
     _src = {str(r["id"]): got for r in rec if r["path"] in _picked
@@ -5967,6 +6120,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     _counts = dict(stats, over_budget=len(_why["over_budget"]), too_quiet=len(_quiet_ids))
     why_log.write(out_dir, category, left_out_doc(category, "built", n, floor, _counts, _why,
                                                   files=total, budget=budget, **_gate_doc,
+                                                  **({"prev": _prev_ids} if _prev_ids else {}),
                                                   **_clap_doc(_clap_ids, _rehomed, _sound),
                                                   **({"sources": _src} if _src else {})))
     if return_entries:

@@ -25,6 +25,17 @@ change the CLI or the config).
 
 ### Fixed
 
+- Every rule that leaves a file out of a category now writes its own reason to the why log, so
+  a build can say why each file left: the multisample set cap (`sibling_capped`, with the notes
+  the folder keeps; its first pass is now counted, so the build log's "extra notes of
+  multisample sets left out" line prints), one note per C (`one_note_per_c`, with the note kept
+  and the C), long wavetables, the FX-folder rule, Drop and Misfiled ratings (the rated sibling
+  named), routing to another category and the rest. `over_budget` now means only a candidate
+  the budget passed over: the set cap's files were logged as over budget, which read as a
+  category whose pool ran out. The build's CHANGELOG.md counts the files that left or joined
+  by reason, the full list goes to `<stamp>.changes.csv` beside the archived build (never into
+  the master), and `fourier verify` warns on a file that left with no logged reason. The
+  files a build picks are unchanged.
 - `fourier verify` no longer fails a file a Keep or a Move rating pinned into a banded
   category (FX, CYMBALS, PHRASES, ...) on its band: the build bands it on the labels the
   database holds, while its manifest entry records only the votes of where it came from, which

@@ -427,6 +427,26 @@ def check_ratings(ctx):
                            "clear` removes the rating)", _fmt(os.path.basename(p) for p in sorted(gone)))
 
 
+def check_leavers(ctx):
+    """Every file the previous archived build held that this master no longer holds has the
+    reason its why log recorded (builddiff.change_rows); nothing without a previous build or
+    without this master's why logs."""
+    from . import why_log
+    from .builddiff import change_rows, previous_build
+    try:
+        prev = previous_build(ctx.man)
+    except Exception:
+        prev = None
+    if prev is None or not why_log.folder(ctx.root).is_dir():
+        return
+    rows = change_rows(prev, ctx.man, ctx.root, pins=ctx.pins)
+    bare = [(r["category"], os.path.basename(r["src"] or "")) for r in rows
+            if r["change"] == "left" and not r["reason"]]
+    n = sum(1 for r in rows if r["change"] == "left" and not r.get("to"))
+    yield Result(WARN if bare else PASS, f"every file that left since the previous build has a logged "
+                                         f"reason ({n} left)", _fmt(bare, 5))
+
+
 def _gone_keeps(pins: dict) -> dict:
     """{source: category} of these Keep pins whose source is gone (ratings.missing_keeps)."""
     from .ratings import missing_keeps
@@ -1043,7 +1063,8 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
                 ctx.copies = [(members[i], members[j]) for i, j in C._cross_copy_pairs(members, vecs, cos=cos)]
                 ctx.copies_within = _copies_within(ctx.entries, vecs)
     out = []
-    for fn in (check_manifest, check_sets, check_budgets, check_naming, check_ratings, check_routing, check_bands,
+    for fn in (check_manifest, check_sets, check_budgets, check_naming, check_ratings, check_leavers,
+               check_routing, check_bands,
                *( [check_audio] if audio else [])):
         out.extend(fn(ctx))
     _ok, vres = validate_master(str(master_dir), session=session, log=lambda *a: None)

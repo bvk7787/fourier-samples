@@ -146,7 +146,10 @@ naming, routing, loudness, ratings). `fourier why --rules` prints the routing pr
   in an additive build). Every build writes why it left each candidate out (each gate apart,
   with the file's value and the threshold), and each gated candidate's CLAP scores, to
   `$FOURIER_HOME/why/<master key>/` (`packs/why_log.py`, read by `fourier why`); never into the
-  master or its manifest.
+  master or its manifest. A rule that leaves a file out writes its own reason key (a new rule
+  needs one, with a `FILTER_WORDS` entry and a `describe` line), and the log maps the previous
+  build's files to sample ids (`prev`): the changelog's per-file `<stamp>.changes.csv` beside
+  the archived build (`builddiff.change_rows`) and verify's leaver check read them.
 - **Library scale** (`packs/scale.py`, the `scale` knob, docs/curation.md 3.5): a library with
   fewer than `LIBRARY_PER_MASTER` usable samples for each budgeted file gets a master scaled by
   f = samples / (that x the budgets' total). The build passes `scale` to `build_taxonomy` only

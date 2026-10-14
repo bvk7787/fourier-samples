@@ -100,7 +100,9 @@ def test_select_records_dedup_and_noise_filter():
     assert len(rec) == 1                       # aif twin collapsed, snare out by KICKS' noise words
     assert paths[0].endswith("BD_808.wav")     # the real wav is the one kept
     assert stats["twins"] == 1
-    assert why == {}                           # neither was a candidate the gates left out
+    # the aif collapsed into its twin; the snare isn't a previous build's file (noise words
+    # are recorded for those only)
+    assert why == {"twins": {2: None}}
 
 
 def test_unknown_category_raises():
