@@ -621,8 +621,12 @@ rule below that asks:
   "mono" or "16bit" aside) whose names differ only by note, velocity or round robin
   (`identity.set_key`; a dynamics word first in a name, "MP_Kick", is a prefix). A bare number
   is a note only when the numbers track the measured pitch: for one of the name's numbers,
-  every file's root less its number agrees within half a semitone (`NUMBER_NOTE_TOL`) across at
-  least three numbers from 0 to 127 ("Lead 059" / "061" / "062"; `identity.number_sets`).
+  the files' roots less their numbers agree within half a semitone (`NUMBER_NOTE_TOL`) across at
+  least three numbers from 0 to 127, and octaves aside across at least two thirds of the files
+  with a root (`NUMBER_SET_MAJORITY`: a root read an octave off doesn't unmake a set). The roots
+  are every file's in the source folder, not only a category's candidates (Sononym's where it's
+  sure, else pYIN's: `curate._folder_number_roots`, `_number_root`), so the build and verify
+  read one set ("Lead 059" / "061" / "062"; `identity.number_sets`).
 - **Series**: a numbered batch ("Qzk 01" to "Qzk 24", "106_QZ", "Hinge07"), never a set; a
   number glued to a name ("Vqx5-27", "Vqx17-27") is another patch. Outside the drum
   categories the set cap also counts one described patch's numbered takes and variant letters
@@ -1151,7 +1155,8 @@ Then:
 - **No root**: a picked file with no root (no note in its name, no sure Sononym reading) is
   retuned by a clear pYIN pitch within the same caps (`root_src: pyin`), smallest shift first,
   never onto a C another note of its set already plays in the category (names that state their
-  notes: that note keeps its pitch). A file retuned by a
+  notes, or bare numbers that track the roots of the retuned picks: that note keeps its pitch).
+  A file retuned by a
   detected pitch whose name still carries that note where the parser doesn't look (after a
   digit: `Saw2D1`) has that token renamed to the C it plays (`Saw2C1`); entries record
   `root_midi`.
@@ -1388,17 +1393,21 @@ Cut a fresh full build (no `--base`) between projects, when names or pruning nee
 `fourier verify` runs after every build and before every publish; any FAIL fails it. It uses
 the build's config, exempts Keeps from selection rules as the build does, and includes the quick
 invariants (`fourier verify --quick` runs only those). `--no-db` skips DB checks (phrases,
-chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN.
+chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN. The checks
+that hold the build's invariants (copies, sets, pitch, loops, kits, ratings) list the first 10
+files they catch and how many.
 
 | Group | Checks |
 |---|---|
-| Structure | manifest matches disk; every file has a matching `out_md5`; set files are copies (kit files may be turned down by their `gain_db`); kit slots at or under their role's level; every kit has kick, snare, closed and open hat; SLICE only straight, clean 1, 2 or 4 bar loops |
+| Structure | manifest matches disk; every file has a matching `out_md5` (what renders record in the device locks); set files are copies (kit files may be turned down by their `gain_db`); kit slots at or under their role's level; every kit has kick, snare, closed and open hat; each kit slot as `sets._kits` fills it from its pack's files in the master: a name that fits the slot (no closed or pack-coded hat as the open hat), not more than `KIT_UNDER_DB` under its role's level when the pack has another, not a second take of one drum (`sets._stem`) when the pack has another drum (not in an additive build, which keeps its release's kits); SLICE only straight, clean 1, 2 or 4 bar loops |
 | Budgets, folders | no category over budget (the recorded one where a surplus round or the library scale set it; under: WARN); no folder over 120; folders per category within the cap (tempo-banded: WARN); small categories near 45 files a folder (scaled: 24, a band keeping its folder; WARN); no folders under 15 (scaled: 3; WARN); most folders below the ceiling |
 | Naming | tonal folders use tonal words; whole traits; never both sides of a trait; siblings differing only by order or one missing word (WARN); no filler; tempo ranges on multiples of 5; names unique (word order, tempos within 2 BPM); folder names <= 44, file names canonical and <= 46; no "stab" in SYNTH; no keys words in SYNTH/SUB/FX/STABS; ACOUSTIC and PHRASES folders named for their majority instrument; naming phrases fit 40%; genre, machine and instrument words backed by 30%; note leads only in PIANO; no plucked names in SYNTH; no retired category folders |
-| Ratings | no Drop in the master; no Misfiled file back; every Keep present |
+| Ratings | no Drop in the master, nor a byte copy or edition of one or a file in a set-wide Drop's set; no Misfiled file back, nor a copy, edition or multisample set mate of one in the rated category (a Keep there wins; `identity.Reach`, as the build reads it); every Keep present |
+| Copies | from this master's why logs (needs the database): every file left out as a copy (in its category or another) has its keeper in the master; a synthetic single cycle (WAVES) left out as a copy only as an edition of its keeper by name, never by its audio |
+| Pitch | at most one note of a multisample set on each C a category plays (`identity.set_key`, or bare numbers tracking the roots as the build reads them, `number_sets`; velocity layers of one note are that note; Keeps stay); a file retuned to C plays C within half a semitone by the reading it was retuned by (and pYIN's, for a detected root), and a file named for C fails only where Sononym and pYIN agree on another note (never a new analysis); one reading alone against the name a WARN, as the build's pitch trust leaves it be, and a reading a fifth over the source's named note a WARN (maybe its 3rd harmonic) |
 | Routing | see [Routing checks](#routing-checks) |
 | Bands | each banded category's folders hold one band and lead with it; each file's recomputed band matches; band shares within 5 points and folder minimums (WARN) |
-| Audio | every file readable; DC under 2% of peak; WAVES DC-free and sample-exact; instrument tails trimmed; no one-shot under -38 dBFS RMS or over its RMS ceiling; one-shots end quietly; stereo only where real (KICKS/SUB mono); tonal one-shots with a named root retuned (at most 6 semitones, within the category's cap) and named for the C they play; melodic folders within 4 dB of the median where there's room (WARN); no `dsp_fallback`; leads trimmed where a category sets `trim_lead_db` |
+| Audio | every file readable; DC under 2% of peak; WAVES DC-free and sample-exact; instrument tails trimmed; no one-shot under -38 dBFS RMS or over its RMS ceiling; one-shots end quietly; stereo only where real (KICKS/SUB mono); tonal one-shots with a named root retuned (at most 6 semitones, `RETUNE_MAX_SEMIS` whole semitones in VOX, PIANO and ACOUSTIC) and named for the C they play; no loop more than `LOOP_SILENT_SHARE_MAX` silence (1 point of slack: the build judged the source); no loop with a tempo still starting `ROTATE_MIN_MS`-`ROTATE_MAX_MS` late on digital silence (under `LOOP_PAD_DBFS` up to its first sound: the late cut the build rotates or cuts away); melodic folders within 4 dB of the median where there's room (WARN); no `dsp_fallback`; leads trimmed where a category sets `trim_lead_db` |
 | Quick invariants (`--quick`) | budget, ceiling, case-only folder clashes, folders under 6 (WARN), vendor over 40% + 15% (WARN), override and instrument-pack shares over cap + 5% (WARN), duplicate sources or audio (WARN), no clipped or over-60 s sources (DB) |
 | Renders | `--render m8_tracker --render digitakt_2` (scratch dir, no lock touched): every file rendered; device format; WAVES sample-exact; in a mono render, phase-inverted stereo loses at most 3 dB; card paths within the limit; folders within 128 files; image size |
 
@@ -1418,9 +1427,11 @@ chains, chord stabs); `--no-audio` skips audio. Checks FAIL unless marked WARN.
 - **Stabs, VOX, waves**: chord stabs in STABS; STABS only named stabs; choir share; waves only
   in WAVES and WAVES only waves.
 - **Shape and length**: length caps; no tempo-named files in one-shot folders; sibling cap; no
-  freetempo folders; drum loops and phrases whole beats at their tempo (a name's within
-  `NAME_TEMPO_TOL_MS`, its silence aside, the classifier's or the analysis's within 0.15 beat; an ACID chunk's as
-  stated) and at their folder tempo; no long loop-folder files in tonal one-shots; phrases only
+  freetempo folders; drum loops and phrases whole beats at their tempo within
+  `NAME_TEMPO_TOL_MS` (a name's or folder's with its silence aside; the classifier's or the
+  analysis's, which the build snaps to the length, over the whole file; an ACID chunk's as
+  stated) and at their folder tempo, inside their folder's tempo lead (a range as rounded, one
+  tempo within 2.5 BPM); no long loop-folder files in tonal one-shots; phrases only
   in PHRASES and PHRASES only phrases, each with a tempo; no sample chains; unprofiled files
   (WARN).
 

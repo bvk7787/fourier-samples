@@ -214,6 +214,7 @@ curate_config:
   EDITION_SUFFIX_RE: rules
   EDITION_DUR_TOL: engine
   NUMBER_NOTE_TOL: engine
+  NUMBER_SET_MAJORITY: engine
   SET_SPREAD_RANGE: taste
   NOTE_LEAD_CATS: taxonomy
   LOOP_DIR_ONESHOT_CATS: rules

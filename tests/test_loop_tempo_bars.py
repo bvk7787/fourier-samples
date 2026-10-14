@@ -161,7 +161,7 @@ def _verify(tmp_path, loops):
 
 def test_verify_checks_each_loops_bar_math(tmp_path):
     good = [("DRUMLOOPS", "Qxvwz Beat 120bpm.wav", _beats(16, 120), {"bpm": 120.0, "bpm_src": "name"}),
-            ("DRUMLOOPS", "Qzv Break.wav", _beats(8, 87.3, 0.02), {"bpm": 87.3, "bpm_src": "sononym",
+            ("DRUMLOOPS", "Qzv Break.wav", _beats(8, 87.3, 0.008), {"bpm": 87.3, "bpm_src": "sononym",
                                                                      "bpm_fold": 174.6}),
             ("PHRASES", "Qzv Fill 96bpm.wav", _beats(2, 96), {"bpm": 96.0, "bpm_src": "name"}),
             ("DRUMLOOPS", "Vqx Beat.wav", 5.0, {"bpm": 97.0, "bpm_src": "acid"})]     # as stated
@@ -169,9 +169,12 @@ def test_verify_checks_each_loops_bar_math(tmp_path):
     assert got[CHECK].level != FAIL, got[CHECK].detail
     bad = [("DRUMLOOPS", "Qxvwz Groove 100bpm.wav", _beats(16, 110), {"bpm": 100.0, "bpm_src": "name"}),
            ("PHRASES", "Qzv Lead 96bpm.wav", _beats(4, 95.07), {"bpm": 96.0, "bpm_src": "name"}),
-           ("DRUMLOOPS", "Qzv Roll.wav", _beats(3, 180), {"bpm": 180.0, "bpm_src": "sononym", "bpm_fold": 90.0})]
+           ("DRUMLOOPS", "Qzv Roll.wav", _beats(3, 180), {"bpm": 180.0, "bpm_src": "sononym", "bpm_fold": 90.0}),
+           # an analyzer's tempo is snapped to the length: 20 ms off is past NAME_TEMPO_TOL_MS
+           ("DRUMLOOPS", "Qzv Shuffle.wav", _beats(8, 87.3, 0.02), {"bpm": 87.3, "bpm_src": "sononym",
+                                                                       "bpm_fold": 174.6})]
     got = _verify(tmp_path / "b", bad)
-    assert got[CHECK].level == FAIL and got[CHECK].detail.startswith("3: ")
+    assert got[CHECK].level == FAIL and got[CHECK].detail.startswith("4: ")
     assert all(fn in got[CHECK].detail for _c, fn, _s, _e in bad), got[CHECK].detail
     assert "16+0.00 beats at 100" not in got[CHECK].detail and "beats at 100" in got[CHECK].detail
 

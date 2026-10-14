@@ -6630,6 +6630,10 @@
   "type": "float",
   "value": 0.5
  },
+ "curate_config.NUMBER_SET_MAJORITY": {
+  "type": "float",
+  "value": 0.6666666666666666
+ },
  "curate_config.SET_SPREAD_RANGE": {
   "type": "tuple",
   "value": {
