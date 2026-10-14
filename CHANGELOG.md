@@ -31,6 +31,12 @@ change the CLI or the config).
   reads the hashes of the rated files' editions that another file shares
   (`curate._rated_facts`), and verify's rating and drum-name checks read the same reach. An
   edition of such a copy by its own name is not covered.
+- A stereo sound shipped as two mono files, one per channel ("Keys L C3" / "Keys R C3": names
+  that differ only by a standalone L / R or Left / Right token, in one folder, stating a note),
+  is one recording's two editions, whatever their lengths: a category keeps one (while CLAP
+  hears them at `EDITION_COPY_COS`), and a rating on one covers the other. A drum's or a
+  loop's L / R (no note named) stays two sounds. A bare number right after a velocity, ending a
+  name that states a note ("_C2_v3_1" / "_C2_v3_2"), is a round robin, so one of the twins stays.
 - One note per set and C now runs on a category's picks: a note leaves only for a note of its
   set the category ships, and its folder picks again without it. Run before the picks, it could
   leave a note for one that then lost its own place, taking whole instruments out of a master;

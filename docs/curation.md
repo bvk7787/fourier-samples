@@ -620,7 +620,11 @@ rule below that asks:
   twin folders) with lengths within 5% (`EDITION_DUR_TOL`); across two packs of one vendor, one
   name of two or more words at one length (a compilation's re-release). One name in two
   folders of a pack ("808/Kick 01", "909/Kick 01") is two recordings, and a name that names
-  nothing ("Hit Dirty") is never paired.
+  nothing ("Hit Dirty") is never paired. A stereo sound's two channels shipped as mono files
+  are editions too: names that differ only by a standalone L / R (or Left / Right) token, in
+  one folder, stating a note ("Keys L C3" / "Keys R C3"), whatever their lengths (each channel
+  is trimmed at its own silence); without a note named (a drum's left and right hand, a loop's
+  two parts) they stay two sounds, and a letter inside a word is never a channel.
 - **Set**: a multisample set, one instrument or patch in one source folder (edition words like
   "mono" or "16bit" aside) whose names differ only by note, velocity or round robin
   (`identity.set_key`; a dynamics word first in a name, "MP_Kick", is a prefix). A bare number
@@ -714,7 +718,8 @@ categories cluster inside tempo bands (section 4). `FOLDER_MAX` is 12 folders pe
 never across tempo folders or below a band's minimum. Then:
 
 - **Round robins**: twins of one note and velocity that differ only by their round robin
-  ("_C2_v3_rr1", "_C2_v3_rr2"; `identity.rr_key`) are one sound on a sampler that plays one:
+  ("_C2_v3_rr1", "_C2_v3_rr2", or a bare number right after a velocity in a name that states a
+  note, "_C2_v3_1" / "_C2_v3_2"; `identity.rr_key`) are one sound on a sampler that plays one:
   across the category's folders one stays (a Keep's, else the previous build's, else the
   lowest round robin; `_one_per_round_robin`).
 - **Sibling cap** (SUB, SYNTH, PADS, STABS, VOX, BLIPS, PIANO, ACOUSTIC, FX, and the drum
