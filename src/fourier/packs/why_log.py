@@ -44,6 +44,8 @@ FILTER_WORDS = {
     "bpm_named": "tempo-named phrases",
     "not_stab_named": "not named as stabs",
     "named_elsewhere": "named as another drum",
+    "drum_folder": "drum hits from a drum-hit folder",
+    "key_noise": "key or pedal noises, not notes",
     "override_capped": "over a name rule's share",
     "dir_capped": "over the per-folder cap",
     "pack_capped": "over the per-pack share",
@@ -245,6 +247,13 @@ def describe(reason: str, detail, doc: dict, name_of=lambda sid: str(sid), place
         return f"its length is outside {cat}'s window ({detail[0]} to {detail[1]} s)"
     if reason == "named_elsewhere" and detail:
         return f"named as a {detail} sound"
+    if reason == "drum_folder":
+        went = f" ({detail}, as a classifier has it)" if detail else ""
+        return (f"a drum hit: its folder names drum hits and its name no instrument, so it's a "
+                f"drum's{went}, not {cat}'s (DRUM_HITS_FOLDER_RE)")
+    if reason == "key_noise":
+        return (f"a key or pedal noise recorded beside an instrument's notes, not a note: out of "
+                f"{cat} (KEY_NOISE_NAME_RE)")
     if reason == "pack_homed" and detail:
         return f"its pack's home is {detail} (PACK_HOME)"
     if reason == "instr_capped" and detail:

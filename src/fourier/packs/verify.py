@@ -753,13 +753,15 @@ def check_routing(ctx):
     loopish = {c for c, cfg in CATEGORIES.items() if cfg.get("kind") == "loop"}
 
     def drum_wins(e):
-        """The drum a one-shot's name and a classifier agree on (rules._drum_name_wins), which
-        the build homes ahead of the acoustic and organ reservations."""
+        """The drum a one-shot's name and a classifier agree on (rules._drum_name_wins), or its
+        drum-hit folder and a classifier (rules._drum_folder_wins), which the build homes ahead
+        of the acoustic and organ reservations."""
         lab = set(e.get("labels") or ())
         if e.get("loop_row") or "class.loop" in lab or "class.oneshot" not in lab:
             return None
-        return C._drum_name_wins(os.path.basename(e["src"]), lab, e.get("ableton"), _rel(e["src"]),
-                                 ctx.fallback)
+        fn = os.path.basename(e["src"])
+        return C._drum_name_wins(fn, lab, e.get("ableton"), _rel(e["src"]), ctx.fallback) \
+            or C._drum_folder_wins(fn, lab, e.get("ableton"), _rel(e["src"]))
     # loops are exempt, as in the build (_row_override): by Sononym's class (recorded as
     # loop_row) or Ableton's "Loop" tag
     ov = [(c, e["out"], C._name_override(os.path.basename(e["src"]))) for c, e in ctx.entries
@@ -954,6 +956,12 @@ def check_routing(ctx):
             wrong.append((c, e["out"], want))
     yield Result(FAIL if wrong else PASS, "files named as a drum (or a scratch) live in that category",
                  _fmt(wrong))
+    # a key or pedal noise is no note: never in a tonal category (a Keep or a name override
+    # there is exempt, as in the build)
+    from .curate_config import KEY_NOISE_CATS
+    kn = [(c, e["out"]) for c, e in ctx.entries if c in KEY_NOISE_CATS and not ctx.pinned(c, e)
+          and C._key_noise_named(os.path.basename(e["src"])) and C._name_override(os.path.basename(e["src"])) != c]
+    yield Result(FAIL if kn else PASS, "no key or pedal noises in the tonal categories", _fmt(kn))
     # chord stabs live in STABS: a short single-hit one-shot named as a chord
     from .curate_config import STAB_CHORD_FROM
     if ctx.prof is None:

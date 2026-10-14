@@ -88,7 +88,7 @@ from .curate_config import (FOLDER_TARGET_FILES, FOLDER_MIN, NAME_TOPK, NAME_SUP
                             END_HOT_DB, END_FADE_MS, EDGE_HOT_DB, EDGE_FADE_MS, LIMIT_MS, ONESHOT_TAIL_RMS, SOFT_LAYER_PEAK_DB, SOFT_LAYER_GAP_DB,
                             MIRROR_ROOT_RE, FX_TRANSITION_FROM,
                             MACHINE_SHARE, DRUM_MACHINES, DRUM_MACHINE_CATS, SYNTH_MACHINES,
-                            SYNTH_MACHINE_CATS)
+                            SYNTH_MACHINE_CATS, KEY_NOISE_CATS, DRUM_NAME_RULES)
 from .curate_config import DEMO_PATH, INST_ROUTED_PACKS, CURATION_SEED, SAMPLE_CHAIN_PATH_RE
 from . import why_log
 from . import identity as _id                   # what counts as the same sound (four tiers)
@@ -101,7 +101,8 @@ from .rules import (  # noqa: F401  (re-exported: verify, why, tests and callers
     _acoustic_band, _is_plucked, _is_synth_tagged, _is_mallet_named, _is_acoustic_named, _is_organ_named,
     _is_wind_named, _perc_sourced, _orch_path, _acoustic_reserved, _plucked_label, _is_keys,
     _is_chord, _is_stab, _stab_named, _is_named_stab, _scratch_named, _drum_named, _drum_named_in,
-    _drum_name_wins, _not_drum_loop, _style_excluded, _fx_folder_veto, _fx_transition_shaped,
+    _drum_name_wins, _drum_folder_wins, _key_noise_named, _not_drum_loop, _style_excluded, _fx_folder_veto,
+    _fx_transition_shaped,
     _keys_candidates, _acoustic_label, _is_ir, _is_preview, _name_reserved, _is_loop_row,
 )
 
@@ -940,8 +941,13 @@ def compute_homes(session, emb_n, id2row, log=print):
         # drums is the drum rule's (below), not the acoustic or organ reservation's
         _drum = _drum_name_wins(_fn, _canonical_of(r), ab_tags, r.rel_path or r.path, fallback) \
             if is_oneshot and not is_loop else None
+        # ...and so is one only its drum-hit folder names, a drum by a classifier's vote (a
+        # numbered hit Live tags "Timpani")
+        _dfold = _drum_folder_wins(_fn, _canonical_of(r), ab_tags, r.rel_path or r.path) \
+            if is_oneshot and not is_loop and not _drum else None
+        _drum = _drum or _dfold
         if _drum and _drum in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
-            _drum = None
+            _drum = _dfold = None
         # a named riser / downlifter / sweep (a one-shot by its class, or no shape) is FX's,
         # ahead of the acoustic reservations too when ACOUSTIC is in FX_TRANSITION_FROM
         _trn_named = _fx_transition_shaped(is_oneshot, is_loop) and _is_fx_transition(
@@ -1070,6 +1076,10 @@ def compute_homes(session, emb_n, id2row, log=print):
                 n_named_drums += 1
             cand = {_dn}
             ab_cats = ab_cats | {_dn}
+        # ...and one only its drum-hit folder names keeps its drum votes (_drum_folder_wins)
+        elif _dfold and not _scr and set() < cand & {c for _rx, c in DRUM_NAME_RULES} < cand:
+            cand = cand & {c for _rx, c in DRUM_NAME_RULES}
+            n_named_drums += 1
         # acoustic percussion isn't a synth: a SYNTH candidate from a drum / percussion
         # folder or an acoustic-percussion pack homes in PERC; a file no
         # classifier gave a shape counts as a one-shot here, as verify has it
@@ -4504,6 +4514,11 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             stats["bpm_named"] = stats.get("bpm_named", 0) + 1
             _out(r, "bpm_named")
             continue
+        # a key or pedal noise recorded beside an instrument's notes is no note (KEY_NOISE_NAME_RE)
+        if category in KEY_NOISE_CATS and _key_noise_named(r.filename):
+            stats["key_noise"] = stats.get("key_noise", 0) + 1
+            _out(r, "key_noise")
+            continue
         if cfg.get("stab_names") and not _stab_named(r.filename):
             stats["not_stab_named"] = stats.get("not_stab_named", 0) + 1
             _out(r, "not_stab_named")
@@ -4528,6 +4543,12 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             if _dn and _dn not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
                 stats["named_elsewhere"] = stats.get("named_elsewhere", 0) + 1
                 _out(r, "named_elsewhere", _dn)
+                continue
+            # (or one only its drum-hit folder names: _drum_folder_wins)
+            _dn = None if _dn else _drum_folder_wins(r.filename, _canonical_of(r), _as_list(r.ableton_tags), rel)
+            if _dn and _dn not in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
+                stats["drum_folder"] = stats.get("drum_folder", 0) + 1
+                _out(r, "drum_folder", _dn)
                 continue
         # ...and a named riser / downlifter / sweep is FX's (compute_homes' transition rule)
         if cfg["kind"] == "instrument" and category in FX_TRANSITION_FROM and "FX" in CATEGORIES:

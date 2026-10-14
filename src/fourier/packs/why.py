@@ -29,8 +29,9 @@ PRECEDENCE = [
     ("inst_pack", "an instrument-routed pack (INST_ROUTED_PACKS): its instrument category only", "homes"),
     ("phrase", "a musical phrase (producer-marked, whole bars): PHRASES", "homes"),
     ("acoustic", "an acoustic instrument by tag, name or orchestra folder (ORCH_PATH_RE): ACOUSTIC, "
-                 "unless a classifier agrees with a drum name", "homes"),
-    ("organ", "a named organ one-shot (not a stab): PIANO, unless a classifier agrees with a drum name", "homes"),
+                 "unless a classifier agrees with a drum name or a drum-hit folder", "homes"),
+    ("organ", "a named organ one-shot (not a stab): PIANO, unless a classifier agrees with a drum name or "
+              "a drum-hit folder", "homes"),
     ("override", "a NAME_OVERRIDES word (kalimba, cowbell, ...): that category", "selection"),
     ("sound", "the sound model (without Sononym; trained on pack makers' names and your ratings): a "
               "file no name rule recognized, or one only its pack's name or a weak word describes, "
@@ -39,6 +40,8 @@ PRECEDENCE = [
     ("scratch", "a named scratch: FX", "homes"),
     ("fx_transition", "a named riser / downlifter / sweep: FX", "homes"),
     ("drum_name", "named as exactly one kind of drum (DRUM_NAME_RULES): that drum category", "homes"),
+    ("drum_folder", "named for nothing, in a drum-hit folder (DRUM_HITS_FOLDER_RE), and a classifier files "
+                    "it with a drum: that drum category", "homes"),
     ("perc_source", "a SYNTH candidate from a drum / percussion folder or pack (PERC_SOURCE_RE): PERC", "homes"),
     ("stab", "named as a stab or chord, short: STABS; STABS holds named stabs only", "homes"),
     ("misfiled", "rated Misfiled in X (or auto-detected): never X", "homes + selection"),
@@ -206,6 +209,10 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
     # (a drum name a classifier agrees on goes ahead of both reservations, as in compute_homes)
     drum = C._drum_name_wins(fn, C._canonical_of(r), ab, r.rel_path or r.path,
                              act is not None and act.fallback) if oneshot else None
+    # (or its drum-hit folder and a classifier: _drum_folder_wins)
+    dfold = C._drum_folder_wins(fn, C._canonical_of(r), ab, r.rel_path or r.path) \
+        if oneshot and not drum else None
+    drum = drum or dfold
     if drum and v == "misfiled" and (w.rating or {}).get("category") == drum:
         drum = None
     # (a named transition goes ahead of the acoustic reservations when ACOUSTIC is in
@@ -258,6 +265,11 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
         if (oneshot and not scr) else None
     if dn and "VOX" not in cand and cand & DRUM_NAME_FROM:
         hit("drum_name", f"named as {dn}", dn)
+    elif drum and drum == dfold and not scr:
+        dc = sorted(cand & {c for _rx, c in C.DRUM_NAME_RULES})
+        if dc:
+            hit("drum_folder", "a drum-hit folder, and a classifier says " + " / ".join(dc),
+                dc[0] if len(dc) == 1 else None, decides=len(dc) == 1)
     if not is_loop and not scr and "SYNTH" in cand and C._perc_sourced(r.rel_path, fn):
         hit("perc_source", "percussion folder or pack", "PERC")
     if C._is_named_stab(fn, r.duration_s, r.n_events, oneshot) and cand & STAB_CHORD_FROM \
@@ -374,6 +386,7 @@ PLAIN = {
     "scratch": "it's a scratch",
     "fx_transition": "it's a riser, downlifter or sweep",
     "drum_name": "its name says which drum it is",
+    "drum_folder": "it's a drum hit from a drum-hit folder",
     "perc_source": "it comes from a drum or percussion folder",
     "stab": "it's named as a stab or chord",
     "misfiled": "you rated it misfiled in another category",
