@@ -7200,8 +7200,9 @@ def _fill_roots(category, idxs, rec, roots=None):
     note keeps its pitch). Returns how many."""
     if os.environ.get("FOURIER_NO_PITCH_CHECK") or category not in RETUNE_CATS:
         return 0
+    implied: dict = {}
     numbered = _id.number_sets(_number_items([(rec[i]["path"], _number_root(rec[i])) for i in idxs
-                                              if rec[i].get("path")], roots))
+                                              if rec[i].get("path")], roots), notes=implied)
 
     def _set(path):
         return _id.set_key(path) if _states_note(path) else numbered.get(path)
@@ -7220,6 +7221,9 @@ def _fill_roots(category, idxs, rec, roots=None):
         midi = _detect_pitch(r["path"])
         if midi is None:
             continue
+        n = implied.get(r["path"])
+        if n is not None and _pitches_agree(midi, n):
+            midi += 12 * round((n - midi) / 12)     # pYIN an octave off: the octave its number names
         rt, _src = _retune_shift(category, name, midi, detect=True)
         if rt is not None:
             cand.append((abs(rt), r["path"], i, rt, midi))

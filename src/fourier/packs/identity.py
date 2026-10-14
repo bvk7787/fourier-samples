@@ -222,17 +222,19 @@ def _near12(a, b):
     return min(d, 12 - d) <= NUMBER_NOTE_TOL
 
 
-def number_sets(items):
+def number_sets(items, notes=None):
     """{path: set key} of the files named by a patch and bare numbers whose numbers are notes:
     in one source folder, for one of the name's numbers, each file's measured root less that
     number agrees within NUMBER_NOTE_TOL semitones across at least three numbers (0-127), and
     octaves aside across at least NUMBER_SET_MAJORITY of the rooted numbers (one reading per
-    number, its files' median: a number's editions and velocities are one vote, and a number
-    whose files disagree is no vote for a set) ("Qzv Lead
+    number, the median of the readings most of its files agree on: a number's editions and
+    velocities are one vote, and a number whose files split is none) ("Qzv Lead
     059" / "061" / "062" rooted at 58.8, 60.8, 61.8). A reading off by an octave, or a file the pack
     numbered a note off, doesn't unmake the set; numbers that agree only octaves aside
     ("02" / "06" / "10" at 67, 71 and 63) don't make one. Numbers that don't track the pitch are takes,
-    a series ("Qzv Lead 01" / "02" both at C3). items: [(path, root midi or None)]."""
+    a series ("Qzv Lead 01" / "02" both at C3). items: [(path, root midi or None)]. notes, a
+    dict, gets each member's note as its number names it (the number plus the set's offset):
+    the octave a pitch reading an octave off belongs in."""
     groups = defaultdict(list)
     for path, root in items:
         nk = _number_key(path)
@@ -249,9 +251,15 @@ def number_sets(items):
             per = defaultdict(list)
             for nums, r in rooted:
                 per[nums[pos]].append(r)
-            # (a number whose own files disagree, octaves aside, is two sounds: no vote for a set)
-            steady = {num: all(_near12(r, rs[0]) for r in rs) for num, rs in per.items()}
-            off = [float(np.median(rs)) - num for num, rs in per.items()]
+            # (a number's vote is the median of the readings most of its files agree on, octaves
+            # aside: a velocity layer read a semitone off doesn't void it, while a number whose
+            # files split, two sounds under one number, casts none)
+            steady, off = {}, []
+            for num, rs in per.items():
+                best_r = max(rs, key=lambda c: sum(_near12(r, c) for r in rs))
+                agree_r = [r for r in rs if _near12(r, best_r)]
+                steady[num] = 2 * len(agree_r) > len(rs)
+                off.append(float(np.median(agree_r)) - num)
             srt = sorted(o for o, num in zip(off, per) if steady[num])
             if not srt:
                 continue
@@ -260,6 +268,8 @@ def number_sets(items):
             agree = [o for o, num in zip(off, per) if steady[num] and _near12(o, best)]   # (an octave off agrees)
             if len(exact) >= 3 and len(agree) >= NUMBER_SET_MAJORITY * len(off):
                 out.update({p: key for p, _n, _r in members})
+                if notes is not None:       # the note each number names (its number plus the offset)
+                    notes.update({p: nums[pos] + best for p, nums, _r in members})
                 break
     return out
 
