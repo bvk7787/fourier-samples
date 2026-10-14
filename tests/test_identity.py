@@ -392,3 +392,26 @@ def test_a_number_whose_files_disagree_is_no_vote_and_parts_are_one_pack():
     from fourier.packs import sets as K
     assert K._stem(("TOMS", {"src": p("Acme/Kit/Qzv Tom Low A_5b.wav")})) == \
         K._stem(("TOMS", {"src": p("Acme/Kit/Qzv Tom Low A_5.wav")}))      # "_5b" is a take too
+
+
+def test_a_velocity_read_off_doesnt_void_its_numbers_vote():
+    """Three velocities of each number, the loudest read a semitone sharp (a brighter layer):
+    most of each number's files agree, so the numbers still vote and the set holds."""
+    lyr = [(p(f"Acme/Ms/Qzv Strx-{n}-{v}.wav"), n - 2.0 + (1.15 if v == 127 else 0.03))
+           for n in (42, 46, 50, 54) for v in (89, 109, 127)]
+    assert len(I.number_sets(lyr)) == 12
+
+
+def test_a_pyin_fill_an_octave_off_takes_the_octave_its_number_names(monkeypatch):
+    """A numbered set's note with no root the build retunes from, whose pYIN pitch reads an
+    octave low, is judged at the octave its number names: it never lands on a C another note
+    of its set already plays."""
+    monkeypatch.delenv("FOURIER_NO_PITCH_CHECK", raising=False)
+    name = "Acme/Ms/Qzv Strx-{}-127.wav"
+    rec = [dict(path=p(name.format(n)), tune=n - 2.0, retune=None) for n in (50, 54, 58)]
+    rec.append(dict(path=p(name.format(70)), tune=68.0, retune=4.0, root_src="detect"))   # plays C (72)
+    rec.append(dict(path=p(name.format(74)), tune=None, own_root=60.0, retune=None))      # 72, read as 60
+    heard = {name.format(74).rsplit("/", 1)[-1]: 60.0}
+    monkeypatch.setattr(C, "_detect_pitch", lambda q: heard.get(q.rsplit("/", 1)[-1]))
+    assert C._fill_roots("SYNTH", list(range(len(rec))), rec) == 0
+    assert rec[4]["retune"] is None                    # its C is taken: it keeps its pitch

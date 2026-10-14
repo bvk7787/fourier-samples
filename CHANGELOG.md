@@ -25,6 +25,10 @@ change the CLI or the config).
 
 ### Fixed
 
+- A numbered set's number votes with the readings most of its files agree on, so a velocity
+  layer read a semitone off no longer voids it, and a pYIN fill whose pitch reads an octave off
+  is judged at the octave its number names: two notes of one set no longer land on one C that
+  way.
 - A Drop or Misfiled rating now also covers the byte copies of its file's editions under other
   names (a compilation's edition of the rated file shipped again elsewhere under a new name):
   they are the same recording, so the copy no longer refills the rated sound's slot. The build
