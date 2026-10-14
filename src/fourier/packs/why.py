@@ -63,7 +63,7 @@ class Why:
     left_out: list = field(default_factory=list)    # [(category, why the last build left it out)]
     gate: list = field(default_factory=list)        # [(category, its CLAP gate result)] for a file in the master
     recorded: bool = False                           # the last build recorded its reasons
-    tempo: tuple | None = None                       # a loop's (bpm or None, source, measured, bars)
+    tempo: tuple | None = None                       # a loop's (bpm or None, source, measured, bars, beats)
     unrecognized: bool = False                       # no rule recognized it, nor did the CLAP fallback place it
     differ: list = field(default_factory=list)       # [(what, "174 (Sononym) / 87 (Fourier's own analysis)")]
     sources: dict = field(default_factory=dict)      # {what: source} the last build took (why log)
@@ -166,7 +166,8 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
         got, _chain = loop_tempo(r, act is not None and act.fallback)
         bpm = got.value
         bars = int(round(bpm * r.duration_s / 240.0)) if bpm and r.duration_s else None
-        w.tempo = (bpm, got.source, r.tempo_bpm or getattr(r, "bpm", None), bars)
+        beats = int(round(bpm * r.duration_s / 60.0)) if bpm and r.duration_s else None
+        w.tempo = (bpm, got.source, r.tempo_bpm or getattr(r, "bpm", None), bars, beats)
     if readings is not None:
         from ..metadata.resolve import differences
         w.differ = differences(readings)
@@ -450,7 +451,12 @@ def format_why(w: Why) -> list[str]:
             out.append(f"  tempo: {bpm:g} BPM, tempo from length ({bars}; the analysis read "
                        f"{measured:g})")
         else:
-            out.append(f"  tempo: {bpm:g} BPM (from {_TEMPO_FROM.get(src, src)})")
+            # a stated tempo is taken at whole beats, whatever the bar count: say when it's odd
+            from .curate import BAR_COUNTS
+            beats = w.tempo[4] if len(w.tempo) > 4 else None
+            odd = (f"; {beats} beats, {beats / 4:g} bars" if beats and (beats % 4 or beats // 4 not in BAR_COUNTS)
+                   else "")
+            out.append(f"  tempo: {bpm:g} BPM (from {_TEMPO_FROM.get(src, src)}{odd})")
     if w.sources:
         from ..metadata.resolve import SAID_BY
         out.append("  the last build took: " + ", ".join(

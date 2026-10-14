@@ -308,7 +308,12 @@ BPM_NAME_RE = _tunable("BPM_NAME_RE", _re.compile(
     r"|(?<![0-9a-z])(?:[6-9]\d|1\d\d|200)[ _-]+[a-g](?:#|b)?(?:maj|min|m)(?![a-z])"
     # ...but not a multisampled synth note: a MIDI note number, a patch name, a note ("60
     # Warm Pad C3", "72 Soft Lead G#2_0001") is a one-shot
-    r"(?!.*[ _-][a-g](?:#|b|s)?-?\d(?:[ _-]\d+)?(?:\.\w+)?$)", _re.I))
+    r"(?!.*[ _-][a-g](?:#|b|s)?-?\d(?:[ _-]\d+)?(?:\.\w+)?$)"
+    # a key then a tempo ("Pad_Fm_126"; the key's letter a capital and its "m" small, so an
+    # "FM 77" synth or a "DM_88" prefix isn't one)
+    r"|(?<![0-9a-z#])(?-i:[A-G](?:#|b)?(?:maj|min|m|Maj|Min))[ _-]+(?:[6-9]\d|1\d\d|200)(?![0-9a-z])"
+    # a tempo, then a spaced dash, leading the name ("110 - Title")
+    r"|^(?:[6-9]\d|1\d\d|200) +- +", _re.I))
 BPM_NAME_GUARD = _tunable("BPM_NAME_GUARD", {"KICKS", "SNARES", "CLAPS", "HATS", "TOMS", "PERC", "CYMBALS", "SUB",
                   "SYNTH", "STABS", "PADS", "VOX", "BLIPS", "PIANO", "ACOUSTIC"})
 

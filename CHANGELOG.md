@@ -70,7 +70,16 @@ change the CLI or the config).
   so those names say the C they play. A multisample set's spread in a tonal category stays in
   MIDI 24-96 (`SET_SPREAD_RANGE`; no more C-1 at 16 Hz while the set has notes inside it), and
   the note window reads pYIN's root where Sononym isn't sure.
-
+- Loop tempos: a tempo a name or folder states wins at whole beats, whatever the bar count (a
+  5-bar phrase was filed at the analyzer's reading that makes it 4 bars); a bare
+  number at an odd bar count needs an analyzer within 3% (a take number fits whole beats by
+  chance), and `fourier why --detail` names the odd bar count. Folders named "126_BPM" or
+  "Loops (126BPM)" and decimal name tempos ("120.0") are read, so such loops no longer sit
+  alone in a freetempo folder. Names that give a key then a tempo ("Pad_Fm_126") or lead with
+  a tempo ("110 - Title") mark a phrase and stay out of the one-shot folders. A phrase that
+  starts 12-45 ms late on silence is rotated to its first sound like a drum loop, and a drum
+  loop whose silence turns into a faint floor before a soft downbeat is rotated again (the
+  floor's start had read as an on-time downbeat).
 - `fourier verify` no longer fails a file a Keep or a Move rating pinned into a banded
   category (FX, CYMBALS, PHRASES, ...) on its band: the build bands it on the labels the
   database holds, while its manifest entry records only the votes of where it came from, which
