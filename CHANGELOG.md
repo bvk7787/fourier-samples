@@ -25,6 +25,10 @@ change the CLI or the config).
 
 ### Fixed
 
+- The scan's Sononym import and sync skip Fourier's own folders (the master, the renders and
+  the publish root with its releases) when they sit inside the library folder Sononym indexes,
+  as the folder walk already did, so a Sononym refresh never brings a release's exported files
+  back in as library samples. `fourier doctor` notes an output folder inside a library folder.
 - A numbered set's number votes with the readings most of its files agree on, so a velocity
   layer read a semitone off no longer voids it, and a pYIN fill whose pitch reads an octave off
   is judged at the octave its number names: two notes of one set no longer land on one C that

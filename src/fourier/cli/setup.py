@@ -1893,7 +1893,26 @@ def check_output() -> list[tuple]:
             got = master_library_problem(p)
             if got and got[0] == "fail":       # a build stops on it before anything is written
                 out.append((FAIL, "output: master", got[1]))
+        inside = _inside_library(p)
+        if inside:
+            out.append((INFO, f"output: {label}", f"inside the library folder {inside}: Sononym or Live may "
+                        "index it, and the scan skips it, so Fourier never takes its own files back in"))
     return out
+
+
+def _inside_library(path) -> str | None:
+    """The library folder this output folder sits in, else None."""
+    from ..places import library_roots
+    real = os.path.realpath(os.path.expanduser(str(path)))
+    try:
+        roots = library_roots()
+    except Exception:
+        return None
+    for r in roots:
+        root = os.path.realpath(os.path.expanduser(str(r)))
+        if real != root and real.startswith(root.rstrip(os.sep) + os.sep):
+            return str(r)
+    return None
 
 
 def doctor_rows() -> list[tuple]:

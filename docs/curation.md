@@ -151,6 +151,11 @@ phrase embeds the same on every run.
   library (`src/fourier/ingest/walk.py`): the `ingest/formats.py` formats soundfile reads,
   folder symlinks out of the library followed (each real folder once), dot files and Fourier's
   own folders skipped.
+- **Fourier's own folders.** The master (and its `.next` / `.prev`), the renders and the publish
+  root (releases, device locks) are never library samples, whichever way the scan reads the
+  library: the walk skips them, and so do the Sononym import and sync when one sits inside the
+  library folder Sononym indexes (`importer.own_rel_prefixes`). `fourier doctor` notes an
+  output folder inside a library folder.
 - **Missing files.** A sample the last walk didn't find (moved, renamed, deleted, unreadable)
   is marked missing (`missing_files`) and is no candidate (`metadata/rows.py`,
   `sample_select`); the library scale counts only the rest (`rows.usable_count`). A database no
