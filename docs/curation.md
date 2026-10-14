@@ -508,9 +508,13 @@ String Snares" Live tags Pad).
    and `trap` keep only the folders that hold no drum loops; `fourier why` says "an off-style
    loop"). A Keep skips these.
 2. Soft layer: source peak under -19 dBFS while a sibling peaks 6+ dB louder (Keeps exempt).
-3. Impulse response, preview or long wavetable; clipped or over 60 s; rated Drop.
+3. Impulse response, preview or long wavetable; clipped or over 60 s; rated Drop, or a byte copy
+   or an edition of a Drop, or in a set-wide Drop's set or patch (a Keep on the file itself
+   wins); a note of a set one of whose notes was dropped here, when the previous build didn't
+   hold it (a dropped note's slot never refills from its own set).
 4. Already in the base release (additive builds; still claims its dedup slot).
-5. Rated Misfiled here, itself or a sibling (a Keep on the file itself wins); name-reserved
+5. Rated Misfiled here, itself, a copy or edition of it, or its multisample set (a Keep on the
+   file itself wins); name-reserved
    elsewhere; phrase mismatch (phrases only in PHRASES, PHRASES only phrases).
 6. **Keep / Move pin or name override**: force-accepted, skipping every later gate (an override
    still can't put a wave outside WAVES); kept out of all other categories.
@@ -1170,8 +1174,9 @@ same, unrated.
 | Tag | Effect on the next build |
 |---|---|
 | Keep | pinned in the rated category: force-accepted, restored after caps, picked first in its folder |
-| Drop | out of every category (that exact file, not its siblings) |
-| Misfiled | never back in that category, with its multisample siblings; re-homed to its next candidate |
+| Drop | out of every category, with its byte copies and editions (`identity.Reach`); not its set's other notes, which never take its slot in the category it was rated in (one the previous build held stays) |
+| Misfiled | never back in that category, with its copies, editions and multisample set (the set tier: names that differ only by note, velocity or round robin in one source folder, not a numbered series); re-homed to its next candidate |
+| `--set` | `fourier review rate <file> drop --set` (or `misfiled --to <CAT> --set`, or a `scope` column of `set` in `review import`): the rating covers the file's whole set, or a described patch's takes and variant letters (`identity.patch_key`: "I don't want this instrument"); a numbered series of different sounds is never one |
 | Move-`<CAT>` | Misfiled where rated, pinned in `<CAT>` (fetched there even if no classifier offered it); retired names followed |
 
 A file in Live's Favorites collection (its first color slot) with no Fourier tag counts as Keep

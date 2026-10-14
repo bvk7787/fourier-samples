@@ -41,7 +41,10 @@ def ratings(monkeypatch):
     got = dict(drops=set(), misfiled={})
     from fourier.packs import ratings as R
     monkeypatch.setattr(R, "drop_set", lambda *a, **k: got["drops"])
+    monkeypatch.setattr(R, "drop_categories", lambda *a, **k: {p: None for p in got["drops"]})
+    monkeypatch.setattr(R, "rating_scopes", lambda *a, **k: {})
     monkeypatch.setattr(R, "misfiled_map", lambda *a, **k: got["misfiled"])
+    C._REACH.clear()
     monkeypatch.setattr(C, "_misfiled_index", lambda m, *a, **k: C._MisfiledIndex(m))
     return got
 

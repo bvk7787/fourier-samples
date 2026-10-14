@@ -351,13 +351,15 @@ def test_sibling_key_groups_multisample_sets():
     assert k("/p/Sub Bass 1234.wav") == k("/p/Sub Bass 1234.wav")
 
 
-def test_misfiled_index_expands_to_siblings():
-    near, far = np.array([1.0, 0.0]), np.array([0.0, 1.0])
-    idx = _MisfiledIndex({"/p/Chord Stab C 04.wav": "FX"}, lambda s: near)
-    assert idx.category("/p/Chord Stab C 04.wav") == "FX"
-    assert idx.category("/p/Chord Stab C 06.wav", near) == "FX"
-    assert idx.category("/p/Chord Stab C 06.wav", far) is None      # sounds unrelated
-    assert idx.category("/p/Other 06.wav", near) is None
+def test_misfiled_index_expands_to_its_set():
+    """A Misfiled verdict covers its multisample set (the names, identity.set_key), not a
+    numbered series and not what merely sounds alike."""
+    idx = _MisfiledIndex({"/p/Chord Stab C3 04.wav": "FX"})
+    assert idx.category("/p/Chord Stab C3 04.wav") == "FX"
+    assert idx.category("/p/Chord Stab E3 06.wav") == "FX"          # another note of its set
+    assert idx.category("/q/Chord Stab E3 06.wav") is None          # another folder
+    assert idx.category("/p/Chord Stab 06.wav") is None             # a numbered take: a series
+    assert idx.category("/p/Other 06.wav") is None
 
 
 def test_sibling_key_spans_pack_twin_folders():

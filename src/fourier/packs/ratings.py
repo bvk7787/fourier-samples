@@ -760,12 +760,29 @@ def missing_keeps(session=None, store_path=None, pins=None) -> list:
 
 def drop_set(store_path=None):
     """Source paths rated Drop. Curation leaves them out of every category (a Drop is a
-    verdict on the sound, not its folder). Exact file only: siblings aren't dropped."""
+    verdict on the sound, not its folder), with every edition and byte copy of them, and a
+    rating given with `--set` with its set (curate._rating_reach, identity.Reach); a plain Drop
+    never covers its siblings."""
+    return set(drop_categories(store_path))
+
+
+def drop_categories(store_path=None):
+    """{source path: the category it was rated Drop in}."""
     try:
         R = load_store(store_path)["ratings"]
     except (OSError, ValueError):
-        return set()
-    return set(_without_mirror_twins({src: 1 for src, r in R.items() if r.get("verdict") == "drop"}))
+        return {}
+    return _without_mirror_twins({src: r.get("category") for src, r in R.items() if r.get("verdict") == "drop"})
+
+
+def rating_scopes(store_path=None):
+    """{source path: "set"} for the Drop and Misfiled ratings given for the file's whole set
+    (`fourier review rate ... --set`, a `scope` column of `set` in `review import`)."""
+    try:
+        R = load_store(store_path)["ratings"]
+    except (OSError, ValueError):
+        return {}
+    return {src: "set" for src, r in R.items() if r.get("scope") == "set" and r.get("verdict") in ("drop", "misfiled")}
 
 
 def misfiled_map(store_path=None):
@@ -789,6 +806,10 @@ def misfiled_map(store_path=None):
 # Ratings without Live: `fourier review rate` and `fourier review import`
 # ---------------------------------------------------------------------------
 VERDICTS = ("keep", "drop", "misfiled")
+# what a Drop or Misfiled rating covers beyond its file's recording and editions: "file" (a
+# Drop: no other note of its set; a Misfiled: its multisample set) or "set" (the file's set or
+# described patch, identity.patch_key: "I don't want this instrument")
+SCOPES = ("file", "set")
 # the `master` stamp of a rating given on the command line or from a CSV file: harvest clears
 # a rating only when it disappears from the master it was harvested from, which this never is
 MANUAL_STAMP = "manual"
@@ -857,19 +878,25 @@ def find_rateable(master_dir, query, targets=None):
 
 
 def set_ratings(master_dir, rated, store_path=None, source="cli"):
-    """Store ratings given without Live: rated is [(target, verdict, move_to)] with targets
-    from rateable(). Each is stored as a harvested tag would be (keyed by source path, with
-    its category, family and master path), so builds, `review score`, `queue` and
+    """Store ratings given without Live: rated is [(target, verdict, move_to[, scope])] with
+    targets from rateable(). Each is stored as a harvested tag would be (keyed by source path,
+    with its category, family and master path), so builds, `review score`, `queue` and
     `misfiles` read it the same way; its `master` is MANUAL_STAMP, so a harvest never
-    clears it. move_to (misfiled only) is the category the file belongs in."""
+    clears it. move_to (misfiled only) is the category the file belongs in; scope "set" (drop
+    or misfiled) gives the rating to the file's whole set (SCOPES)."""
     stamp = _manifest(master_dir).get("generated") or ""
     store = load_store(store_path)
     R = store["ratings"]
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    for t, verdict, move_to in rated:
+    for t, verdict, move_to, *more in rated:
         v = (verdict or "").strip().lower()
         if v not in VERDICTS:
             raise ValueError(f"rating {verdict!r}: one of {', '.join(VERDICTS)}")
+        scope = ((more[0] if more else None) or "").strip().lower() or None
+        if scope not in (None, *SCOPES):
+            raise ValueError(f"scope {scope!r}: one of {', '.join(SCOPES)}")
+        if scope == "set" and v == "keep":
+            raise ValueError("a Keep is for one file: --set goes with drop or misfiled")
         tgt = None
         if move_to:
             if v != "misfiled":
@@ -883,6 +910,8 @@ def set_ratings(master_dir, rated, store_path=None, source="cli"):
                            rated_at=now, source=source, via=None, rated_in=stamp)
         if tgt and tgt != t["category"]:
             R[t["src"]]["target"] = tgt
+        if scope == "set":
+            R[t["src"]]["scope"] = "set"
         if old.get("hash"):
             R[t["src"]]["hash"] = old["hash"]
     save_store(store, store_path)
@@ -892,13 +921,15 @@ def set_ratings(master_dir, rated, store_path=None, source="cli"):
 CSV_NAME = ("path", "name", "file")
 CSV_RATING = ("rating", "verdict")
 CSV_CATEGORY = ("category", "to", "move_to")
+CSV_SCOPE = ("scope",)
 
 
 def read_ratings_csv(csv_path, master_dir):
     """Rows of a ratings CSV matched to the master's files: (rated, skipped) where rated is
-    [(target, verdict, move_to)] and skipped [(line, value, why)]. Columns (a header row,
-    any order, case aside): `path` or `name` (what `review rate` takes), `rating` (keep,
-    drop or misfiled) and an optional `category` (misfiled: the category it belongs in)."""
+    [(target, verdict, move_to, scope)] and skipped [(line, value, why)]. Columns (a header
+    row, any order, case aside): `path` or `name` (what `review rate` takes), `rating` (keep,
+    drop or misfiled), an optional `category` (misfiled: the category it belongs in) and an
+    optional `scope` (drop or misfiled: `set` for the file's whole set, else `file`)."""
     import csv
     with open(csv_path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
@@ -906,6 +937,7 @@ def read_ratings_csv(csv_path, master_dir):
         name_col = next((cols[c] for c in CSV_NAME if c in cols), None)
         rating_col = next((cols[c] for c in CSV_RATING if c in cols), None)
         cat_col = next((cols[c] for c in CSV_CATEGORY if c in cols), None)
+        scope_col = next((cols[c] for c in CSV_SCOPE if c in cols), None)
         if not name_col or not rating_col:
             raise ValueError(f"{csv_path}: needs a header row with a path (or name) column and a "
                              f"rating column; found {reader.fieldnames}")
@@ -916,6 +948,7 @@ def read_ratings_csv(csv_path, master_dir):
         q = (r.get(name_col) or "").strip()
         v = (r.get(rating_col) or "").strip().lower()
         to = (r.get(cat_col) or "").strip() if cat_col else ""
+        scope = (r.get(scope_col) or "").strip().lower() if scope_col else ""
         if not q and not v:
             continue
         if v not in VERDICTS:
@@ -927,6 +960,12 @@ def read_ratings_csv(csv_path, master_dir):
         if to and _category_named(to) is None:
             skipped.append((line, q, f"no category {to!r}"))
             continue
+        if scope and scope not in SCOPES:
+            skipped.append((line, q, f"scope {scope!r}: one of {', '.join(SCOPES)}"))
+            continue
+        if scope == "set" and v == "keep":
+            skipped.append((line, q, "scope set goes with drop or misfiled, not keep"))
+            continue
         hits = find_rateable(master_dir, q, targets)
         if not hits:
             skipped.append((line, q, "no file in the master matches"))
@@ -937,10 +976,10 @@ def read_ratings_csv(csv_path, master_dir):
             continue
         key = (hits[0]["src"], hits[0]["category"])
         if key in seen:                       # a later row for the same file wins
-            rated[seen[key]] = (hits[0], v, to or None)
+            rated[seen[key]] = (hits[0], v, to or None, scope or None)
         else:
             seen[key] = len(rated)
-            rated.append((hits[0], v, to or None))
+            rated.append((hits[0], v, to or None, scope or None))
     return rated, skipped
 
 

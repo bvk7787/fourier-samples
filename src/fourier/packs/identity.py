@@ -276,3 +276,94 @@ def take_name(stem):
     if len(toks) > 2 and _LETTER.match(toks[-1]):
         toks = toks[:-2]
     return " ".join(toks)
+
+
+# --- rating reach ---------------------------------------------------------------------------------
+
+class Reach:
+    """What ratings cover beyond their own files. drops: the sources rated Drop; misfiled:
+    {source: category}; drop_cats: {source: the category a Drop was rated in}; scopes:
+    {source: "set"} for a rating given with `--set` (`fourier review rate`, or a `scope` column
+    in `review import`), which widens it to the file's set or described patch (patch_key: "I
+    don't want this instrument"). facts: {source: (file hash, seconds)} of the rated files;
+    members: {path: set key} of the files in the rated files' folders, read with their roots
+    (set_keys), so numbers that track the pitch count; a path missing from it is keyed by its
+    name (set_key).
+
+    - A rating covers its file's recording (the same bytes) and every edition of it.
+    - A Drop is note-level (never its set's other notes; `refill_of` keeps them from taking the
+      dropped note's slot); a set-wide one covers the set or patch.
+    - A Misfiled covers its multisample set (the set tier) in the rated category; a set-wide one,
+      its described patch's takes too."""
+
+    def __init__(self, drops=(), misfiled=None, facts=None, members=None, drop_cats=None, scopes=None):
+        self.drops, self.misf = set(drops), dict(misfiled or {})
+        self.facts, self.members = dict(facts or {}), dict(members or {})
+        scopes = scopes or {}
+        self.hashes: dict = defaultdict(list)
+        self.by_ed: dict = defaultdict(list)
+        for src in sorted(self.drops | set(self.misf)):
+            h = self.facts.get(src, (None, None))[0]
+            if h:
+                self.hashes[h].append(src)
+            k = edition_key(src)
+            if k[1]:
+                self.by_ed[k].append(src)
+        self.drop_sets: dict = {}
+        for src, cat in sorted((drop_cats or {}).items()):
+            k = self.set_of(src)
+            if k is not None and src in self.drops:
+                self.drop_sets.setdefault((k, cat), src)
+        self.scoped: dict = defaultdict(list)
+        self.misf_scoped: dict = defaultdict(set)
+        self.misf_sets: dict = defaultdict(set)
+        for src in sorted(self.drops):
+            if scopes.get(src) == "set" and patch_key(src) is not None:
+                self.scoped[patch_key(src)].append(src)
+        for src, cat in self.misf.items():
+            k = self.set_of(src)
+            if k is not None:
+                self.misf_sets[k].add(cat)
+            if scopes.get(src) == "set" and patch_key(src) is not None:
+                self.misf_scoped[patch_key(src)].add(cat)
+
+    def set_of(self, path):
+        """A file's multisample set (members', else its name's)."""
+        return self.members[path] if path in self.members else set_key(path)
+
+    def _same(self, path, file_hash, dur, among):
+        """The rated sources in `among` that hold path's recording: itself, its bytes, an edition."""
+        out = [path] if path in among else []
+        if file_hash:
+            out += [s for s in self.hashes.get(file_hash, ()) if s in among and s not in out]
+        k = edition_key(path)
+        if k[1]:
+            out += [s for s in self.by_ed.get(k, ()) if s in among and s not in out
+                    and editions(path, s, dur, self.facts.get(s, (None, None))[1])]
+        return out
+
+    def dropped(self, path, file_hash=None, dur=None):
+        """The rated Drop that covers this file (its own, its recording's, an edition's, or a
+        set-wide one of its set or patch), else None."""
+        got = self._same(path, file_hash, dur, self.drops)
+        if got:
+            return got[0]
+        k = patch_key(path) if self.scoped else None
+        return self.scoped[k][0] if k is not None and k in self.scoped else None
+
+    def misfiled(self, path, file_hash=None, dur=None):
+        """The categories a Misfiled rating keeps this file out of: its own, its recording's or
+        an edition's, its multisample set's, and a set-wide one's of its patch."""
+        cats = {self.misf[s] for s in self._same(path, file_hash, dur, self.misf)}
+        k = self.set_of(path)
+        if k is not None:
+            cats |= self.misf_sets.get(k, set())
+        if self.misf_scoped:
+            cats |= self.misf_scoped.get(patch_key(path), set())
+        return cats
+
+    def refill_of(self, path, category):
+        """The dropped note of path's multisample set rated in this category, else None: a
+        dropped note's slot never refills from its own set."""
+        k = self.set_of(path)
+        return None if k is None else self.drop_sets.get((k, category))

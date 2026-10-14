@@ -91,13 +91,17 @@ Rate the master's files and the next build follows: a **Keep** stays, a **Drop**
 ```bash
 fourier review rate "Kick 01" keep                       # a name, a library path or KICKS/family/file.wav
 fourier review rate "Snare Tight 03" misfiled --to CLAPS
-fourier review import ratings.csv                        # header: path (or name), rating, category
+fourier review rate "Pad C3" drop --set                  # every note of the instrument, not one
+fourier review import ratings.csv                        # header: path (or name), rating, category, scope
 ```
 
 `review rate` takes what `fourier why` takes, and asks which file you mean when a name matches
 several. `review import` reads a CSV with a `path` or `name` column, a `rating` column (keep,
-drop, misfiled) and an optional `category` column for a misfiled file. It lists the rows it
-couldn't match.
+drop, misfiled), an optional `category` column for a misfiled file and an optional `scope`
+column (`set` for a drop or misfiled that covers the file's whole set). It lists the rows it
+couldn't match. A rating covers its file's byte copies and editions (a `.wav` and its `.aif`, a
+pack shipped twice); a drop is one note of a multisample set unless `--set`, and a misfiled covers
+its set.
 
 With Ableton Live, tag files in its browser instead (Fourier|Keep, Fourier|Drop,
 Fourier|Misfiled, Fourier|Move-CLAPS). `fourier review ratings` and every build harvest the tags.

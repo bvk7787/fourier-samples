@@ -36,6 +36,16 @@ change the CLI or the config).
   by reason, the full list goes to `<stamp>.changes.csv` beside the archived build (never into
   the master), and `fourier verify` warns on a file that left with no logged reason. The
   files a build picks are unchanged.
+- A rating reaches every edition of its recording: a Drop or Misfiled covers the file's byte
+  copies (a pack's second copy) and its editions (a `.aif` beside the dropped `.wav`, a
+  compilation's re-release), so a dropped file no longer comes back under another path. A
+  dropped multisample note's slot no longer refills from its own set (a note the previous
+  build held stays). A Misfiled covers its multisample set by name (identity's set tier: one
+  source folder, notes, velocities, round robins) instead of any similar-sounding name of the
+  pack (CLAP 0.75, `SIBLING_COS`), so it no longer reaches a numbered series. Plain drops stay
+  note-level; `fourier review rate <file> drop --set` (and `misfiled --set`, or a `scope`
+  column of `set` in `review import`) gives a rating to the whole set or patch.
+
 - One meaning of "the same sound" (`packs/identity.py`, curation.md "Identity"): a recording,
   its editions, a multisample set and a numbered series, asked by the copy prune, the set cap,
   one note per C, round robins and kit takes. WAVES no longer loses single cycles as copies

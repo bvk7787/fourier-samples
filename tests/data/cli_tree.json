@@ -1307,14 +1307,14 @@
  },
  "fourier review": {
   "group": true,
-  "help": "The listening loop: rate the master's files Keep, Drop or Misfiled, and the next build\nfollows the ratings (a Keep stays, a Drop goes, a Misfiled moves). Rate with `review\nrate` or `review import` (a CSV file), or in Ableton Live's browser with tags\n(Fourier|Keep / Drop / Misfiled / Move-<CAT>) that `review ratings` harvests. All of\nthem write the same ratings store ($FOURIER_HOME/ratings.json).\n\n\b\nWithout Live: rate, import, queue, score, misfiles.\nNeeds Live:   ratings (it harvests Live's tags; queue, score and builds harvest them\n              too when Live has tagged the master).\n\n\b\n  fourier review rate \"Kick 01\" keep\n  fourier review rate \"Snare Tight 03\" misfiled --to CLAPS\n  fourier review import ratings.csv   # columns: path (or name), rating, category\n  fourier review queue                # the next files to listen to, in <master>/_REVIEW\n  fourier review score                # a build against the ratings\n  fourier review misfiles --dry-run",
+  "help": "The listening loop: rate the master's files Keep, Drop or Misfiled, and the next build\nfollows the ratings (a Keep stays, a Drop goes, a Misfiled moves). Rate with `review\nrate` or `review import` (a CSV file), or in Ableton Live's browser with tags\n(Fourier|Keep / Drop / Misfiled / Move-<CAT>) that `review ratings` harvests. All of\nthem write the same ratings store ($FOURIER_HOME/ratings.json).\n\n\b\nWithout Live: rate, import, queue, score, misfiles.\nNeeds Live:   ratings (it harvests Live's tags; queue, score and builds harvest them\n              too when Live has tagged the master).\n\n\b\n  fourier review rate \"Kick 01\" keep\n  fourier review rate \"Snare Tight 03\" misfiled --to CLAPS\n  fourier review import ratings.csv   # columns: path (or name), rating, category, scope\n  fourier review queue                # the next files to listen to, in <master>/_REVIEW\n  fourier review score                # a build against the ratings\n  fourier review misfiles --dry-run",
   "hidden": false,
   "params": [],
   "short_help": "The listening loop: rate files, import ratings, queue and score."
  },
  "fourier review import": {
   "group": false,
-  "help": "Import ratings from a CSV file with a header row: `path` (or `name`: anything `review\nrate` takes), `rating` (keep, drop or misfiled) and an optional `category` (for\nmisfiled: the category it belongs in). Rows that match no file, or several, are listed\nand skipped (exit 1); the rest are stored as `review rate` stores them.\n\n\b\n  path,rating,category\n  KICKS/punchy/Kick_01.wav,keep,\n  Snare Tight 03,misfiled,CLAPS",
+  "help": "Import ratings from a CSV file with a header row: `path` (or `name`: anything `review\nrate` takes), `rating` (keep, drop or misfiled), an optional `category` (for misfiled: the\ncategory it belongs in) and an optional `scope` (drop or misfiled: `set` for the file's\nwhole set, as `review rate --set`; else `file`). Rows that match no file, or several, are\nlisted and skipped (exit 1); the rest are stored as `review rate` stores them.\n\n\b\n  path,rating,category,scope\n  KICKS/punchy/Kick_01.wav,keep,,\n  Snare Tight 03,misfiled,CLAPS,\n  Pad C3,drop,,set",
   "hidden": false,
   "params": [
    {
@@ -1478,7 +1478,7 @@
  },
  "fourier review rate": {
   "group": false,
-  "help": "Rate one of the master's files: keep (it stays), drop (the next build leaves it out) or\nmisfiled (the next build moves it to another category; --to names which); clear removes\na rating given here or imported (also one whose file is gone from the master or the\nlibrary). QUERY is what `fourier why` takes: a source path, a master path\n(KICKS/family/file.wav) or a piece of a file name or library path. When it matches\nseveral files, you pick one.\n\n\b\n  fourier review rate \"Kick 01\" keep\n  fourier review rate KICKS/punchy/Kick_01.wav drop\n  fourier review rate \"Snare Tight 03\" misfiled --to CLAPS\n  fourier review rate \"Kick 01\" clear",
+  "help": "Rate one of the master's files: keep (it stays), drop (the next build leaves it out) or\nmisfiled (the next build moves it to another category; --to names which); clear removes\na rating given here or imported (also one whose file is gone from the master or the\nlibrary). A rating covers every edition of the file's recording (a .wav and its .aif, a\ncopy in another pack); a drop covers one note of a multisample set unless --set, and a\nmisfiled its multisample set (--set: the patch's takes too). QUERY is what `fourier why`\ntakes: a source path, a master path (KICKS/family/file.wav) or a piece of a file name or\nlibrary path. When it matches several files, you pick one.\n\n\b\n  fourier review rate \"Kick 01\" keep\n  fourier review rate KICKS/punchy/Kick_01.wav drop\n  fourier review rate \"Pad C3\" drop --set\n  fourier review rate \"Snare Tight 03\" misfiled --to CLAPS\n  fourier review rate \"Kick 01\" clear",
   "hidden": false,
   "params": [
    {
@@ -1520,6 +1520,22 @@
     "required": false,
     "show_default": false,
     "type": "text"
+   },
+   {
+    "default": "False",
+    "help": "With drop or misfiled: the rating covers the file's whole set (every note of the instrument or patch), not one note",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "whole_set",
+    "nargs": 1,
+    "opts": [
+     "--set"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
    },
    {
     "default": "None",

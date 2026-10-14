@@ -83,6 +83,7 @@ class _Ctx:
         for c in self.cats:
             p = self.root / c / "_manifest.json"
             self.fams[c] = json.loads(p.read_text()) if p.exists() else []
+        self.store_path = store_path
         self.pins = keep_pins(store_path)
         self.drops = drop_set(store_path)
         self.misf = misfiled_map(store_path)
@@ -652,8 +653,11 @@ def check_routing(ctx):
     # a file named as one kind of drum lives in that category, and a named scratch in FX
     # (a Keep, a loop or a Misfiled verdict there are exempt)
     from .curate_config import DRUM_NAME_FROM, SCRATCH_HOME
-    # (a Misfiled verdict, yours or the detector's, covers its multisample siblings too)
-    _msib = {(C._sibling_key(p), cat) for p, cat in ctx.misf.items() if C._sibling_key(p)}
+    # (a Misfiled verdict, yours or the detector's, covers its copies, editions and multisample
+    # set too, as the build has it: curate._rating_reach)
+    from .ratings import drop_categories, rating_scopes
+    _reach = C._rating_reach(misfiled=ctx.misf, drops=drop_categories(ctx.store_path),
+                             scopes=rating_scopes(ctx.store_path))
     wrong = []
     for c, e in ctx.entries:
         kind = CATEGORIES.get(c, {}).get("kind")
@@ -667,7 +671,7 @@ def check_routing(ctx):
                                                        e.get("ableton"))
         # (a name override wins, as in the build: "Kick_Cowbell_02" is a cowbell)
         if want and want != c and ctx.misf.get(e["src"]) != want \
-                and (C._sibling_key(e["src"]), want) not in _msib and C._name_override(fn) != c:
+                and want not in _reach.misfiled(e["src"]) and C._name_override(fn) != c:
             wrong.append((c, e["out"], want))
     yield Result(FAIL if wrong else PASS, "files named as a drum (or a scratch) live in that category",
                  _fmt(wrong))
