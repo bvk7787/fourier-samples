@@ -10,7 +10,8 @@ import soundfile as sf
 from fourier.packs import curate as C
 from fourier.packs import why_log
 from fourier.packs.verify import (FAIL, PASS, WARN, _Ctx, _check_kit_slots, _late_start, check_audio,
-                                  check_copies, check_pitch, check_ratings, check_routing, verify_master)
+                                  check_copies, check_one_note_kept, check_pitch, check_ratings, check_routing,
+                                  verify_master)
 
 SR = 44100
 LIB = "/lib/SampleLibrary"
@@ -416,3 +417,14 @@ def test_a_bare_c_the_build_cant_check_warns(tmp_path):
     res = list(check_pitch(ctx))
     assert _level(res, "files retuned to C or named for it play C") == PASS
     assert _level(res, "files named for a C chord or key, or a C without an octave") == WARN
+
+
+def test_a_note_left_for_its_set_mate_left_for_one_the_master_holds(tmp_path):
+    files = [_synth("Qzv_Pad_C3.wav", "Acme/Pads/Qzv Pad C3.wav", retune=0.0, root_src="name")]
+    ctx = _ctx(tmp_path, files)
+    why_log.write(ctx.root, "SYNTH", {"category": "SYNTH", "out": {"one_note_per_c": {"7": ["Qzv Pad C3.wav", "C3"]}}})
+    assert _level(list(check_one_note_kept(ctx)), "a note left out for another note") == PASS
+    why_log.write(ctx.root, "SYNTH", {"category": "SYNTH", "out": {"one_note_per_c": {"7": ["Qzv Pad A2.wav", "C3"]}}})
+    res = list(check_one_note_kept(ctx))
+    assert _level(res, "a note left out for another note") == FAIL
+    assert "Qzv Pad A2.wav" in _got(res, "a note left out")[0].detail

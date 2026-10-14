@@ -6283,7 +6283,7 @@
    }
   },
   "clap_model": "laion/clap-htsat-unfused",
-  "code_hash": "c2b3d39050503bfb",
+  "code_hash": "70433e61e8681e4c",
   "config_hash": "3ad71cdf97ebb52e",
   "fourier_manifest": 3,
   "fourier_version": "0.1.2",
@@ -6839,6 +6839,6 @@
     ]
    }
   },
-  "tunables_hash": "20248bc13ab9bfe4"
+  "tunables_hash": "7b7ba76721bb285a"
  }
 }

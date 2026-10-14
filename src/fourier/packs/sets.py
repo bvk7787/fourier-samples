@@ -286,9 +286,9 @@ def _slot_candidates(role, cands):
     return [ce for ce in cands if not avoid.search(fn(ce))]
 
 
-# a name's last token when it numbers a take, velocity or round robin ("_4", "_p2", "_t3", " v2"):
-# a kit's two toms (two percs) aren't two takes of one drum when the pack has another
-KIT_TAKE_RE = _tunable("KIT_TAKE_RE", re.compile(r"[ _.-]+[a-z]{0,2}\d+$", re.I))
+# a name's last token when it numbers a take, velocity or round robin ("_4", "_p2", "_t3", " v2",
+# "_5b"): a kit's two toms (two percs) aren't two takes of one drum when the pack has another
+KIT_TAKE_RE = _tunable("KIT_TAKE_RE", re.compile(r"[ _.-]+[a-z]{0,2}\d+[a-z]?$", re.I))
 
 
 def _stem(ce):

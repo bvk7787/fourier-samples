@@ -26,6 +26,8 @@ import re
 from bisect import bisect_left, bisect_right
 from collections import defaultdict
 
+import numpy as np
+
 from .curate_config import EDITION_DUR_TOL, EDITION_SUFFIX_RE, NUMBER_NOTE_TOL, NUMBER_SET_MAJORITY, SIBLING_SETS_ONLY
 
 _VEL = re.compile(r"^(?:v|vel|velocity|layer)\d+$|^(?:ppp|pp|p|mp|mf|f|ff|fff)$")
@@ -43,9 +45,16 @@ def _C():
     return curate
 
 
+_PART_RE = re.compile(r"\(\s*\d{1,2}\s*\)?$")
+
+
 def _clean(seg):
-    """A folder or pack name without its edition words ("Pack (WAV mono)" -> "pack")."""
-    return _C()._EDITION_RE.sub("", seg or "").strip(" -_()").lower()
+    """A folder or pack name without its edition words ("Pack (WAV mono)" -> "pack"; a download
+    part's number in the edition's brackets too: "Pack (WAV stereo 1)" -> "pack")."""
+    got = _C()._EDITION_RE.sub("", seg or "").strip(" -_")
+    if got != (seg or "").strip(" -_"):
+        got = _PART_RE.sub("", got)
+    return got.strip(" -_()").lower()
 
 
 def _where(path):
@@ -192,8 +201,10 @@ def number_sets(items):
     """{path: set key} of the files named by a patch and bare numbers whose numbers are notes:
     in one source folder, for one of the name's numbers, each file's measured root less that
     number agrees within NUMBER_NOTE_TOL semitones across at least three numbers (0-127), and
-    octaves aside across at least NUMBER_SET_MAJORITY of the rooted files ("Qzv Lead 059" /
-    "061" / "062" rooted at 58.8, 60.8, 61.8). A reading off by an octave, or a file the pack
+    octaves aside across at least NUMBER_SET_MAJORITY of the rooted numbers (one reading per
+    number, its files' median: a number's editions and velocities are one vote, and a number
+    whose files disagree is no vote for a set) ("Qzv Lead
+    059" / "061" / "062" rooted at 58.8, 60.8, 61.8). A reading off by an octave, or a file the pack
     numbered a note off, doesn't unmake the set; numbers that agree only octaves aside
     ("02" / "06" / "10" at 67, 71 and 63) don't make one. Numbers that don't track the pitch are takes,
     a series ("Qzv Lead 01" / "02" both at C3). items: [(path, root midi or None)]."""
@@ -208,12 +219,21 @@ def number_sets(items):
         for pos in range(n):
             if len({nums[pos] for nums, _r in rooted}) < 3 or max(nums[pos] for nums, _r in rooted) > 127:
                 continue        # (two numbers may agree with two roots by chance)
-            off = [r - nums[pos] for nums, r in rooted]
-            srt = sorted(off)
+            # one reading per number (its files' median: a number's editions, velocities and
+            # takes are one vote)
+            per = defaultdict(list)
+            for nums, r in rooted:
+                per[nums[pos]].append(r)
+            # (a number whose own files disagree, octaves aside, is two sounds: no vote for a set)
+            steady = {num: all(_near12(r, rs[0]) for r in rs) for num, rs in per.items()}
+            off = [float(np.median(rs)) - num for num, rs in per.items()]
+            srt = sorted(o for o, num in zip(off, per) if steady[num])
+            if not srt:
+                continue
             best = max(srt, key=lambda c: bisect_right(srt, c + NUMBER_NOTE_TOL) - bisect_left(srt, c - NUMBER_NOTE_TOL))
-            exact = {nums[pos] for (nums, _r), o in zip(rooted, off) if abs(o - best) <= NUMBER_NOTE_TOL}
-            agree = [o for o in off if _near12(o, best)]          # (a reading an octave off agrees)
-            if len(exact) >= 3 and len(agree) >= NUMBER_SET_MAJORITY * len(rooted):
+            exact = [o for o, num in zip(off, per) if steady[num] and abs(o - best) <= NUMBER_NOTE_TOL]
+            agree = [o for o, num in zip(off, per) if steady[num] and _near12(o, best)]   # (an octave off agrees)
+            if len(exact) >= 3 and len(agree) >= NUMBER_SET_MAJORITY * len(off):
                 out.update({p: key for p, _n, _r in members})
                 break
     return out
@@ -306,10 +326,13 @@ class Reach:
     - A Drop is note-level (never its set's other notes; `refill_of` keeps them from taking the
       dropped note's slot); a set-wide one covers the set or patch.
     - A Misfiled covers its multisample set (the set tier) in the rated category; a set-wide one,
-      its described patch's takes too."""
+      its described patch's takes too. An automatic detection (file_only: `fourier review
+      misfiles`, not a rating) covers its recording and editions only."""
 
-    def __init__(self, drops=(), misfiled=None, facts=None, members=None, drop_cats=None, scopes=None):
+    def __init__(self, drops=(), misfiled=None, facts=None, members=None, drop_cats=None, scopes=None,
+                 file_only=()):
         self.drops, self.misf = set(drops), dict(misfiled or {})
+        self.file_only = set(file_only)       # Misfiled by an automatic detection: no set tier
         self.facts, self.members = dict(facts or {}), dict(members or {})
         scopes = scopes or {}
         self.hashes: dict = defaultdict(list)
@@ -334,7 +357,7 @@ class Reach:
                 self.scoped[patch_key(src)].append(src)
         for src, cat in self.misf.items():
             k = self.set_of(src)
-            if k is not None:
+            if k is not None and src not in self.file_only:
                 self.misf_sets[k].add(cat)
             if scopes.get(src) == "set" and patch_key(src) is not None:
                 self.misf_scoped[patch_key(src)].add(cat)

@@ -96,10 +96,15 @@ def test_not_editions():
 def test_editions_are_copies_within_a_category():
     srcs = [p("Northwind/Grit/raw/QX Tom 731.wav"), p("Northwind/Grit/proc/QX Tom 731 Cleanup.wav"),
             p("Northwind/Grit/proc/QX Tom 732 Cleanup.wav")]
-    W = np.eye(3, dtype="float32")                       # CLAP: apart, so no audio is read
-    assert C._copies_within(srcs, W, durs=[0.63, 0.60, 0.6]) == [(0, 1)]
+    W = np.eye(3, dtype="float32")
+    W[1] = W[0]                                          # CLAP: the editions agree, 731 / 732 apart
+    assert C._copies_within(srcs, W, durs=[0.63, 0.60, 0.6]) == [(0, 1)]   # (by name: no audio read)
     assert C._copies_within(srcs, W, new={2}) == []
-    assert C._copies_within(srcs, W, audio=False) == [(0, 1)]
+    assert C._copies_within(srcs, np.eye(3, dtype="float32"), audio=False) == [(0, 1)]
+    # an edition processed into another sound (CLAP under EDITION_COPY_COS) is its own sound
+    W2 = np.eye(3, dtype="float32")
+    W2[1] = [0.8, 0.6, 0.0]                              # cos 0.8 to the raw take
+    assert C._copies_within(srcs, W2, durs=[0.63, 0.60, 0.6], cos=0.95) == []
 
 
 # --- set and series ---------------------------------------------------------------------------------
@@ -141,6 +146,11 @@ def test_a_numbered_set_survives_a_reading_off_by_an_octave_or_a_note():
     # Sononym an octave off for a whole stretch of the low notes: still one set
     env = [(p(f"Acme/Ms/Qzv Env Pwm {n:03d}.wav"), float(n - 12 + (12 if n < 40 else 0))) for n in range(29, 50)]
     assert len(I.number_sets(env)) == 21
+    # a number's editions are one vote: three editions of each of three numbers that don't
+    # track the pitch are no set, however well each number's editions agree
+    bells = [(p(f"Acme/Ms/Qzv Bell {n:02d}{ed}.wav"), r) for n, r in ((1, 32.0), (49, 56.0), (62, 53.6))
+             for ed in ("", " Dirty", " Cleanup")]
+    assert I.number_sets(bells) == {}
     # numbers that agree only octaves aside are no set (a fifth up each step, wrapping)
     assert I.number_sets([(p(f"Acme/Ms/Qzv Saw {n:02d}.wav"), r) for n, r in ((2, 67.0), (6, 71.0), (10, 63.0))]) == {}
     # most of them disagreeing is no set: three agree out of seven rooted
@@ -293,3 +303,45 @@ def test_folder_number_roots_reads_the_whole_folder(tmp_path, db):
         if S._engine is not None:
             S._engine.dispose()
         S._engine, S._SessionLocal = old
+
+
+def test_one_note_per_c_among_the_picks_leaves_only_for_a_note_that_ships():
+    """The build runs one note per C on its picks (curate._one_note_per_c_picked): a note leaves
+    only for one its folders keep, and its folder picks again without it."""
+    rec = [dict(path=p("Acme/Ms/Qzv Pad A2.wav"), retune=3.0, root_src="name", tune=None, id=1),
+           dict(path=p("Acme/Ms/Qzv Pad C3.wav"), retune=0.0, root_src="name", tune=None, id=2),
+           dict(path=p("Acme/Ms/Qzv Bell 1.wav"), retune=None, tune=None, id=3),
+           dict(path=p("Acme/Ms/Qzv Pad D3.wav"), retune=-2.0, root_src="name", tune=None, id=4)]
+    clusters = [dict(idxs=[0, 2], _pick=[0]), dict(idxs=[1, 3], _pick=[1])]
+    why: dict = {}
+    pick = lambda idxs, want: list(idxs)[:want]  # noqa: E731
+    assert C._one_note_per_c_picked(clusters, [1, 1], rec, pick, why=why) == 1
+    assert clusters[0]["_pick"] == [2] and clusters[1]["_pick"] == [1]    # A2 left; its folder refilled
+    assert why == {1: ["Qzv Pad C3.wav", "C3"]}
+    # a note the folders don't pick (D3, not in a _pick) never unseats one
+    assert C._one_note_per_c_picked(clusters, [1, 1], rec, pick) == 0
+
+
+def test_an_automatic_misfile_covers_its_file_not_its_set():
+    a, b = p("Acme/Ms/Qzv Marimba C5.wav"), p("Acme/Ms/Qzv Marimba C3.wav")
+    assert I.Reach(misfiled={a: "ACOUSTIC"}).misfiled(b) == {"ACOUSTIC"}            # a rating: its set
+    r = I.Reach(misfiled={a: "ACOUSTIC"}, file_only={a})
+    assert r.misfiled(b) == set() and r.misfiled(a) == {"ACOUSTIC"}               # a detection: its file
+    from fourier.packs import ratings as R
+    store = {"ratings": {}, "auto_misfiled": {a: {"category": "ACOUSTIC", "other": "ACOUSTIC"},
+                                              b: {"category": "FX", "other": "SUB"}}}
+    assert R._auto_misfiled(store) == {b: "FX"}                                  # (one that says nothing: skipped)
+
+
+def test_a_number_whose_files_disagree_is_no_vote_and_parts_are_one_pack():
+    """A series of different kicks whose numbers' own files read ten semitones apart is no
+    set, however its medians fall; a download part's number in an edition's brackets is the
+    pack ("(WAV stereo 1)" and "(WAV mono)" are one pack's editions)."""
+    kicks = [(p(f"Acme/Ms/Qzv Kick Zap {n:02d}{ed}.wav"), r) for n, ed, r in
+             ((9, "", 28.8), (9, " Dirty", 39.0), (11, "", 36.8), (11, " Dirty", 29.1), (13, "", 30.0), (15, "", 33.0))]
+    assert I.number_sets(kicks) == {}
+    assert I._clean("Qzv Pack 2 (WAV stereo 1)") == I._clean("Qzv Pack 2 (WAV mono)") == "qzv pack 2"
+    assert I._clean("Drums (2)") != I._clean("Drums")          # a folder's own number stays
+    from fourier.packs import sets as K
+    assert K._stem(("TOMS", {"src": p("Acme/Kit/Qzv Tom Low A_5b.wav")})) == \
+        K._stem(("TOMS", {"src": p("Acme/Kit/Qzv Tom Low A_5.wav")}))      # "_5b" is a take too

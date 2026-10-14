@@ -331,6 +331,7 @@ curate:
   COPY_SECONDS: engine
   COPY_SHARE: correctness
   CATEGORY_COPY_COS: correctness
+  EDITION_COPY_COS: correctness
   COPY_GATE_XCORR: engine
   COPY_GATE_SECONDS: engine
   COPY_GATE_RATE: engine

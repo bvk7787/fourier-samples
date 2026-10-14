@@ -290,6 +290,11 @@ def describe(reason: str, detail, doc: dict, name_of=lambda sid: str(sid), place
     if reason == "rated_drop":
         return "you rated it Drop: out of every category"
     if reason == "rated_misfiled":
+        if detail == "@auto":
+            return f"the misfile detection (`fourier review misfiles`) flagged it: out of {cat} (no rating of yours)"
+        if isinstance(detail, str) and detail.startswith("@auto:"):
+            return (f"the misfile detection flagged {detail[6:]}, a copy or edition of it: out of {cat} "
+                    "(no rating of yours)")
         if detail:
             return f"you rated {detail}, of the same multisample set, Misfiled in {cat}"
         return f"you rated it Misfiled in {cat}"
