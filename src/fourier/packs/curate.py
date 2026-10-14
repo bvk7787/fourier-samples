@@ -3801,12 +3801,12 @@ def _rating_reach(misfiled=None, drops=None, scopes=None, auto=None):
            tuple(sorted(auto)))
     if key not in _REACH:
         try:
-            facts, members = _rated_facts(rated) if where and rated else ({}, {})
+            facts, members, copies = _rated_facts(rated) if where and rated else ({}, {}, {})
         except Exception:               # a database this can't read: by names, as without one
-            facts, members = {}, {}
+            facts, members, copies = {}, {}, {}
         _REACH.clear()
         _REACH[key] = _id.Reach(set(drops), misfiled, facts, members, drop_cats=drops, scopes=scopes,
-                                file_only=auto)
+                                file_only=auto, copies=copies)
     return _REACH[key]
 
 
@@ -3819,8 +3819,9 @@ def _under_folder(folder):
 
 def _rated_facts(rated):
     """({source: (file hash, seconds)} of these rated sources, {path: set key} of every file in
-    their folders, identity.set_keys on the roots the build reads for them: _number_root), from
-    the database."""
+    their folders, identity.set_keys on the roots the build reads for them: _number_root,
+    {file hash: [rated sources]} of the library's editions of them whose bytes another file
+    shares), from the database."""
     from sqlalchemy import or_
     from ..db.session import session_scope
     facts, rows = {}, []
@@ -3836,10 +3837,29 @@ def _rated_facts(rated):
             q = q0.where(or_(*[_under_folder(f)
                                for f in folders[i:i + 200]]))
             rows += [r for r in fetch(s, q) if os.path.dirname(r.path or "") in set(folders)]
+        # a byte copy of an edition under another name is that recording too: only an edition
+        # whose hash another file shares can have one, so only those rows are read
+        by_ed = defaultdict(list)
+        for p in rated:
+            by_ed[_id.edition_key(p)].append(p)
+        names, vendors, vend = {k[1] for k in by_ed if k[1]}, {k[0] for k in by_ed}, {}
+        shared = select(Sample.file_hash).where(Sample.file_hash.is_not(None)) \
+            .group_by(Sample.file_hash).having(func.count() > 1)
+        copies: dict = defaultdict(list)
+        for path, h, dur in s.execute(select(Sample.path, Sample.file_hash, Sample.duration_s)
+                                      .where(Sample.file_hash.in_(shared))):
+            d = path.rpartition("/")[0]      # (the vendor read once a folder: a cheap first pass)
+            if d not in vend:
+                vend[d] = _id.vendor_of(path)
+            if vend[d] not in vendors or _id.edition_name(path) not in names:
+                continue
+            for src in by_ed.get(_id.edition_key(path), ()):
+                if h != facts.get(src, (None,))[0] and _id.editions(src, path, facts.get(src, (None, None))[1], dur):
+                    copies[h].append(src)
     members = {p: k for p, k in _id.set_keys(
         (r.path, _number_root({"tune": _resolve.root(r, fb).value, "own_root": getattr(r, "own_root_midi", None)}))
         for r in rows).items() if k is not None}
-    return facts, members
+    return facts, members, dict(copies)
 
 
 def _row_override(r):
@@ -4328,7 +4348,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         if category and pins.get(r.path) != category \
                 and category in misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s):
             stats["misfiled_out"] = stats.get("misfiled_out", 0) + 1
-            _out(r, "rated_misfiled", misfiled.rated_by(r.path, category))
+            _out(r, "rated_misfiled", misfiled.rated_by(r.path, category, r.file_hash, r.duration_s))
             continue
         _rv = _name_reserved(r.filename or "")
         if category and _rv and _rv != category and pins.get(r.path) != category:

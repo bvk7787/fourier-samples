@@ -25,6 +25,12 @@ change the CLI or the config).
 
 ### Fixed
 
+- A Drop or Misfiled rating now also covers the byte copies of its file's editions under other
+  names (a compilation's edition of the rated file shipped again elsewhere under a new name):
+  they are the same recording, so the copy no longer refills the rated sound's slot. The build
+  reads the hashes of the rated files' editions that another file shares
+  (`curate._rated_facts`), and verify's rating and drum-name checks read the same reach. An
+  edition of such a copy by its own name is not covered.
 - One note per set and C now runs on a category's picks: a note leaves only for a note of its
   set the category ships, and its folder picks again without it. Run before the picks, it could
   leave a note for one that then lost its own place, taking whole instruments out of a master;

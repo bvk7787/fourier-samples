@@ -760,9 +760,9 @@ def missing_keeps(session=None, store_path=None, pins=None) -> list:
 
 def drop_set(store_path=None):
     """Source paths rated Drop. Curation leaves them out of every category (a Drop is a
-    verdict on the sound, not its folder), with every edition and byte copy of them, and a
-    rating given with `--set` with its set (curate._rating_reach, identity.Reach); a plain Drop
-    never covers its siblings."""
+    verdict on the sound, not its folder), with every edition and byte copy of them (and of
+    those editions), and a rating given with `--set` with its set (curate._rating_reach,
+    identity.Reach); a plain Drop never covers its siblings."""
     return set(drop_categories(store_path))
 
 

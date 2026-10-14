@@ -1,5 +1,5 @@
 """What a rating covers (identity.Reach, curate._rating_reach): a Drop or Misfiled reaches its
-file's byte copies and editions; a Drop stays note-level and its set never refills the
+file's byte copies and editions, and the byte copies of those editions; a Drop stays note-level and its set never refills the
 dropped note's slot; a Misfiled covers its multisample set; `--set` (or a `scope` column)
 widens either to the set or patch. Invented names only."""
 import pytest
@@ -114,6 +114,104 @@ def test_rating_reach_reads_hashes_lengths_and_numbered_sets(tmp_path):
         assert reach.facts[WAV] == ("h1", 4.0)
         assert reach.refill_of(LEAD[1], "SUB") == LEAD[0]               # 059/061/062 rooted 59/61/62
         assert reach.dropped(p("Vqx/Other/Copy Of Brk.wav"), "h1", 4.0) == WAV
+    finally:
+        C._REACH.clear()
+        sess._engine = sess._SessionLocal = None
+
+
+# a rated file, its compilation edition (another pack of the vendor, same name and length), a
+# byte copy of that edition under another name, and an edition of the copy by the copy's name
+RATED = p("Acme/Qzv Essentials 16bit/Kits/Zap Kit/Qzv Boom Thud Lo.wav")
+EDITION = p("Acme/Zap Kit/WAV/Qzv Boom Thud Lo.wav")
+COPY = p("Acme/Qzv Essentials/Drums/FX/BD Qzv Vrrb 07.wav")
+COPY_ED = p("Acme/Qzv Essentials 16bit/Drums/FX/BD Qzv Vrrb 07.wav")
+
+
+def test_a_rating_reaches_byte_copies_of_its_editions_only_one_step():
+    reach = I.Reach({RATED}, facts={RATED: ("hR", 0.6)}, copies={"hE": [RATED], "hX": [p("Acme/Other.wav")]})
+    assert reach.dropped(EDITION, "hE", 0.6) == RATED                   # the edition (by name and bytes)
+    assert reach.dropped(COPY, "hE", 0.6) == RATED                      # its bytes under another name
+    assert reach.dropped(COPY_ED, "hD", 0.6) is None                    # the copy's own edition: not
+    assert reach.dropped(COPY, "hX", 0.6) is None                       # an unrated source's hash
+    assert I.Reach({RATED}).dropped(COPY, "hE", 0.6) is None            # no copies read: names only
+    idx = C._MisfiledIndex({RATED: "KICKS"}, I.Reach(misfiled={RATED: "KICKS"}, copies={"hE": [RATED]}))
+    assert idx.categories(COPY, file_hash="hE") == {"KICKS"}
+    assert idx.rated_by(COPY, "KICKS", "hE", 0.6) == "Qzv Boom Thud Lo.wav"
+    assert idx.categories(COPY_ED, file_hash="hD") == set()
+    for x in (RATED, COPY, p("WAV/Acme (WAV)/Kit/Qzv Hit.wav"), "/elsewhere/Acme (WAV)/Qzv Hit.wav"):
+        assert I.vendor_of(x) == I.edition_key(x)[0]                    # the cheap pass's vendor
+
+
+def _library_db(tmp_path, rows):
+    from fourier.db import session as sess
+    from fourier.db.models import Sample
+    sess._engine = sess._SessionLocal = None
+    sess.init_db(tmp_path / "library.db")
+    s = sess.get_session()
+    for path, h, d in rows:
+        s.add(Sample(path=path, filename=path.rsplit("/", 1)[1], file_hash=h, duration_s=d))
+    s.commit()
+    s.close()
+
+
+EDITION_ROWS = [(RATED, "hR", 0.6), (EDITION, "hE", 0.6), (COPY, "hE", 0.6), (COPY_ED, "hD", 0.6),
+                (p("Acme/Zap Kit/WAV/Qzv Boom Thud Hi.wav"), "hH", 0.6),          # not an edition
+                (p("Northwind/Hits/Qzv Hit 9.wav"), "hH", 0.6)]
+
+
+def test_rating_reach_reads_the_hashes_of_the_rated_files_editions(tmp_path):
+    from fourier.db import session as sess
+    _library_db(tmp_path, EDITION_ROWS + [(p("Acme/Zap Kit/Short/Qzv Boom Thud Lo.wav"), "hS", 0.3),
+                                          (p("Vqx/Short Copy.wav"), "hS", 0.3)])
+    try:
+        C._REACH.clear()
+        assert C._rated_facts([RATED])[2] == {"hE": [RATED]}            # another length: no edition
+        reach = C._rating_reach(misfiled={}, drops={RATED: "STABS"}, scopes={})
+        assert reach.dropped(COPY, "hE", 0.6) == RATED
+        assert reach.dropped(COPY_ED, "hD", 0.6) is None
+        assert reach.dropped(p("Northwind/Hits/Qzv Hit 9.wav"), "hH", 0.6) is None
+        assert reach.dropped(p("Vqx/Short Copy.wav"), "hS", 0.3) is None
+        C._REACH.clear()
+        reach = C._rating_reach(misfiled={RATED: "KICKS"}, drops={}, scopes={}, auto=())
+        assert reach.misfiled(COPY, "hE", 0.6) == {"KICKS"}
+    finally:
+        C._REACH.clear()
+        sess._engine = sess._SessionLocal = None
+
+
+def test_verify_reads_the_same_reach(tmp_path):
+    """check_ratings and the drum-name check see a byte copy of a rated file's edition as the
+    build does."""
+    import json
+
+    import numpy as np
+    import soundfile as sf
+
+    from fourier.db import session as sess
+    from fourier.packs.verify import FAIL, PASS, _Ctx, check_ratings, check_routing
+    _library_db(tmp_path, EDITION_ROWS)
+
+    def ctx(d, cat, verdict):
+        root = d / "master"
+        (root / cat / "dark").mkdir(parents=True)
+        sf.write(root / cat / "dark" / "BD_Qzv_Vrrb_07.wav", np.zeros(2205, dtype="float32") + 0.1, 44100)
+        e = {"family": "dark", "out": "dark/BD_Qzv_Vrrb_07.wav", "src": COPY}
+        (root / "manifest.json").write_text(json.dumps({"categories": {cat: {"entries": [e]}}}))
+        store = d / "ratings.json"
+        store.write_text(json.dumps({"version": 1, "ratings": {RATED: {"category": "KICKS", "verdict": verdict}}}))
+        return _Ctx(str(root), store_path=str(store), prof={COPY: (1, 0.0, 0.0, "hE")})
+
+    def level(res, check):
+        return [r.level for r in res if r.check.startswith(check)][0]
+    try:
+        C._REACH.clear()
+        res = list(check_ratings(ctx(tmp_path / "a", "STABS", "drop")))
+        assert level(res, "no Drop in the master") == FAIL
+        assert "Qzv Boom Thud Lo.wav" in [r for r in res if r.check.startswith("no Drop")][0].detail
+        C._REACH.clear()
+        # named as a kick, outside KICKS: its edition's Misfiled out of KICKS says it's no kick
+        res = list(check_routing(ctx(tmp_path / "b", "TOMS", "misfiled")))
+        assert level(res, "files named as a drum") == PASS
     finally:
         C._REACH.clear()
         sess._engine = sess._SessionLocal = None

@@ -68,6 +68,14 @@ def _where(path):
     return segs[0], "/".join(segs[:2]), "/".join(segs)
 
 
+def vendor_of(path):
+    """`_where`'s vendor alone, without cleaning the folders under it."""
+    from ..places import in_library, library_rel
+    if not in_library(path):
+        return _where(path)[0]
+    return next((s for s in map(_clean, library_rel(path).split("/")[:-1]) if s), "")
+
+
 def _generic(words):
     """True when the words left of a name can't name a patch on their own (one generic or
     short word: "Kick", "Pad", "Dim"), as curate._sibling_key has it."""
@@ -320,9 +328,12 @@ class Reach:
     don't want this instrument"). facts: {source: (file hash, seconds)} of the rated files;
     members: {path: set key} of the files in the rated files' folders, read with their roots
     (set_keys), so numbers that track the pitch count; a path missing from it is keyed by its
-    name (set_key).
+    name (set_key). copies: {file hash: [rated sources]}, the hashes of the library's editions
+    of the rated files (curate._rated_facts).
 
-    - A rating covers its file's recording (the same bytes) and every edition of it.
+    - A rating covers its file's recording (the same bytes) and every edition of it, and the
+      byte copies of those editions under any name (the same recording; an edition of such a
+      copy by its own name is not).
     - A Drop is note-level (never its set's other notes; `refill_of` keeps them from taking the
       dropped note's slot); a set-wide one covers the set or patch.
     - A Misfiled covers its multisample set (the set tier) in the rated category; a set-wide one,
@@ -330,7 +341,7 @@ class Reach:
       misfiles`, not a rating) covers its recording and editions only."""
 
     def __init__(self, drops=(), misfiled=None, facts=None, members=None, drop_cats=None, scopes=None,
-                 file_only=()):
+                 file_only=(), copies=None):
         self.drops, self.misf = set(drops), dict(misfiled or {})
         self.file_only = set(file_only)       # Misfiled by an automatic detection: no set tier
         self.facts, self.members = dict(facts or {}), dict(members or {})
@@ -344,6 +355,9 @@ class Reach:
             k = edition_key(src)
             if k[1]:
                 self.by_ed[k].append(src)
+        rated = self.drops | set(self.misf)
+        for h, srcs in sorted((copies or {}).items()):
+            self.hashes[h] += [s for s in sorted(set(srcs)) if s in rated and s not in self.hashes[h]]
         self.drop_sets: dict = {}
         for src, cat in sorted((drop_cats or {}).items()):
             k = self.set_of(src)
