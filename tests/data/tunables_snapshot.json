@@ -6558,12 +6558,19 @@
    "$set": [
     "ACOUSTIC",
     "BLIPS",
+    "CLAPS",
+    "CYMBALS",
     "FX",
+    "HATS",
+    "KICKS",
     "PADS",
+    "PERC",
     "PIANO",
+    "SNARES",
     "STABS",
     "SUB",
     "SYNTH",
+    "TOMS",
     "VOX"
    ]
   }
@@ -6578,6 +6585,35 @@
     ]
    ]
   }
+ },
+ "curate_config.SIBLING_SETS_ONLY": {
+  "type": "set",
+  "value": {
+   "$set": [
+    "CLAPS",
+    "CYMBALS",
+    "HATS",
+    "KICKS",
+    "PERC",
+    "SNARES",
+    "TOMS"
+   ]
+  }
+ },
+ "curate_config.EDITION_SUFFIX_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "^(?:cleanup|clean|dirty|tube)$",
+   "flags": 34
+  }
+ },
+ "curate_config.EDITION_DUR_TOL": {
+  "type": "float",
+  "value": 0.05
+ },
+ "curate_config.NUMBER_NOTE_TOL": {
+  "type": "float",
+  "value": 0.5
  },
  "curate_config.SNARE_PHRASES": {
   "type": "list",

@@ -208,6 +208,10 @@ curate_config:
   SIBLING_CAP: taste
   SIBLING_CAP_CATS: taste
   SIBLING_CAP_BY_CAT: taste
+  SIBLING_SETS_ONLY: taste
+  EDITION_SUFFIX_RE: rules
+  EDITION_DUR_TOL: engine
+  NUMBER_NOTE_TOL: engine
   NOTE_LEAD_CATS: taxonomy
   LOOP_DIR_ONESHOT_CATS: rules
   STAB_CHORD_NAME_RE: rules

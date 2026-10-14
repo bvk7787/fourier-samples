@@ -36,6 +36,19 @@ change the CLI or the config).
   by reason, the full list goes to `<stamp>.changes.csv` beside the archived build (never into
   the master), and `fourier verify` warns on a file that left with no logged reason. The
   files a build picks are unchanged.
+- One meaning of "the same sound" (`packs/identity.py`, curation.md "Identity"): a recording,
+  its editions, a multisample set and a numbered series, asked by the copy prune, the set cap,
+  one note per C, round robins and kit takes. WAVES no longer loses single cycles as copies
+  (a sine and a triangle cycle correlate at 0.99): it pairs editions by name only. A copy's
+  keeper stays through its folder's new pick (two recordings left the master as copies of a
+  keeper the pick then dropped). A raw take and its processed edition ("_Cleanup", "_Dirty",
+  "-Clean", "-Tube") count as one recording. The set cap binds a described patch's variant
+  letters ("A 01" to "C 09") and folds its editions, keeps to one source folder, and now holds
+  in the drum categories for true sets (notes, velocities, round robins) only, never a
+  numbered series. Bare numbers that track the measured pitch are notes for one note per C
+  ("Lead 059" / "061" / "062" all on C3). Round robins of one note and velocity keep one, and a
+  kit no longer takes two takes of one drum named by articulation or mic ("+OH").
+
 - `fourier verify` no longer fails a file a Keep or a Move rating pinned into a banded
   category (FX, CYMBALS, PHRASES, ...) on its band: the build bands it on the labels the
   database holds, while its manifest entry records only the votes of where it came from, which

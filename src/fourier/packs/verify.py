@@ -614,8 +614,11 @@ def check_routing(ctx):
     # a folder (a Keep is exempt), in the categories where it applies
     from .curate_config import (LOOP_DIR_ONESHOT_CATS, LOOP_DIR_ONESHOT_MAX_S, SIBLING_CAP,
                                 SIBLING_CAP_BY_CAT, SIBLING_CAP_CATS, sibling_cap)
-    sets = Counter((c, e["family"], C._sibling_key(e["src"])) for c, e in ctx.entries
-                   if c in SIBLING_CAP_CATS and not ctx.pinned(c, e) and C._sibling_key(e["src"]))
+    # (the build's groups, identity.cap_key: in the drum categories a set its names state; a
+    # set by numbers that track the pitch needs the roots, which the manifest doesn't keep)
+    from .identity import cap_key
+    sets = Counter((c, e["family"], cap_key(e["src"], c)) for c, e in ctx.entries
+                   if c in SIBLING_CAP_CATS and not ctx.pinned(c, e) and cap_key(e["src"], c))
     many = [(c, f, k[1], n) for (c, f, k), n in sets.items() if n > sibling_cap(c)]
     _by = ", ".join(f"{c} {n}" for c, n in sorted(SIBLING_CAP_BY_CAT.items()) if c in SIBLING_CAP_CATS)
     yield Result(FAIL if many else PASS, f"at most {SIBLING_CAP} notes of one multisample set a folder"
@@ -1005,16 +1008,19 @@ def check_audio(ctx):
     yield Result(FAIL if leads else PASS, "files start at the sound (leads trimmed at their category's trim_lead_db)", _fmt(leads))
 
 
-def _copies_within(entries, vecs):
+def _copies_within(entries, vecs, dur=None):
     """[((cat, src), (cat, src))] picks of one category that hold one recording or a shorter
-    cut of it, found as the build finds them (curate._copies_within, CATEGORY_COPY_COS; loops
-    further apart in tempo than a folder aren't compared). vecs: curate._copy_vectors'."""
+    cut of it, found as the build finds them (curate._copies_within: editions by name, then
+    CATEGORY_COPY_COS and the audio; loops further apart in tempo than a folder aren't
+    compared; synthetic single cycles by name only). vecs: curate._copy_vectors'; dur: {src:
+    seconds}."""
     from . import curate as C
     from .curate_config import CATEGORIES
     by = defaultdict(dict)
     for c, e in entries:
         if e.get("src") in vecs:
             by[c].setdefault(e["src"], e)
+    from .identity import comparable
     out, sigs = [], {}
     for c in sorted(by):
         srcs = sorted(by[c])
@@ -1022,7 +1028,8 @@ def _copies_within(entries, vecs):
         loop = CATEGORIES.get(c, {}).get("kind") == "loop"
         for i, j in C._copies_within(srcs, np.stack([vecs[s][1] for s in srcs]),
                                      apart=(lambda a, b: C._tempo_apart(es[a], es[b])) if loop else None,
-                                     sigs=sigs):
+                                     sigs=sigs, durs=[(dur or {}).get(s) for s in srcs],
+                                     audio=comparable(CATEGORIES.get(c, {}).get("kind"))):
             out.append(((c, srcs[i]), (c, srcs[j])))
     return out
 
@@ -1061,7 +1068,7 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
             if vecs:        # CROSS_COPY_COS 1.0: the build keeps copies on purpose, and so does this
                 cos = C.CROSS_COPY_COS
                 ctx.copies = [(members[i], members[j]) for i, j in C._cross_copy_pairs(members, vecs, cos=cos)]
-                ctx.copies_within = _copies_within(ctx.entries, vecs)
+                ctx.copies_within = _copies_within(ctx.entries, vecs, ctx.dur)
     out = []
     for fn in (check_manifest, check_sets, check_budgets, check_naming, check_ratings, check_leavers,
                check_routing, check_bands,

@@ -287,7 +287,11 @@ KIT_TAKE_RE = _tunable("KIT_TAKE_RE", re.compile(r"[ _.-]+[a-z]{0,2}\d+$", re.I)
 
 
 def _stem(ce):
-    return KIT_TAKE_RE.sub("", os.path.splitext(os.path.basename(ce[1]["src"]))[0]).lower()
+    """The drum a candidate is a take of: its name less the take (KIT_TAKE_RE), a mic
+    perspective, a processing word, and a variant letter with the articulation before it
+    (identity.take_name)."""
+    from .identity import take_name
+    return take_name(KIT_TAKE_RE.sub("", os.path.splitext(os.path.basename(ce[1]["src"]))[0]))
 
 
 def _spread_pick(c, k):
