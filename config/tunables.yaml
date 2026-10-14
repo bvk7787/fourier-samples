@@ -212,6 +212,7 @@ curate_config:
   EDITION_SUFFIX_RE: rules
   EDITION_DUR_TOL: engine
   NUMBER_NOTE_TOL: engine
+  SET_SPREAD_RANGE: taste
   NOTE_LEAD_CATS: taxonomy
   LOOP_DIR_ONESHOT_CATS: rules
   STAB_CHORD_NAME_RE: rules

@@ -1016,6 +1016,10 @@ EDITION_DUR_TOL = _tunable("EDITION_DUR_TOL", 0.05)
 # a set's bare numbers are notes when each file's measured root less its number agrees within
 # this many semitones (identity.number_sets: "Lead 059" / "061" rooted a semitone or two apart)
 NUMBER_NOTE_TOL = _tunable("NUMBER_NOTE_TOL", 0.5)
+# ...and in a tonal category (RETUNE_CATS) the spread stays in the register a sampler
+# plays (MIDI notes, C1..C7): a set's notes outside it (a C-1 at 16 Hz, a top key at
+# 8 kHz) are kept only when the set has no more notes inside it
+SET_SPREAD_RANGE = _tunable("SET_SPREAD_RANGE", (24, 96))
 
 
 def sibling_cap(category):

@@ -80,7 +80,7 @@ from .naming import (  # noqa: F401  (re-exported: tests and callers use the cur
 from .curate_config import CATEGORIES, NAMEABLE_EXTRA, INSTRUMENT_PACKS, INSTRUMENT_CAP
 from .curate_config import (FOLDER_TARGET_FILES, FOLDER_MIN, NAME_TOPK, NAME_SUPPORT_MIN,
                             GENRE_SUPPORT_MIN, GENRE_WORDS, INSTRUMENT_WORDS, ACOUSTIC_SOURCE_MIN,
-                            SIBLING_CAP, SIBLING_CAP_CATS, SIBLING_SETS_ONLY, sibling_cap,
+                            SIBLING_CAP, SIBLING_CAP_CATS, SIBLING_SETS_ONLY, SET_SPREAD_RANGE, sibling_cap,
                             LOOP_DIR_ONESHOT_CATS, LOOP_DIR_ONESHOT_MAX_S,
                             STAB_CHORD_FROM, SCRATCH_FROM,
                             SCRATCH_HOME, FX_SCRATCH_PHRASES,
@@ -214,7 +214,8 @@ TAIL_FADE_MS = _tunable("TAIL_FADE_MS", 5.0)            # ...with a short fade (
 # outside the window is dropped. Very high notes read as piercing ~kHz whistles
 # (a B7 = 107 triangle is ~3950 Hz), and sub-bass shouldn't sit in lead territory.
 # Applies to MELODIC_CATS + instrument kinds; per-category overridable via cfg
-# note_min / note_max. Only fires when base_note confidence > NOTE_CONF.
+# note_min / note_max. Fires on Sononym's note when its confidence > NOTE_CONF, else on
+# pYIN's (Fourier's own analysis, sample_features.own_root_midi) when there is one.
 NOTE_CONF = _tunable("NOTE_CONF", 0.4)
 NOTE_WINDOW_DEFAULT = _tunable("NOTE_WINDOW_DEFAULT", (24, 96))    # C1..C7
 NOTE_WINDOW = _tunable("NOTE_WINDOW", {
@@ -448,6 +449,15 @@ def _limit_threads():
         return threadpool_limits(limits=1)
     except Exception:
         return nullcontext()
+
+
+def _window_note(r):
+    """The note a pitch window judges a sample by: Sononym's when its confidence clears
+    NOTE_CONF, else pYIN's root (Fourier's own analysis, `own_root_midi`), else None."""
+    bn, conf = getattr(r, "base_note", None), getattr(r, "base_note_confidence", None)
+    if bn is not None and conf is not None and conf > NOTE_CONF:
+        return bn
+    return getattr(r, "own_root_midi", None)
 
 
 def _note_window(category, cfg):
@@ -2796,13 +2806,30 @@ def _cap_siblings_fill(rest, rec, room):
     return pick
 
 
-def _cap_siblings(idxs, rec, cap=SIBLING_CAP, key=None, why=None):
+def _outside_spread(r, rng):
+    """True when a set's note, as exported (its retune added), is outside `rng` (MIDI):
+    by Sononym's root when it's sure, else by pYIN's (`own_root`, Fourier's own analysis;
+    it hears 30 Hz to 2 kHz, so it can't vouch for a note beyond them) or the name's note.
+    A name's octave may count from C3 = 60 or C4 = 60: it's outside only when it is either
+    way."""
+    lo, hi = rng
+    shift = r.get("retune") or 0.0
+    if r.get("tune") is not None:
+        return not lo <= round(r["tune"] + shift) <= hi
+    if r.get("own_root") is not None and not lo <= round(r["own_root"] + shift) <= hi:
+        return True
+    n = _name_root_midi(os.path.basename(r.get("path") or ""))
+    return n is not None and (round(n + shift) + 12 < lo or round(n + shift) > hi)
+
+
+def _cap_siblings(idxs, rec, cap=SIBLING_CAP, key=None, spread=None, why=None):
     """At most `cap` files of one multisample set in a folder (key, a path's group: by default
     identity.patch_key, a set or one named patch's takes; the build passes identity.cap_key),
-    spread across the set's register (lowest, highest, then between), loudest velocity layer
-    first (_prefer_loud_layers). A Keep always stays; files that belong to no set are
-    untouched. `why`, a dict, gets each file left out: {sample id: [cap, names the set
-    keeps in the folder]} (the why log's sibling_capped)."""
+    spread across the set's register (lowest, highest, then between) within `spread` (MIDI
+    notes, SET_SPREAD_RANGE in a tonal category: notes outside it only when the set has no
+    more inside), loudest velocity layer first (_prefer_loud_layers). A Keep always stays;
+    files that belong to no set are untouched. `why`, a dict, gets each file left out:
+    {sample id: [cap, names the set keeps in the folder]} (the why log's sibling_capped)."""
     key = key or _id.patch_key
     sets, keep = defaultdict(list), []
     for i in idxs:
@@ -2813,6 +2840,12 @@ def _cap_siblings(idxs, rec, cap=SIBLING_CAP, key=None, why=None):
         rest = sorted((i for i in g if not rec[i].get("pin")),
                       key=lambda i: (rec[i]["tune"] is None, rec[i]["tune"] or 0, rec[i]["path"]))
         room = max(0, cap - len(pins))
+        far = [i for i in rest if _outside_spread(rec[i], spread)] if spread else []
+        if far and room < len(rest):
+            rest = [i for i in rest if i not in set(far)]
+            if room > len(rest):
+                pins, room = pins + rest + _spread_pick(far, rec, room - len(rest)), 0
+                rest = []
         # the previous build's picks of the set first (stable picks), then as below
         inc = [i for i in rest if rec[i].get("incumbent")]
         if inc and 0 < room < len(rest):
@@ -3282,12 +3315,13 @@ def _note_word(stem, bare=False) -> str | None:
     word no name rule reads as a note: lowercase, a sharp as "s" ("as", "f", "eb")."""
     probe = (stem or "").replace("_", " ")
     for rx in (_NOTE_TOKEN, _CHORD_TOKEN, _KEY_TOKEN, *((_BARE_NOTE,) if bare else ())):
-        m = list(rx.finditer(probe))
+        m = _note_hits(probe) if rx is _NOTE_TOKEN else list(rx.finditer(probe))
         if not m:
             continue
         g = m[-1]
-        if rx is _NOTE_TOKEN and not g.group(1):
-            letter, acc = g.group(4).upper(), g.group(5)
+        if rx is _NOTE_TOKEN:
+            letter, acc = _note_of(g)[:2]
+            letter = letter.upper()
         else:
             letter, acc = g.group(1), g.group(2)
         return letter.lower() + ("s" if acc in ("#", "s") else "b" if acc == "b" else "")
@@ -3857,6 +3891,7 @@ def _mkrec(r, pack, rel, category, support, id2row, fallback=False):
         br=_g(r.brightness, .5), atk=_g(r.attack_time_ms, 20.), dec=_g(r.decay_time_ms, 350.),
         sub=_g(r.sub_weight, 0.), noi=_g(r.noisiness, .3), har=_g(r.harmonicity, .7),
         cr=_g(r.crest_factor, 4.3), tune=tune, dur=r.duration_s,
+        own_root=getattr(r, "own_root_midi", None),      # pYIN's root (Fourier's own analysis)
         dc=_g(r.dc_offset_ratio, 0.), rms=r.rms_mean, flat=_g(r.spectral_flatness_mean, .5),
         bpm=_bpm, bpm_src=_bsrc, bpm_fold=_fold,
         is_ab=any(rel.startswith(f"{root}/") for root in INSTRUMENT_ROOTS),
@@ -4215,11 +4250,12 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                 _out_prev(r, "homed_elsewhere", homes.get(r.id))
             continue
         # pitch window: drop a confidently-detected note outside [nmin, nmax] for
-        # pitched categories (keeps out piercing top-octave notes / sub-sonic mislabels)
-        if (nmin is not None or nmax is not None) and r.base_note is not None \
-                and r.base_note_confidence is not None and r.base_note_confidence > NOTE_CONF:
-            if (nmin is not None and r.base_note < nmin) or \
-               (nmax is not None and r.base_note > nmax):
+        # pitched categories (keeps out piercing top-octave notes / sub-sonic mislabels);
+        # where Sononym isn't sure, pYIN's root (Fourier's own analysis) is the note
+        _wn = _window_note(r)
+        if (nmin is not None or nmax is not None) and _wn is not None:
+            if (nmin is not None and _wn < nmin) or \
+               (nmax is not None and _wn > nmax):
                 stats["note_gated"] += 1
                 _out(r, "note_gated", [nmin, nmax])
                 continue
@@ -5169,10 +5205,13 @@ def _clamp_rms(y, ceil_db):
 _PC = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 # a note with its octave: on its own ("C#3", "Cs4") or glued to a lowercase patch name
 # ("warmpadF#3"; not after a capital, so a model code isn't a note), or lowercase with a
-# sharp ("g#3"). Not inside a vendor code either: never after a digit or before a capital,
-# so a code's letters don't read as the root
-_NOTE_TOKEN = re.compile(r"(?<![A-Z0-9])(?<![A-Za-z][A-Z])([A-G])(#|b|s)?(-?\d)(?![0-9A-Z])"
-                         r"|(?<![A-Za-z0-9])([a-g])(#)(\d)(?![0-9A-Z])")
+# sharp ("g#3"), or lowercase as the name's last token ("Pad_e3", "Qz_b1") or before a
+# sampler's hex code ending it ("Pad_g#36b00ff"). Not inside a vendor code either: never
+# after a digit, and a word boundary after it, so a code's letters don't read as the root
+# ("XY4zork_03" has no note)
+_NOTE_TOKEN = re.compile(r"(?<![A-Z0-9])(?<![A-Za-z][A-Z])([A-G])(#|b|s)?(-?\d)(?![0-9A-Za-z])"
+                         r"|(?<![A-Za-z0-9])([a-g])(#)(\d)(?![0-9A-Za-z])"
+                         r"|(?<![A-Za-z0-9#])([a-g])(#|b|s)?(\d)(?:(?=[0-9a-f]*[a-f])[0-9a-f]{4,8})?$")
 # a bare key with an accidental as its own token ("Stab C#", "Chord F# 01")
 _KEY_TOKEN = re.compile(r"(?<![A-Za-z0-9#])([A-G])(#|b)(?![A-Za-z0-9#])")
 _CHORD_TOKEN = re.compile(r"(?<![A-Za-z])([A-G])(#|b)?(?:maj|min|m(?![a-z])|dim|aug|sus\d?|add\d+|M7|6|7|9|11|13)(?![a-z])")
@@ -5182,23 +5221,53 @@ _CHORD_TOKEN = re.compile(r"(?<![A-Za-z])([A-G])(#|b)?(?:maj|min|m(?![a-z])|dim|
 _BARE_NOTE = re.compile(r"(?<=\s)([A-G])(#|b)?(?=(?:\s+\d{1,3})?\s*$)")
 
 
+def _note_of(g):
+    """(letter, accidental, octave, start, end) of a _NOTE_TOKEN match: the note's own span,
+    without a hex code after it; the letter as the name writes it."""
+    k = 1 if g.group(1) else 4 if g.group(4) else 7
+    return g.group(k), g.group(k + 1), g.group(k + 2), g.start(k), g.end(k + 2)
+
+
+def _note_hits(probe):
+    """The notes a name (with "_" as spaces) states: _NOTE_TOKEN's matches, less a pack or
+    device code leading the name (a letter and a digit before a separator: "E7 qzv 052 e3",
+    "G5 Zorbs 08"). A name that really starts with its note loses little: a measured root
+    (Sononym's, pYIN's) still takes it to C."""
+    m = list(_NOTE_TOKEN.finditer(probe))
+    if m and m[0].start() == 0 and m[0].end() == 2 and probe[2:3] in (" ", "-"):
+        m = m[1:]
+    return m
+
+
 def _name_multi_note(name):
     """True when a filename names more than one note ("Vocal B2-D3-E2 Amin", a sung
     line): no single root, so it isn't retuned."""
     stem = os.path.splitext(os.path.basename(name or ""))[0].replace("_", " ")
-    return len({g.group(0).upper() for g in _NOTE_TOKEN.finditer(stem)}) > 1
+    return len({(n[0].upper(), n[1], n[2]) for n in map(_note_of, _note_hits(stem))}) > 1
+
+
+def _note_midi(letter, acc, octv):
+    return _PC[letter.upper()] + (1 if acc in ("#", "s") else -1 if acc == "b" else 0) + (int(octv) + 1) * 12
+
+
+_SHARPS = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+
+
+def _note_text(midi, lower=False):
+    """A MIDI note as a name writes it ("C3", "G#2"; "c3" for a name that writes its notes
+    lowercase)."""
+    n = f"{_SHARPS[midi % 12]}{midi // 12 - 1}"
+    return n.lower() if lower else n
 
 
 def _name_root_midi(name):
     """MIDI note of a filename's note with an octave ("A2" -> 45), else None (and None for
     a name with several notes)."""
     probe = os.path.splitext(os.path.basename(name or ""))[0].replace("_", " ")
-    m = list(_NOTE_TOKEN.finditer(probe))
+    m = _note_hits(probe)
     if not m or _name_multi_note(name):
         return None
-    g = m[-1]
-    letter, acc, octv = (g.group(1), g.group(2), g.group(3)) if g.group(1) else (g.group(4).upper(), g.group(5), g.group(6))
-    return _PC[letter] + (1 if acc in ("#", "s") else -1 if acc == "b" else 0) + (int(octv) + 1) * 12
+    return _note_midi(*_note_of(m[-1])[:3])
 
 
 def _played_note(r):
@@ -5233,22 +5302,27 @@ def _retuned_stem(stem, retune, bare=False):
     if retune is None or not stem:
         return stem
     probe = stem.replace("_", " ")
-    m = list(_NOTE_TOKEN.finditer(probe))
+    m = _note_hits(probe)
     if m:
-        g = m[-1]
-        if g.group(1):
-            letter, acc, octv, a, b = g.group(1), g.group(2), g.group(3), g.start(1), g.end(3)
-        else:
-            letter, acc, octv, a, b = g.group(4).upper(), g.group(5), g.group(6), g.start(4), g.end(6)
-        pc = (_PC[letter] + (1 if acc in ("#", "s") else -1 if acc == "b" else 0))
-        midi = pc + (int(octv) + 1) * 12 + int(round(retune))
-        return stem[:a] + f"C{midi // 12 - 1}" + stem[b:]
+        letter, acc, octv, a, b = _note_of(m[-1])
+        midi = _note_midi(letter, acc, octv) + int(round(retune))
+        return stem[:a] + _note_text(midi, lower=letter.islower()) + stem[b:]
     m = list(_CHORD_TOKEN.finditer(probe)) or list(_KEY_TOKEN.finditer(probe)) or (
         list(_BARE_NOTE.finditer(probe)) if bare else [])
     if m:
         g = m[-1]
         return stem[:g.start(1)] + "C" + stem[g.end(2) if g.group(2) else g.end(1):]
     return stem
+
+
+def _renoted_stem(stem, midi):
+    """A name whose note the audio contradicts (_check_name_pitches) says the note the file
+    plays: its last note token becomes `midi`'s ("Pad_G3" playing a G#: "Pad_G#3")."""
+    m = _note_hits(stem.replace("_", " "))
+    if not m:
+        return stem
+    letter, _acc, _oct, a, b = _note_of(m[-1])
+    return stem[:a] + _note_text(int(midi), lower=letter.islower()) + stem[b:]
 
 
 _LOOSE_NOTE = re.compile(r"(?<![A-Za-z])([A-G])(#|b|s)?(-?\d)(?![0-9])")
@@ -5278,10 +5352,10 @@ def _name_root_pc(name, bare=False):
     stem = os.path.splitext(os.path.basename(name or ""))[0].replace("_", " ")
     if _name_multi_note(name):
         return None
-    m = list(_NOTE_TOKEN.finditer(stem))
+    m = _note_hits(stem)
     if m:
-        g = m[-1].groups()
-        letter, acc = (g[0], g[1]) if g[0] else (g[3].upper(), g[4])
+        letter, acc = _note_of(m[-1])[:2]
+        letter = letter.upper()
     else:
         m = list(_CHORD_TOKEN.finditer(stem)) or list(_KEY_TOKEN.finditer(stem)) or (
             list(_BARE_NOTE.finditer(stem)) if bare else [])
@@ -5800,10 +5874,11 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     _numbered = _id.number_sets([(r["path"], r.get("tune")) for r in rec]) \
         if category in SIBLING_SETS_ONLY else {}
     _ckey = lambda p: _id.cap_key(p, category, _numbered)  # noqa: E731
+    _spread = SET_SPREAD_RANGE if category in RETUNE_CATS else None     # a pitched sample's register
     n_sib = 0
     if category in SIBLING_CAP_CATS:
         _before = sum(map(len, groups))
-        groups = [_cap_siblings(g, rec, cap=_scap, key=_ckey, why=_why.setdefault("sibling_capped", {}))
+        groups = [_cap_siblings(g, rec, cap=_scap, key=_ckey, spread=_spread, why=_why.setdefault("sibling_capped", {}))
                   for g in groups]
         n_sib = _before - sum(map(len, groups))
     if not cfg.get("tempo_bands"):
@@ -5829,7 +5904,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     for idxs in groups:
         if category in SIBLING_CAP_CATS:
             _before = len(idxs)
-            idxs = _cap_siblings(idxs, rec, cap=_scap, key=_ckey, why=_why["sibling_capped"])
+            idxs = _cap_siblings(idxs, rec, cap=_scap, key=_ckey, spread=_spread, why=_why["sibling_capped"])
             n_sib += _before - len(idxs)
         c = dict(idxs=idxs)
         for key in ["br", "atk", "dec", "sub", "noi", "har", "cr"]:
@@ -6031,10 +6106,12 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     _fb = _fallback(session)                    # without Sononym: names read with bare notes
 
     def export_one(src, dest, pinned=False, retune=None, root_src=None, prev_name=None, root_midi=None,
-                   bpm=None):
+                   bpm=None, renote=None):
         b = os.path.basename(src); stem, ext = os.path.splitext(b)
         _was = _note_word(stem, bare=_fb) if (_fb and root_src is not None and retune is not None) else None
-        if root_src == "name":
+        if renote is not None:
+            stem = _renoted_stem(stem, renote)     # a mislabelled note says the one it plays
+        elif root_src == "name":
             stem = _retuned_stem(stem, retune, bare=_fb)   # the name says the note it now plays
         elif retune is not None and root_midi is not None:
             stem = _renamed_detected_note(stem, retune, root_midi)
@@ -6111,12 +6188,13 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     if kroot.is_dir():
         shutil.rmtree(kroot)
     if category in RETUNE_CATS:
-        _nc = _check_name_pitches([i for c in clusters for i in c["_pick"]], rec)
+        _nc = _check_name_pitches([i for c in clusters for i in c["_pick"]], rec, category)
         if _nc:
-            log(f"{category}: {_nc} file(s) whose named note the audio contradicts keep their pitch and name")
+            log(f"{category}: {_nc} file(s) whose named note the audio contradicts keep their pitch (or follow "
+                "pYIN where Sononym agrees with it)")
         _nd = _check_detected_roots([i for c in clusters for i in c["_pick"]], rec)
         if _nd:
-            log(f"{category}: {_nd} file(s) with a detected root but no steady voiced note keep their pitch")
+            log(f"{category}: {_nd} file(s) with a detected root no steady pYIN pitch confirms keep their pitch")
         _nf = _fill_roots(category, [i for c in clusters for i in c["_pick"]], rec)
         if _nf:
             log(f"{category}: {_nf} file(s) with no named or Sononym root retuned by their pYIN pitch")
@@ -6139,7 +6217,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                                   root_src=rec[i].get("root_src"), prev_name=_prev_names.get(src),
                                   root_midi=rec[i].get("root_midi") if rec[i].get("root_midi") is not None
                                   else rec[i].get("tune"),
-                                  bpm=rec[i].get("bpm") if cfg["kind"] == "loop" else None)
+                                  bpm=rec[i].get("bpm") if cfg["kind"] == "loop" else None,
+                                  renote=rec[i].get("renote"))
                 if outp is None:
                     n_quiet += 1
                     _quiet_ids.add(rec[i]["id"])
@@ -6649,42 +6728,98 @@ def _detect_pitch(path):
     return midi
 
 
+def _pc_off(midi, ref):
+    """Semitones from `ref`'s pitch class to `midi`, octaves ignored: -6 to under 6."""
+    return (float(midi) - float(ref) + 6.0) % 12.0 - 6.0
+
+
+def _pitches_agree(a, b):
+    """Two readings of a root agree when they're the same note within half a semitone,
+    octaves ignored (a reading an octave off is the same note)."""
+    return a is not None and b is not None and abs(_pc_off(a, b)) <= 0.5
+
+
 def _pitch_conflicts(name_pc, midi):
-    """True when a clearly detected pitch contradicts a filename's note: 2 or more semitones
-    apart, not a fourth / fifth (a harmonic the detector can lock onto), octaves ignored."""
+    """True when a clearly detected pitch contradicts a filename's note: another note,
+    octaves ignored. A semitone counts (a pack labelled a note off), and so does a fifth
+    (a harmonic the detector can lock onto: _check_name_pitches then leaves the name be)."""
     if name_pc is None or midi is None:
         return False
-    d = (int(round(midi)) - name_pc) % 12
-    d = min(d, 12 - d)
-    return d >= 2 and d != 5
+    return not _pitches_agree(midi, name_pc)
 
 
-def _check_name_pitches(idxs, rec):
-    """A picked file retuned by its filename's note keeps its pitch and name when the audio
-    clearly plays another note (a patch name can look like a note, and a pack can be
-    mislabeled). Records
-    `pitch_conflict` (the detected MIDI pitch). Returns how many."""
+def _fine_tuned(retune, off):
+    """A retune's whole semitones less the cents the root sits off its note (`off`, from
+    pYIN): a root 0.3 sharp of its A takes +2.7 to C. An F# goes the nearer way. pYIN reads
+    on a 10-cent grid, so a change under half a step is its resolution, not the file's
+    tuning: the retune stays as it was."""
+    d = int(round(retune))
+    if abs(d) == 6:
+        d = -6 if off < 0 else 6
+    new = round(d - off, 3)
+    return retune if abs(new - retune) < 0.05 else new
+
+
+def _check_name_pitches(idxs, rec, category=None):
+    """A picked file retuned by its filename's note keeps its retune when the readings
+    back it: two of the name, Sononym's root (`tune`, when sure) and pYIN's steady pitch
+    (_detect_pitch) agree within half a semitone, octaves ignored. pYIN agreeing with the
+    name also sets the fine tuning (its cents, not Sononym's). Otherwise the file keeps
+    its pitch, and:
+    - pYIN hears a fifth over the named note (that note's 3rd harmonic, which pitch
+      trackers lock onto: the name may well be right): the name stays;
+    - else, where Sononym and pYIN agree on another note (the pack mislabelled it), it's
+      retuned by pYIN instead, within the category's cap, and named for the C it then
+      plays; otherwise, with a steady pYIN pitch, it's named for the note pYIN hears, so a
+      name doesn't say a note the file doesn't play (`renote`, in the name's own octave
+      numbering);
+    - with only Sononym against the name (no steady pYIN pitch: their record is about
+      even), the name stays.
+    A name alone (no steady pYIN pitch, no Sononym root) stands. Records `pitch_conflict`
+    (the reading that contradicted the name). Returns how many keep their pitch or move."""
     if os.environ.get("FOURIER_NO_PITCH_CHECK"):
         return 0
     n = 0
+    cap = RETUNE_MAX_SEMIS.get(category)
     for i in idxs:
         r = rec[i]
         if r.get("root_src") != "name" or r.get("retune") is None or not r.get("path"):
             continue
-        if _name_root_midi(os.path.basename(r["path"])) is None:
+        named = _name_root_midi(os.path.basename(r["path"]))
+        if named is None:
             continue                  # a chord or key name ("Am", "Dmin"): pYIN reads one of its notes
-        midi = _detect_pitch(r["path"])
-        if _pitch_conflicts(r.get("name_pc"), midi):
-            r["retune"], r["root_src"], r["pitch_conflict"] = None, None, midi
-            n += 1
+        son, midi = r.get("tune"), _detect_pitch(r["path"])
+        if midi is not None and not _pitch_conflicts(named, midi):
+            r["retune"] = _fine_tuned(r["retune"], _pc_off(midi, named))
+            continue
+        if midi is None and son is None or _pitches_agree(son, named):
+            continue                  # the name alone, or the name and Sononym agree
+        r["retune"], r["root_src"], r["pitch_conflict"] = None, None, midi if midi is not None else son
+        n += 1
+        if midi is None:
+            continue
+        k = int(round(_pc_off(round(midi), named)))  # semitones from the named note to pYIN's
+        if k == -5:
+            continue                  # pYIN a fifth over the name: maybe its 3rd harmonic
+        r["renote"] = named + k
+        d = int(round(-_pc_off(midi, 0)))             # pYIN's note to the nearest C
+        if not _pitches_agree(son, midi) or (cap is not None and abs(d) > cap):
+            continue
+        rt = _fine_tuned(d, _pc_off(midi, round(midi)))
+        r["retune"], r["root_src"], r["root_midi"], r["renote"] = rt, "pyin", midi, named + k + d
+        r.pop("pitch_conflict", None)
     return n
 
 
 def _check_detected_roots(idxs, rec):
     """A picked file retuned by a detected root (Sononym's, `root_src: detect`) keeps its
     pitch unless pYIN hears a steady voiced note, the bar a pYIN root clears (_detect_pitch:
-    PITCH_VOICED_MIN of the frames voiced, spread under PITCH_SPREAD_MAX): a sung phrase, a
-    noise or a hit isn't retuned by a pitch read off part of it. Returns how many."""
+    PITCH_VOICED_MIN of the frames voiced, spread under PITCH_SPREAD_MAX), on the same note
+    within half a semitone (octaves ignored): a sung phrase, a noise or a hit isn't retuned
+    by a pitch read off part of it, and a root the audio contradicts (a C Sononym read as F)
+    isn't followed. An agreeing pitch sets the fine tuning (pYIN's cents). A contradicted
+    root records `pitch_conflict` (pYIN's pitch), so no other step retunes the file.
+    Returns how many keep their pitch."""
     if os.environ.get("FOURIER_NO_PITCH_CHECK"):
         return 0
     n = 0
@@ -6692,9 +6827,15 @@ def _check_detected_roots(idxs, rec):
         r = rec[i]
         if r.get("root_src") != "detect" or r.get("retune") is None or not r.get("path"):
             continue
-        if _detect_pitch(r["path"]) is None:
-            r["retune"], r["root_src"] = None, None
-            n += 1
+        midi = _detect_pitch(r["path"])
+        son = r.get("root_midi") if r.get("root_midi") is not None else r.get("tune")
+        if midi is not None and (son is None or _pitches_agree(midi, son)):
+            r["retune"] = _fine_tuned(r["retune"], _pc_off(midi, round(son if son is not None else midi)))
+            continue
+        r["retune"], r["root_src"] = None, None
+        if midi is not None:
+            r["pitch_conflict"] = midi
+        n += 1
     return n
 
 

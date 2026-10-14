@@ -71,7 +71,8 @@ def test_glued_notes_on_one_c_keep_one():
 
 def test_a_detected_root_counts_when_the_name_states_the_note():
     rec = [_rec("Frobnik_f#34b00ff.wav", "SYNTH", tune=54.0), _rec("Frobnik_d#44b00ff.wav", "SYNTH", tune=63.0)]
-    assert [(r["retune"], r["root_src"]) for r in rec] == [(6, "detect"), (-3, "detect")]
+    # the name's own note is read now (before a sampler's hex code): the retune is the name's
+    assert [(r["retune"], r["root_src"]) for r in rec] == [(6, "name"), (-3, "name")]
     groups, n = C._one_per_retune_target([[0, 1]], rec)
     assert n == 1 and groups == [[1]]                       # -3 over +6, both on C4
     # numbered takes with a measured root may be other patches: untouched (as before)

@@ -232,7 +232,10 @@ naming, routing, loudness, ratings). `fourier why --rules` prints the routing pr
   curation chose before it, without it the fallback chain; the why log records each pick's
   `sources`. Fourier's own analysis runs with or without Sononym (`fourier tools analyze
   --only own`: pYIN roots of tonal one-shots, then the keys of what Fourier calls tonal) and
-  picks nothing: `fourier why` shows both readings where they differ ("readings differ:
+  picks nothing, except where Sononym's root isn't sure: there its pYIN root is the note a tonal
+  category's pitch window and a multisample set's spread judge (`curate._window_note`,
+  `_outside_spread`), and a retune to C needs two of name, Sononym and pYIN to agree
+  (`_check_name_pitches`, `_check_detected_roots`): `fourier why` shows both readings where they differ ("readings differ:
   tempo 174 (Sononym) / 87 (Fourier's own analysis)") and `fourier tools db-stats
   --disagreements` lists them across the library.
 - **The sound model** (`src/fourier/metadata/sound.py`, provider `fourier:sound`;
