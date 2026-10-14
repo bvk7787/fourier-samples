@@ -156,7 +156,9 @@ whichever the installed soundfile reads (not `.m4a`). It reports what it skipped
 
 - A corrupt or empty audio file is listed as an error and left out. `fourier doctor` lists them,
   and a scan reads them again only once they change.
-- Dot files and Fourier's own folders are skipped.
+- Dot files and Fourier's own folders are skipped. With Sononym the scan skips them too: a
+  publish root inside the library (releases, device locks) is indexed by Sononym, never taken
+  back in by Fourier.
 - A folder symlink that leads out of the library folder (a pack on another drive) is followed,
   and its files are filed where the link puts them. Each real folder is walked once.
 - Samples the walk no longer finds (moved, renamed, deleted) are marked missing and left out of

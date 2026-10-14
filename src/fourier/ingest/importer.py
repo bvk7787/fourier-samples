@@ -197,8 +197,12 @@ def import_from_sononym(
         include_extended=True,
     )
 
+    own = own_rel_prefixes(reader.library_root)
     with session_scope() as session:
         for asset in stream:
+            if _is_own(asset.rel_path, own):
+                counts["skipped"] += 1
+                continue            # Fourier's own output (own_rel_prefixes)
             batch.append(asset)
             processed += 1
 
@@ -232,6 +236,32 @@ def import_from_sononym(
     return counts
 
 
+def own_rel_prefixes(library_root: Path) -> tuple[str, ...]:
+    """Fourier's own output folders (the master and its .next / .prev, the renders and the
+    publish root: releases, device locks) that sit inside this library folder, as paths
+    relative to it with a trailing "/". Sononym indexes whatever is under its library, these
+    folders too; the scan skips them as the walk does (walk.own_folders), so Fourier never
+    takes its own exports back in as library samples."""
+    from .. import places
+    try:
+        master = places.master_dir()
+        cands = [master, master + ".next", master + ".prev", places.renders_dir(), places.publish_root()]
+    except Exception:
+        return ()
+    root = os.path.realpath(os.path.expanduser(str(library_root)))
+    out = []
+    for c in cands:
+        real = os.path.realpath(os.path.expanduser(str(c)))
+        rel = os.path.relpath(real, root)
+        if rel != "." and not rel.startswith(".."):
+            out.append(rel.replace(os.sep, "/").rstrip("/") + "/")
+    return tuple(out)
+
+
+def _is_own(rel_path: str, own: tuple[str, ...]) -> bool:
+    return bool(own) and (rel_path or "").replace(os.sep, "/").startswith(own)
+
+
 def sync_from_sononym(
     sononym_db: Path | None = None,
     library_root: Path | None = None,
@@ -260,6 +290,13 @@ def sync_from_sononym(
     # --- Step 1: lightweight modtime snapshot from both sides ---------------
     log.info("Loading Sononym modtimes (lightweight scan)...")
     sononym_modtimes: dict[str, int] = reader.get_all_modtimes()
+    own = own_rel_prefixes(reader.library_root)
+    if own:
+        n_own = len(sononym_modtimes)
+        sononym_modtimes = {p: m for p, m in sononym_modtimes.items() if not _is_own(p, own)}
+        n_own -= len(sononym_modtimes)
+        if n_own:
+            log.info(f"Skipping {n_own:,} Sononym assets in Fourier's own folders ({', '.join(own)})")
 
     log.info("Loading fourier modtimes...")
     with session_scope() as session:
