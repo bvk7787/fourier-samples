@@ -185,11 +185,16 @@ def test_a_shapeless_file_from_a_percussion_folder_is_percs(tmp_path):
     assert w.decided == ("perc_source", "PERC")
 
 
-def test_a_loop_tagged_riser_chord_keeps_the_stab_rule(tmp_path):
-    # verify holds neither rule on a file Live or a classifier calls a loop; the stab rule keeps it in STABS
+def test_a_loop_tagged_riser_chord_is_fx(tmp_path):
+    # a one-shot by the classifier's class is the transition rule's whatever Live's "Loop" says;
+    # the stab rule doesn't take it back (one only the classifier calls a loop: neither rule)
     w = W.explain_row(_row("/lib/SampleLibrary/V/P/FX/Riser Chord Soft.wav", cats='["Tone Pads & Textures"]',
                            tags='["Atmosphere", "Loop"]', dur=2.0), store_path=str(tmp_path / "n.json"))
-    assert "stab" in [m[0] for m in w.matched]
+    assert w.decided == ("fx_transition", "FX") and "stab" not in [m[0] for m in w.matched], w.matched
+    w = W.explain_row(_row("/lib/SampleLibrary/V/P/FX/Riser Chord Soft.wav", cats='["Tone Pads & Textures"]',
+                           classes='["Loop"]', tags='["Atmosphere", "Loop"]', dur=2.0),
+                      store_path=str(tmp_path / "n.json"))
+    assert "fx_transition" not in [m[0] for m in w.matched], w.matched
 
 
 def test_the_votes_name_the_providers_that_cast_them(tmp_path):

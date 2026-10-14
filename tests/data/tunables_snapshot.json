@@ -3323,6 +3323,20 @@
    "flags": 34
   }
  },
+ "curate_config.DRUMLOOP_STYLE_SPARE_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:drums?|drm|beats?|breaks?|breakbeats?|tops?|hats?|hi[ -]?hats?|hihats?|percs?|percussions?|kicks?|snares?|grooves?|kit[ -]?loops?)(?![a-z])",
+   "flags": 34
+  }
+ },
+ "curate_config.DRUMLOOP_STYLE_CONTENT_RE": {
+  "type": "Pattern",
+  "value": {
+   "$re": "(?<![a-z])(?:s?fx|effects?|impacts?|synths?|stabs?|brass|music(?:al)?|melod(?:y|ic|ies)|chords?|keys|leads?|pads?|vocals?|vox|full[ -]?mix(?:es)?)(?![a-z])|(?<![a-z])(?<!future )bass(?:lines?)?(?![a-z])(?! ?drum)",
+   "flags": 34
+  }
+ },
  "curate_config.DRUMLOOP_MUSIC_DIR_RE": {
   "type": "Pattern",
   "value": {
@@ -4057,6 +4071,7 @@
   "type": "set",
   "value": {
    "$set": [
+    "ACOUSTIC",
     "BLIPS",
     "PADS",
     "STABS",
@@ -7608,7 +7623,8 @@
    "$set": [
     "CLAPS",
     "CYMBALS",
-    "HATS"
+    "HATS",
+    "SNARES"
    ]
   }
  },
@@ -8041,6 +8057,10 @@
   "type": "float",
   "value": 0.5
  },
+ "sets.KIT_UNDER_DB": {
+  "type": "float",
+  "value": 6.0
+ },
  "sets.KIT_MACHINE_MAX": {
   "type": "int",
   "value": 10
@@ -8174,7 +8194,7 @@
         "flags": 34
        },
        {
-        "$re": "tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])(?!\\d+[a-z])",
+        "$re": "tamb|shak|marac|cabasa|closed|clsd|(?<![a-z])(cl|ch|chh)(?![a-z])(?!\\d+[a-z])|pedal|(?<![a-z])foot|(?<![a-z])(pc|hc)(?![a-z])",
         "flags": 34
        }
       ]

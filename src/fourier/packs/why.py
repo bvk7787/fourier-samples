@@ -208,9 +208,15 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
                              act is not None and act.fallback) if oneshot else None
     if drum and v == "misfiled" and (w.rating or {}).get("category") == drum:
         drum = None
-    if not drum and not ORCH_PACK_EXCLUDE.search(pack) and (
-            C._acoustic_tagged(ab, fn, pack) or (oneshot and C._is_acoustic_named(fn, ab))
-            or (not is_loop and C._is_wind_named(fn, ab)) or C._orch_path(r.rel_path) is not None):
+    # (a named transition goes ahead of the acoustic reservations when ACOUSTIC is in
+    # FX_TRANSITION_FROM, as in compute_homes)
+    trn = C._fx_transition_shaped(is_oneshot, is_loop) and C._is_fx_transition(fn, r.rel_path or library_rel(r.path or "")) \
+        and not (v == "misfiled" and (w.rating or {}).get("category") == "FX")
+    acu = not drum and not ORCH_PACK_EXCLUDE.search(pack) and (
+        C._acoustic_tagged(ab, fn, pack) or (oneshot and C._is_acoustic_named(fn, ab))
+        or (not is_loop and C._is_wind_named(fn, ab)) or C._orch_path(r.rel_path) is not None)
+    trn_acoustic = acu and trn and "ACOUSTIC" in FX_TRANSITION_FROM
+    if acu and not trn_acoustic:
         hit("acoustic", "acoustic instrument by tag / name / folder", "ACOUSTIC")
     if not drum and not is_loop and C._is_organ_named(fn):
         hit("organ", "organ-named", "PIANO")
@@ -246,7 +252,7 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
     scr = oneshot and C._scratch_named(fn, r.rel_path)
     if scr and cand & SCRATCH_FROM:
         hit("scratch", "scratch-named", SCRATCH_HOME)
-    if not is_loop and not scr and cand & FX_TRANSITION_FROM and C._is_fx_transition(fn):
+    if trn and not scr and (cand & FX_TRANSITION_FROM or trn_acoustic):
         hit("fx_transition", "riser / downlifter / sweep by name", "FX")
     dn = C._drum_named_in(fn, r.rel_path or r.path, act is not None and act.fallback, C._canonical_of(r), ab) \
         if (oneshot and not scr) else None
@@ -255,7 +261,8 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
     if not is_loop and not scr and "SYNTH" in cand and C._perc_sourced(r.rel_path, fn):
         hit("perc_source", "percussion folder or pack", "PERC")
     if C._is_named_stab(fn, r.duration_s, r.n_events, oneshot) and cand & STAB_CHORD_FROM \
-            and not (C._is_fx_transition(fn) and not C._is_loop_row(r)):
+            and not (C._fx_transition_shaped(is_oneshot, is_loop) and C._is_fx_transition(
+                fn, r.rel_path or library_rel(r.path or ""))):
         hit("stab", "stab / chord-named, short", "STABS")
     if v == "misfiled":
         hit("misfiled", f"rated Misfiled in {w.rating['category']}", decides=False)

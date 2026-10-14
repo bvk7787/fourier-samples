@@ -80,6 +80,20 @@ change the CLI or the config).
   starts 12-45 ms late on silence is rotated to its first sound like a drum loop, and a drum
   loop whose silence turns into a faint floor before a soft downbeat is rotated again (the
   floor's start had read as an on-time downbeat).
+- Routing and naming gaps a whole-library review found: a named riser, downlifter or sweep
+  now goes to FX when a classifier calls it a one-shot and a loop or Live tags it "Loop", when
+  Live tags it as a guitar (ACOUSTIC joins `FX_TRANSITION_FROM`), and when its name repeats a
+  pack's name with "Pad" in it; a hat whose name says neither open nor closed takes its
+  folder's ("Closed Hat/..."); a kit's open-hat slot never takes a pedal or foot hat or one
+  coded "PC" / "hc017", and a slot passes over a take more than 6 dB under its role's level
+  (`KIT_UNDER_DB`) when the pack has another; a pack's drum prefix in a folder naming two drums
+  ("Kick (snare rattle)") yields to the drum the folder names first or the classifier
+  singles out; a wave file named "(128x8)" whose length holds those frames is banded `table`;
+  SNARES folder names drop the tune word (`NO_TUNE_CATS`: their pitch readings are as
+  unreliable as a clap's); and a style exclusion (breaks-acid's trap and dubstep) no longer
+  holds out a loop whose name or folder says drums (`DRUMLOOP_STYLE_SPARE_RE`) unless it also
+  names another sound (`DRUMLOOP_STYLE_CONTENT_RE`).
+
 - `fourier verify` no longer fails a file a Keep or a Move rating pinned into a banded
   category (FX, CYMBALS, PHRASES, ...) on its band: the build bands it on the labels the
   database holds, while its manifest entry records only the votes of where it came from, which
