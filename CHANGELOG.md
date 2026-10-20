@@ -25,6 +25,9 @@ change the CLI or the config).
 
 ### Fixed
 
+- A rebuild in a shell pointed at the demo (`. demo.env`, then `fourier build`) uses the
+  demo's stand-in CLAP text encoder, as `fourier demo` does, build workers included: no model
+  and no download (#78).
 - The scan's Sononym import and sync skip Fourier's own folders (the master, the renders and
   the publish root with its releases) when they sit inside the library folder Sononym indexes,
   as the folder walk already did, so a Sononym refresh never brings a release's exported files
