@@ -172,6 +172,10 @@ checked can stay `{value, status: unverified}` on its own.
 
 ### 4. Check it
 
+The test and the synthetic build run from a source checkout with the `[dev]` extra, set up as
+[CONTRIBUTING.md](../CONTRIBUTING.md) says (`git clone`, then `uv sync --extra dev`). A
+`pip install` of the package has neither. Run these from the checkout's folder:
+
 ```bash
 fourier devices show my_sampler                  # each value with its page or status
 FOURIER_MANUALS_DIR=~/manuals pytest -q tests/test_device_citations.py   # every quote on its page

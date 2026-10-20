@@ -178,8 +178,22 @@ whichever the installed soundfile reads (not `.m4a`). It reports what it skipped
 
 The message says which files and what to run.
 
-Rules for your own packs, and categories only your library needs, go in a private overlay
-(`overlay = "my-library.yaml"`). See "Adding a category" in the
+Rules for your own packs, and categories only your library needs, go in a private overlay:
+a YAML file that fourier.toml names. Keys are tunable names (`fourier config explain <name>`
+says what one does). Most overlays set a few of the `library` tunables, which ship empty:
+
+```yaml
+# my-library.yaml   (fourier.toml: overlay = "my-library.yaml")
+advanced:
+  PIANO_PACKS: "^(Acme Grand|Qxvwz Uprights)$"   # packs whose files go to PIANO, and only there
+  FAVORED_SOURCES: "Acme Breaks"                 # a nudge toward these sources (matched on the path)
+  NAME_BOILERPLATE:                              # cut from file names; the list replaces the default
+    - '[ _-]*sample[ _-]?pack(?=[ _-]|$)'
+    - '[ _-]*acme(?=[ _-]|$)'
+```
+
+`fourier config show` lists what the overlay set. A whole new category goes in the same file:
+see "Adding a category" in the
 [curation reference](https://github.com/bvk7787/fourier-samples/blob/main/docs/curation.md).
 
 ## Styles and knobs

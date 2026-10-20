@@ -25,6 +25,9 @@ change the CLI or the config).
 
 ### Fixed
 
+- Docs: usage.md shows a small library overlay; device-profiles.md says its checks run from a
+  source checkout; setup suggests `generic_sd_card` for an unlisted sampler that reads an SD
+  card; the CI step that builds two presets says so (#82).
 - `fourier tools resolve` before the first build says to run `fourier build` and exits 1,
   instead of stopping with an error report (#81).
 - A rebuild in a shell pointed at the demo (`. demo.env`, then `fourier build`) uses the
