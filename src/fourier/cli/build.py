@@ -214,8 +214,8 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
     from ..settings import overrides as _overrides
     library = [k for k, (cls, _) in _tunable_meta().items() if cls == "library"]
     if library and not any(k in _overrides() for k in library):
-        console.print("[yellow]No library overlay: the library rules (config/tunables.yaml, class "
-                      "\"library\") are empty for this build. `fourier config show` lists the layers.[/yellow]")
+        console.print("No library overlay: no rules for your own packs (optional; docs/usage.md "
+                      "shows one).", style="dim", markup=False, highlight=False, soft_wrap=True)
     # harvest Ableton "Fourier|..." ratings BEFORE a rebuild replaces the folders holding
     # them (Live keeps the tags in XMP sidecars inside the master): the master being
     # rebuilt, and the live master if that's a different folder. A failed harvest stops

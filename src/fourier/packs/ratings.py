@@ -353,9 +353,16 @@ def harvest(master_dir=None, store_path=None, log=print):
     s["colored"] = len(C)
     save_store(store, store_path)
     s["total"] = len(R)
-    log(f"ratings: +{s['added']} new ({s['from_favorites']} from Favorites), {s['changed']} changed, "
-        f"{s['cleared']} cleared, {s['unmatched']} unmatched; {s['total']} rated, {s['colored']} colored "
-        f"in {store_path or default_store()}")
+    # what the harvest found, leaving out what's zero (without Live it finds nothing to say)
+    found = [f"+{s['added']} new" + (f" ({s['from_favorites']} from Favorites)" if s["from_favorites"] else "")
+             if s["added"] else "", f"{s['changed']} changed" if s["changed"] else "",
+             f"{s['cleared']} cleared" if s["cleared"] else "",
+             f"{s['unmatched']} unmatched" if s["unmatched"] else ""]
+    found = [x for x in found if x]
+    if found or s["colored"]:
+        log(f"ratings: {', '.join(found) or 'no changes'}; {s['total']} rated"
+            + (f", {s['colored']} colored" if s["colored"] else "")
+            + f" in {store_path or default_store()}")
     if unreadable:
         log(f"ratings: WARNING {len(unreadable)} sidecar(s) couldn't be read, their ratings were kept "
             f"as stored: {', '.join(sorted(unreadable)[:3])}")
@@ -563,8 +570,9 @@ def apply_tags(master_dir, store_path=None, log=print):
                 f.write(_render_xmp(items, creator))
             os.replace(tmp, path)
             s["folders_written"] += 1
-    log(f"ratings: applied {s['files']} files to {master_dir} "
-        f"({s['folders_written']} sidecars written, {s['folders_skipped']} skipped)")
+    if s["files"] or s["folders_skipped"]:
+        log(f"ratings: applied {s['files']} files to {master_dir} "
+            f"({s['folders_written']} sidecars written, {s['folders_skipped']} skipped)")
     return s
 
 
