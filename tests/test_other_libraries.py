@@ -117,6 +117,8 @@ def test_layouts_without_a_session(monkeypatch):
     from fourier.packs import curate_config as cc
     monkeypatch.setattr(cc, "VENDORS", "auto")
     monkeypatch.setattr(V, "_LAYOUTS", {})
+    # no database here, whatever an earlier test in this worker pointed the process at (--db)
+    monkeypatch.setattr("fourier.db.session.db_exists", lambda: False)
     assert V.prepare(None) == {}
     assert V.vendor_of("Acme/Pack/Kick.wav", "Acme/Pack/Kick.wav") == "Acme"
 
