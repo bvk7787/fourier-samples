@@ -78,6 +78,15 @@ def test_help_examples_keep_their_lines():
     assert "\n    fourier render m8_tracker --check" in r.output
 
 
+def test_resolve_before_a_build_says_the_next_step(monkeypatch, tmp_path):
+    monkeypatch.setenv("FOURIER_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("FOURIER_CLAP_INDEX", str(tmp_path / "no-index.npz"))
+    r = CliRunner().invoke(main, ["--db", str(tmp_path / "t.duckdb"), "tools", "resolve"])
+    assert r.exit_code == 1 and "needs the CLAP index" in r.output, r.output
+    assert "bug report" not in r.output
+    assert not list((tmp_path / "home").rglob("error-*.txt"))
+
+
 def test_search_takes_a_free_text_query(monkeypatch, tmp_path):
     db = ["--db", str(tmp_path / "t.duckdb")]
     monkeypatch.setenv("FOURIER_CLAP_INDEX", str(tmp_path / "no-index.npz"))

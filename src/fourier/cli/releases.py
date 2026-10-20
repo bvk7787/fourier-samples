@@ -549,6 +549,11 @@ def resolve():
     \b
       fourier tools resolve
     """
+    from ..paths import clap_index_path
+    if not clap_index_path().exists():
+        console.print("Resolving categories needs the CLAP index: run `fourier build` first.",
+                      style="red", markup=False, highlight=False, soft_wrap=True)
+        raise SystemExit(1)
     from ..analysis.resolution import persist_resolution
     with session_scope() as session:
         persist_resolution(session, log=lambda m: console.print(m))

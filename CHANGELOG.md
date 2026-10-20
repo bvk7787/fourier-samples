@@ -25,6 +25,8 @@ change the CLI or the config).
 
 ### Fixed
 
+- `fourier tools resolve` before the first build says to run `fourier build` and exits 1,
+  instead of stopping with an error report (#81).
 - A rebuild in a shell pointed at the demo (`. demo.env`, then `fourier build`) uses the
   demo's stand-in CLAP text encoder, as `fourier demo` does, build workers included: no model
   and no download (#78).
