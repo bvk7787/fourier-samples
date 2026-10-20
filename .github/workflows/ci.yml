@@ -103,7 +103,7 @@ jobs:
           python tests/golden/synthetic_build.py "$RUNNER_TEMP/no-sononym" --without sononym
           python tests/golden/synthetic_build.py "$RUNNER_TEMP/no-live" --without ableton
           python tests/golden/synthetic_build.py "$RUNNER_TEMP/neither" --without sononym,ableton
-      - name: Each preset builds and passes verify
+      - name: Two presets (breaks-acid and balanced) build and pass verify
         if: ${{ matrix.full }}
         shell: bash
         run: |

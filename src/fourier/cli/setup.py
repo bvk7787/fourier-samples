@@ -1175,8 +1175,9 @@ def _config_steps(w: _Wizard, target: Path, library, devices, preset, outputs: d
         except Exception:
             names[d] = "?"
         console.print(f"  {i:>2}  {d:<16} {names[d]}", markup=False, highlight=False)
-    console.print("Your device isn't listed? Pick generic_folder or run `fourier devices new` "
-                  "later.", markup=False, highlight=False)
+    console.print("Your device isn't listed? Pick generic_sd_card if it reads an SD card, "
+                  "generic_folder otherwise, or run `fourier devices new` later.",
+                  markup=False, highlight=False)
     devs, bad = pick_devices(devices or (), known, names)
     while True:
         if not devs and not bad:
