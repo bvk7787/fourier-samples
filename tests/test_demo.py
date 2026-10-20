@@ -99,6 +99,27 @@ def test_the_stand_in_clap_is_put_back():
     assert CF.embed_text is real
 
 
+def test_a_shell_pointed_at_a_demo_gets_the_stand_in_text_encoder(tmp_path, monkeypatch):
+    """After `. demo.env` (or in a build worker it starts) CLAP text comes from the stand-in:
+    the model is never loaded and nothing is cached."""
+    from fourier.analysis import clap_features as CF
+
+    def no_model(text):
+        raise AssertionError("the real CLAP model was asked for " + text)
+    monkeypatch.setattr(CF, "_embed_text_model", no_model)
+    root = D.prepare(tmp_path / "demo")
+    where = D.layout(root)
+    for k in [k for k in os.environ if k.startswith("FOURIER_")]:
+        monkeypatch.delenv(k)
+    monkeypatch.setenv("FOURIER_HOME", str(where["home"]))
+    v = CF.embed_text("dark kick")
+    assert (v == D.fake_embed_text("dark kick")).all()
+    monkeypatch.delenv("FOURIER_HOME")
+    monkeypatch.setenv("FOURIER_CONFIG", str(where["config"]))
+    assert (CF.embed_text("open hat") == D.fake_embed_text("open hat")).all()
+    assert not (where["home"] / "cache").exists()
+
+
 def test_demo_refuses_a_foreign_folder_without_opening_the_users_home(tmp_path, monkeypatch):
     home = tmp_path / "fourier-home"
     monkeypatch.setenv("FOURIER_HOME", str(home))
@@ -138,3 +159,14 @@ def test_demo_builds_and_renders_inside_its_folder_only(tmp_path):
     assert ignore(_tree(home)) == ignore(home_before)
     assert _tree(cwd) == cwd_before
     assert sorted(p.name for p in tmp_path.iterdir()) == ["cwd", "demo", "home"]
+    # the rebuild the demo suggests, in a shell pointed at it: no scan and no model (a torch
+    # that can't import stands in for an install without the CLAP extra), with workers too
+    shim = tmp_path / "notorch"
+    shim.mkdir()
+    (shim / "torch.py").write_text("raise ModuleNotFoundError(\"No module named 'torch'\")\n")
+    env.update(PYTHONPATH=os.pathsep.join([str(shim), str(ROOT / "src")]),
+               FOURIER_HOME=str(root / "home"), FOURIER_CONFIG=str(root / "fourier.toml"))
+    for jobs in ("1", "2"):
+        r = run_child([sys.executable, "-m", "fourier", "build", "-j", jobs], cwd=cwd, env=env)
+        assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
+        assert "stand-in analysis" in r.stdout and "torch" not in r.stdout + r.stderr

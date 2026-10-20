@@ -187,6 +187,9 @@ def embed_text(text: str) -> np.ndarray:
     Returns:
         np.ndarray of shape (512,) dtype float32
     """
+    from ..demo import active, fake_embed_text
+    if active():            # a demo's analysis is stand-in data, so its text encoder is too
+        return fake_embed_text(text)
     return np.frombuffer(_embed_text_cached(text), dtype=np.float32).copy()
 
 
