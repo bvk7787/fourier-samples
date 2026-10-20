@@ -363,3 +363,19 @@ def test_rekey_leaves_ambiguous_hash(tmp_path):
     s = rekey_by_hash(_Sess([(str(a), "h"), (str(b), "h")]), store, log=lambda x: None)
     assert s["moved"] == 0 and s["orphaned"] == 1
     assert "/gone/k.wav" in load_store(store)["ratings"]
+
+
+def test_harvest_and_write_back_say_only_what_happened(tmp_path):
+    """Without Live (no sidecars, nothing stored) neither step prints a line of zeros; with a
+    tag, the harvest line names what changed and leaves the zeros out."""
+    store = str(tmp_path / "ratings.json")
+    m = _master(tmp_path / "plain", "t1", ENTRIES)
+    said = []
+    harvest(m, store, log=said.append)
+    apply_tags(m, store, log=said.append)
+    assert said == []
+    m = _master(tmp_path / "tagged", "t2", ENTRIES,
+                {("KICKS", "808-sub"): [("BD 808.wav", ["Fourier|Keep"])]})
+    harvest(m, store, log=said.append)
+    assert len(said) == 1 and said[0].startswith("ratings: +1 new; 1 rated in "), said
+    assert "Favorites" not in said[0] and "colored" not in said[0] and "cleared" not in said[0]

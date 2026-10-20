@@ -25,6 +25,9 @@ change the CLI or the config).
 
 ### Fixed
 
+- A build without Live tags in its master no longer prints ratings lines of zeros (Favorites,
+  colored files, sidecars written), and the note about a missing library overlay is one plain
+  line (#79).
 - Docs: usage.md shows a small library overlay; device-profiles.md says its checks run from a
   source checkout; setup suggests `generic_sd_card` for an unlisted sampler that reads an SD
   card; the CI step that builds two presets says so (#82).
