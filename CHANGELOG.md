@@ -25,6 +25,9 @@ change the CLI or the config).
 
 ### Fixed
 
+- `fourier devices list` keeps each device on one line in an 80-column terminal: a short
+  format ("44.1 kHz 16-bit stereo"), the Name column from 100 columns up (`devices show` has
+  it), and a From column only once there's a profile of your own (#80).
 - A build without Live tags in its master no longer prints ratings lines of zeros (Favorites,
   colored files, sidecars written), and the note about a missing library overlay is one plain
   line (#79).

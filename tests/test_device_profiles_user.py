@@ -250,3 +250,22 @@ def test_a_device_whose_limit_leaves_no_room_fails_doctor_not_every_command(tmp_
     from fourier import knobs, layers
     got = knobs.devices(["zz_tight", "m8_tracker"], layers.defaults())
     assert got == knobs.devices(["m8_tracker"], layers.defaults())
+
+
+def test_devices_list_keeps_each_device_on_one_line(monkeypatch):
+    """80 columns: one line per device, the Name column left out (`devices show` has it) and
+    no From column without a profile of your own; a wide terminal gets the Name too."""
+    from fourier.cli._app import console
+    monkeypatch.delenv("FOURIER_DEVICES", raising=False)
+    ids = DeviceLoader().list_devices()
+    monkeypatch.setattr(console, "width", 80)
+    r = CliRunner().invoke(main, ["devices", "list"])
+    assert r.exit_code == 0, r.output
+    rows = [ln for ln in r.output.splitlines() if ln.split() and ln.split()[0] in ids]
+    assert sorted(ln.split()[0] for ln in rows) == sorted(ids)
+    assert all(len(ln.rstrip()) <= 80 for ln in r.output.splitlines())
+    assert "Name" not in r.output and "From" not in r.output and "devices show <id>" in r.output
+    assert any("48 kHz 16-bit stereo" in ln for ln in rows)
+    monkeypatch.setattr(console, "width", 120)
+    r = CliRunner().invoke(main, ["devices", "list"])
+    assert "Name" in r.output and "Dirtywave M8" in r.output and "devices show <id>" not in r.output
