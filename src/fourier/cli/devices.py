@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 
 import click
+from rich import box
 from rich.table import Table
 
 from ..devices.loader import DeviceLoader, DeviceProfileError, user_devices_dir, user_devices_dirs
@@ -40,31 +41,50 @@ def devices_list():
         console.print("[yellow]No device profiles found in config/devices/[/yellow]")
         return
 
-    table = Table(title="Available Devices")
-    table.add_column("ID", style="cyan", no_wrap=True,          # the word you type: never cut
-                     min_width=max(len(d) for d in device_ids))
-    table.add_column("Name", style="green")
-    table.add_column("Format")
-    table.add_column("Load")
-    table.add_column("Storage", justify="right")
-    table.add_column("Checked")
-    table.add_column("From")
-
+    # one line per device: the Name column only where the terminal has room for it (the ID is
+    # what you type; `devices show` has the name), From only once there's a profile of your own
+    profiles, errors = {}, {}
     for did in device_ids:
         try:
-            p = loader.load(did)
-            table.add_row(did, p.name, f"{p.sample_rate} Hz / {p.bit_depth}-bit / {p.channels}",
-                          p.load, f"{p.storage_mb / 1000:g} GB" if p.storage_mb else "-",
-                          "manual" if p.verified else "[yellow]unverified[/yellow]",
-                          "yours" if p.origin == "user" else "package")
+            profiles[did] = loader.load(did)
         except Exception as e:
-            table.add_row(did, f"[red]Error: {e}[/red]", "-", "-", "-", "-", "-")
+            errors[did] = str(e)
+    wide = console.width >= NAME_MIN_WIDTH
+    yours = any(p.origin == "user" for p in profiles.values())
+    table = Table(box=box.SIMPLE_HEAD, pad_edge=False)
+    table.add_column("ID", style="cyan", no_wrap=True)
+    if wide:
+        table.add_column("Name", style="green", no_wrap=True)
+    for col in ("Format", "Load", "Storage", "Checked") + (("From",) if yours else ()):
+        table.add_column(col, no_wrap=True, justify="right" if col == "Storage" else "left")
+    for did in device_ids:
+        p = profiles.get(did)
+        if p is None:
+            table.add_row(did, *([""] if wide else []), f"[red]Error: {errors[did]}[/red]")
+            continue
+        row = [did, *([p.name] if wide else []), _format(p), p.load,
+               f"{p.storage_mb / 1000:g} GB" if p.storage_mb else "-",
+               "manual" if p.verified else "[yellow]unverified[/yellow]"]
+        if yours:
+            row.append("yours" if p.origin == "user" else "package")
+        table.add_row(*row)
 
     console.print(table)
     for path, why in loader.problems():
         console.print(f"skipped {path}: {why}", style="yellow", markup=False, highlight=False)
+    if not wide:
+        console.print("`fourier devices show <id>` has a device's full name and limits.",
+                      markup=False, highlight=False)
     console.print("Your device isn't listed? `fourier devices new` makes a profile for it.",
                   markup=False, highlight=False)
+
+
+NAME_MIN_WIDTH = 100     # columns: below this `devices list` leaves the Name column out
+
+
+def _format(p) -> str:
+    """A profile's format in one short phrase: "44.1 kHz 16-bit stereo"."""
+    return f"{p.sample_rate / 1000:g} kHz {p.bit_depth}-bit {p.channels}"
 
 
 @devices.command("show", short_help="Show a device profile, each value with its source.")
