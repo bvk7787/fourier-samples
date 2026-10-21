@@ -14,9 +14,10 @@ fourier doctor       # what's ready, what the first build will do, how long it s
 fourier build        # scan, analyze, build the master, verify it
 ```
 
-The first build is the long one. CLAP listens to every sample, about 30 a second on a recent
-computer, so 100,000 files take roughly an hour. `fourier doctor` and the build say how long
-before they start. Later builds only analyze what's new.
+The first build is the long one. CLAP and Fourier's own measurements go through every sample,
+which takes hours on a large library, and longer where PyTorch runs on the CPU alone (an Intel
+Mac without an AMD graphics card, Linux without an NVIDIA GPU). `fourier doctor` and the build
+say how long before they start. Later builds only analyze what's new.
 
 On a terminal the build shows its progress, then a summary: the files in each category, any
 category left empty, how many samples no name rule recognized, verify's result, and where the

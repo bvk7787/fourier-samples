@@ -339,6 +339,8 @@ def test_setup_installs_clap_and_downloads_the_model(tmp_path, monkeypatch, clap
     assert "PyTorch with CUDA (for the NVIDIA GPU here) is several GB" in out    # (cpu_only_torch: False)
     assert "The CLAP model is ready." in out
     assert "Ready to build" in out and "Next: fourier build (it can stop" in out    # --yes: no build
+    nxt = out[out.index("Next: fourier build"):]
+    assert nxt.index("fourier publish") < nxt.index("fourier render <device> --release v1")  # the docs' order
 
 
 def test_setup_prints_the_command_when_nothing_can_install(tmp_path, monkeypatch, clap_env):

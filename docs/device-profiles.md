@@ -172,16 +172,22 @@ checked can stay `{value, status: unverified}` on its own.
 
 ### 4. Check it
 
-The test and the synthetic build run from a source checkout with the `[dev]` extra, set up as
-[CONTRIBUTING.md](../CONTRIBUTING.md) says (`git clone`, then `uv sync --extra dev`). A
-`pip install` of the package has neither. Run these from the checkout's folder:
+These need only an installed `fourier`. `fourier demo` makes a small master to try the
+profile on:
 
 ```bash
-fourier devices show my_sampler                  # each value with its page or status
+fourier devices show my_sampler                    # each value with its page or status
+fourier demo --dir /tmp/fd && . /tmp/fd/demo.env   # a small master; this shell now uses the demo
+fourier render my_sampler --out /tmp/render        # the demo's master, converted for your profile
+fourier verify --render my_sampler                 # every check, plus a scratch render for it
+```
+
+A new Terminal window is back to your own settings. The citation test needs a source checkout
+with the `[dev]` extra, set up as [CONTRIBUTING.md](../CONTRIBUTING.md) says (`git clone`, then
+`uv sync --extra dev`). From the checkout's folder:
+
+```bash
 FOURIER_MANUALS_DIR=~/manuals pytest -q tests/test_device_citations.py   # every quote on its page
-python tests/golden/synthetic_build.py /tmp/syn  # build the synthetic library, then:
-fourier render my_sampler --from /tmp/syn/out/FourierCurated --out /tmp/render
-fourier verify --from /tmp/syn/out/FourierCurated --render my_sampler
 ```
 
 `FOURIER_MANUALS_DIR` is the folder holding the PDF. The test finds the manual there by its

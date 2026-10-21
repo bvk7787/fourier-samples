@@ -25,6 +25,11 @@ change the CLI or the config).
 
 ### Fixed
 
+- Docs: device-profiles.md checks a profile against the demo, which passes as written and needs
+  no checkout (replaces "its checks run from a source checkout").
+- Docs: the first build's time points at setup's and doctor's estimate for your library; README
+  says PyPI can be behind main and how to install main.
+- setup's last line gives the docs' order: build, publish, then render the release.
 - `fourier build --base vN` works without rsync (it copies in Python, as publish and sync do).
 - `fourier tools audit` maps the master to the library through the manifest, so it runs on a
   default master.

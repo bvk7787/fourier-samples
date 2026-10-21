@@ -17,7 +17,7 @@ renamed.** Fourier only reads them and writes its own folders next to your music
 | **A Mac with Apple Silicon** (M1 or later) | That's what it's tested on. Intel Macs are untested. Linux works too, but this page is written for the Mac. Windows doesn't work yet. |
 | **Free disk space** | About 25 GB for the full set from a large library: the curated set, a copy for your device, a saved release, and the downloads. About 5 GB for the starter set. |
 | **An internet connection** for setup | It downloads about 800 MB once: the listening model and the software it runs on. After that it works offline. |
-| **Time** | 10 to 20 minutes to install and set up. The first build listens to every sample: about an hour for each 100,000 files, and you can leave it running. Later builds take minutes. |
+| **Time** | 10 to 20 minutes to install and set up. The first build listens to every sample, which takes hours for a large library. Setup tells you how long for yours, and you can leave it running. Later builds take minutes. |
 | **Your samples on this Mac** | On its own disk or an external drive. If they're in iCloud Drive, right-click the folder in Finder and choose **Keep Downloaded** first. |
 | **Your sampler's own loader** | Elektron Transfer for a Digitakt 2. For an M8, its SD card. |
 
@@ -131,10 +131,10 @@ once installed), which takes a few minutes.
 type `n` and press Return. It's optional and only writes folder descriptions.
 
 **6/6 Check.** Every line is **OK** (fine), **WARN** (worth a look), **NEXT** (the first build
-will do it) or **FAIL** (would stop a build, with what to do). A WARN doesn't stop anything, so
-read it and carry on. Then setup offers to start the first build. Unless your library is small
-(a few thousand files), type `n` and press Return. Then start the build as in section 5 below,
-which keeps the Mac awake while it runs.
+will do it) or **FAIL** (would stop a build, with what to do). **INFO** lines need nothing from
+you. A WARN doesn't stop anything, so read it and carry on. Then setup offers to start the first
+build. Unless your library is small (a few thousand files), type `n` and press Return. Then
+start the build as in section 5 below, which keeps the Mac awake while it runs.
 
 ## 5. The first build
 
@@ -163,8 +163,9 @@ New master in place at /Users/you/Music/FourierCurated
 ```
 
 That one is from a single small pack; a big library gets several thousand files. **verify:
-PASS** means every check passed. A category left empty just means your packs have few sounds of
-that kind. To see the result:
+PASS** means no check failed. WARN lines under it point at something worth a look, such as a
+category short of its budget, and stop nothing. A category left empty just means your packs have
+few sounds of that kind. To see the result:
 
 ```bash
 fourier open report
@@ -253,7 +254,9 @@ fourier config edit
 ```
 
 Each line is `name = value`. Add a line like one of these, or change it if the file already
-has a line with that name. Keep the quotes and brackets exactly as shown:
+has a line with that name. Put new lines near the top, above any line in square brackets such
+as `[output]`: a line below one belongs to that section. Keep the quotes and brackets exactly
+as shown:
 
 ```toml
 preset = "house-techno"            # the style
@@ -307,6 +310,7 @@ drag the folder to the Trash:
 |---|---|
 | **library** | Your sample packs: the folders you pointed setup at. Only ever read. |
 | **master** | The curated set Fourier builds: `~/Music/FourierCurated`, one folder per kind of sound. |
+| **category** | A top-level kind of sound in the master, such as `KICKS` or `PADS`. |
 | **family** | A folder of similar-sounding samples inside a category (`KICKS/tight-punchy`). |
 | **render** | The master converted for one sampler (its sample rate, folders and name lengths). |
 | **release** | A saved copy of the master that never changes (`v1`, `v2`, ...): what you load onto a device. |

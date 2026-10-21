@@ -1595,8 +1595,9 @@ def _check_step(ctx, w: _Wizard, build, target: Path | None = None) -> None:
     if build is None:
         build = w.confirm("Start it now?", default=not big and not w.yes)
     if not build:
-        console.print("Next: fourier build (it can stop and resume), then fourier render "
-                      "<device> or fourier sync <device> <card>, and fourier publish.", highlight=False)
+        console.print("Next: fourier build (it can stop and resume), then fourier publish, then "
+                      "fourier render <device> --release v1 (and fourier sync <device> <card> for "
+                      "a card).", highlight=False)
         return
     args = [sys.executable, "-m", "fourier"]
     db = root.params.get("db")
