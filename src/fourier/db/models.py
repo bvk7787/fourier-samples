@@ -66,8 +66,20 @@ class Sample(Base):
 
     # File-level metadata
     file_size_bytes: Mapped[int | None] = mapped_column(Integer)
-    file_hash: Mapped[str | None] = mapped_column(String, index=True)  # sha256 first 8kb
+    # The file's identity: SHA256 of every byte (16 hex digits). A row scanned before schema 3
+    # holds its quick hash here until a scan reads the file in full; while it does, no other
+    # file shares that quick hash (importer.settle_hashes), so equal hashes still mean equal bytes.
+    # (indexed on SQLite only: migration 3 drops the index on DuckDB, which can't update an
+    # indexed column of a row other tables reference)
+    file_hash: Mapped[str | None] = mapped_column(String, index=True)
+    # SHA256 of the first 8 KB: a cheap first look, which files that start alike share (a loop
+    # and its fill, takes after the same silence). Never an identity on its own. (Indexed on
+    # SQLite by migration 3.)
+    quick_hash: Mapped[str | None] = mapped_column(String)
     modified_at: Mapped[int | None] = mapped_column(Integer)  # unix timestamp
+    # The size and mtime (ns) the walk last read the file at: a scan reads a known file again
+    # only when they moved (importer._check_known)
+    file_mtime_ns: Mapped[int | None] = mapped_column(BigInteger)
     scanned_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Audio format

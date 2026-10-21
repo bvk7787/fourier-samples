@@ -83,7 +83,7 @@ def test_an_older_database_migrates_and_keeps_every_value(tmp_path, fresh_engine
     S.init_db(db)
     S._engine.dispose()
     after, v = _dump(db)
-    assert v == M.LATEST == 2
+    assert v == M.LATEST == 3
     for table, rows in before.items():                 # every value that was there, unchanged
         assert [{k: r[k] for k in old} for r, old in zip(after[table], rows)] == rows, table
     sf_after = after["sample_features"]
@@ -95,7 +95,7 @@ def test_an_older_database_migrates_and_keeps_every_value(tmp_path, fresh_engine
     assert (tmp_path / f"{name}.before-v2").exists() == name.endswith(".db")
     S.init_db(db)                                      # once only
     S._engine.dispose()
-    assert _dump(db) == (after, 2)
+    assert _dump(db) == (after, 3)
 
 
 # --- the analysis steps write each source's values to its own place ---

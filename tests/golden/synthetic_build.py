@@ -104,8 +104,10 @@ def fill_db_v1(db_path, lib_root, files, without=()) -> int:
     add_rows(got, lib_root, files, without)
     with eng.begin() as c:                   # only the columns each row sets: the old tables
         for obj in got:                      # lack the newer ones
-            c.execute(type(obj).__table__.insert(),
-                      [{k: v for k, v in vars(obj).items() if not k.startswith("_")}])
+            row = {k: v for k, v in vars(obj).items() if not k.startswith("_")}
+            if "quick_hash" in row:          # (that code's file_hash: the first 8 KB's)
+                row["file_hash"] = row.pop("quick_hash")
+            c.execute(type(obj).__table__.insert(), [row])
     with Session(eng) as s:
         build_index(s)
     eng.dispose()

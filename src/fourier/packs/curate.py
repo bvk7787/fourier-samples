@@ -179,16 +179,17 @@ def load_index():
 
 
 def index_stale(session):
-    """Return (stale, indexed_count, db_count): True when the DB has more CLAP embeddings than the index."""
+    """Return (stale, indexed_count, db_count): True when the index holds other samples than
+    the DB has CLAP embeddings for (embeddings added since it was built, or a sample whose
+    analysis was dropped: importer.forget_analysis)."""
     try:
         from ..analysis.clap_features import load_index_fast
-        idx_n = len(load_index_fast(ids_only=True)[0])
+        idx = {int(i) for i in load_index_fast(ids_only=True)[0]}
     except Exception:
-        idx_n = 0
-    db_n = session.execute(
-        text("SELECT COUNT(*) FROM sample_features WHERE clap_embedding IS NOT NULL")
-    ).scalar() or 0
-    return (db_n > idx_n, idx_n, db_n)
+        idx = set()
+    db = {int(i) for (i,) in session.execute(
+        text("SELECT sample_id FROM sample_features WHERE clap_embedding IS NOT NULL"))}
+    return (bool(db) and db != idx, len(idx), len(db))
 
 _tunable = _for_module("curate")   # overridable: fourier/settings.py, config/tunables.yaml
 

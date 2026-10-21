@@ -27,12 +27,228 @@ from .sononym import SononymAsset, SononymReader
 log = logging.getLogger(__name__)
 
 
-def _quick_hash(path: Path, nbytes: int = 8192) -> str:
-    """SHA256 of first nbytes of file - fast identity check."""
+QUICK_BYTES = 8192          # what the quick hash reads
+_BLOCK = 1 << 20
+
+
+def _quick_hash(path: Path, nbytes: int = QUICK_BYTES) -> str:
+    """SHA256 of the first nbytes of a file (16 hex digits): a cheap first look, which files
+    that start alike share (a loop and its fill, takes after the same silence). Never an
+    identity on its own."""
     h = hashlib.sha256()
     with open(path, "rb") as f:
         h.update(f.read(nbytes))
     return h.hexdigest()[:16]
+
+
+def _hashes(path) -> tuple[str, str]:
+    """(quick hash, content hash) of a file, read once. The content hash (SHA256 of every byte,
+    16 hex digits) is the file's identity; for a file of QUICK_BYTES or fewer it equals the
+    quick hash."""
+    q, h = hashlib.sha256(), hashlib.sha256()
+    with open(path, "rb") as f:
+        head = f.read(QUICK_BYTES)
+        q.update(head)
+        h.update(head)
+        for block in iter(lambda: f.read(_BLOCK), b""):
+            h.update(block)
+    return q.hexdigest()[:16], h.hexdigest()[:16]
+
+
+def _set_hashes(sample: Sample, path, st=None) -> None:
+    """Hash a file in full into its row (quick_hash, file_hash) and record the size and time
+    it was read at."""
+    st = st if st is not None else os.stat(path)
+    sample.quick_hash, sample.file_hash = _hashes(path)
+    sample.file_size_bytes = st.st_size
+    sample.file_mtime_ns = st.st_mtime_ns
+
+
+def _full_kind(size, quick, full) -> bool:
+    """Whether a row's file_hash is of the whole file: it differs from the quick hash, or the
+    file is no longer than the quick hash reads (the two are one). A row without a quick hash
+    holds only that in file_hash."""
+    if full is None:
+        return False
+    small = size is not None and size <= QUICK_BYTES
+    return small if quick is None else (full != quick or small)
+
+
+SAME_LENGTH_S = 0.01        # two header lengths this close are one length
+
+
+def _header_differs(facts, path) -> bool:
+    """Whether the file's header (length, sample rate, channels) differs from its row's facts
+    (duration_s, sample_rate, channels); a fact the row lacks doesn't count. An unreadable
+    header differs."""
+    info = file_info(path)
+    if info is None:
+        return True
+    dur, sr, ch = facts
+    if dur is not None and info.get("duration_s") is not None and abs(dur - info["duration_s"]) > SAME_LENGTH_S:
+        return True
+    return any(a is not None and b is not None and int(a) != int(b)
+               for a, b in ((sr, info.get("sample_rate")), (ch, info.get("channels"))))
+
+
+_NS, _HOUR_NS = 10**9, 3600 * 10**9
+
+
+def _clock_shift(old_ns, new_ns) -> bool:
+    """Whether a file's time moved the way a clock or a copy moves it, with no edit: by whole
+    hours (a drive's time zone or daylight saving time, up to a day), or cut to whole seconds
+    by a copy (within 2 s, a FAT drive's step), or both."""
+    if old_ns is None:
+        return False
+    d = new_ns - old_ns
+    k = round(d / _HOUR_NS)
+    rest = d - k * _HOUR_NS
+    return abs(k) <= 24 and (rest == 0 or (abs(rest) < 2 * _NS and new_ns % _NS == 0 and old_ns % _NS != 0))
+
+
+def _content_changed(path, st, row, moved: bool = True,
+                     old_ns: int | None = None) -> tuple[bool | None, tuple[str, str]]:
+    """(whether the file at path holds other audio than its row was measured on, its (quick,
+    content) hashes). row: (size, quick hash, file hash, duration_s, sample_rate, channels).
+    - A row with the content hash: the content hash decides.
+    - A row with only the quick hash (scanned before schema 3): another quick hash is a
+      change. Another size, or none stored, is a change only when the header says another
+      length, rate or channel count too (a stored size can be another source's). With the
+      same size and quick hash and a time that moved since the row's (moved; old_ns, the
+      row's time): another header is a change, a clock shift (_clock_shift) isn't, and
+      otherwise it can't be told (None): an edit past the first 8 KB or a copy that didn't
+      keep the time. The caller counts those (_settle_moved_times). At first sight (moved
+      False) the file is taken as the one analyzed."""
+    size, quick, full, *facts = row
+    q, h = _hashes(path)
+    if _full_kind(size, quick, full):
+        return h != full, (q, h)
+    if q != (quick or full):
+        return True, (q, h)
+    if size is None or st.st_size != size:
+        return _header_differs(facts, path), (q, h)
+    if not moved:
+        return False, (q, h)
+    if _header_differs(facts, path):
+        return True, (q, h)
+    return (False if _clock_shift(old_ns, st.st_mtime_ns) else None), (q, h)
+
+
+# more rows from before than this whose times moved in one scan with the same size, first
+# 8 KB and header are a library copied or restored without its times (that many edits past
+# the first 8 KB that keep each file's size and header are unlikely)
+MANY_TIMES_MOVED = 20
+
+
+def _settle_moved_times(doubt: list, counts: dict) -> None:
+    """The rows from before whose time moved with the same size, first 8 KB and header that
+    one scan found (_content_changed's None): [(sample, st, hashes, redo)]. Each is hashed in
+    full now. A few are taken as edits past the first 8 KB and analyzed again (redo(), counted
+    in counts["changed"]); more than MANY_TIMES_MOVED at once are a copy or a restore that
+    didn't keep the times: their analysis is kept (counts["times_moved"])."""
+    if not doubt:
+        return
+    many = len(doubt) > MANY_TIMES_MOVED
+    for sample, st, hashes, redo in doubt:
+        sample.quick_hash, sample.file_hash = hashes
+        sample.file_size_bytes, sample.file_mtime_ns = st.st_size, st.st_mtime_ns
+        if not many:
+            redo()
+    key = "times_moved" if many else "changed"
+    counts[key] = counts.get(key, 0) + len(doubt)
+
+
+def _row_facts(sample: Sample) -> tuple:
+    """What _content_changed compares a file against, from its row."""
+    return (sample.file_size_bytes, sample.quick_hash, sample.file_hash, sample.duration_s,
+            sample.sample_rate, sample.channels)
+
+
+def forget_analysis(session: Session, sample_id: int) -> None:
+    """Drop what Fourier measured and read of a sample's audio (sample_features, the audio
+    provider's and the sound model's labels), so the analysis steps redo it. Sononym's and
+    Live's rows, the path labels and the ratings stay. (The CLAP index drops the sample's
+    vector when it's next rebuilt: curate.index_stale compares the samples it holds.)"""
+    from ..db.models import SampleFeatures
+    from ..metadata.shadow import AUDIO
+    from ..metadata.sound import PROVIDER as SOUND
+    session.query(SampleFeatures).filter_by(sample_id=sample_id).delete(synchronize_session=False)
+    for table in ("labels", "descriptors"):
+        session.execute(text(f"DELETE FROM {table} WHERE sample_id = :s AND provider IN (:a, :b)"),
+                        {"s": sample_id, "a": AUDIO, "b": SOUND})
+
+
+def _refresh_changed(session: Session, sample: Sample, path, st, hashes, info: dict) -> None:
+    """A file whose bytes changed at its path: its row takes the new size, time, hashes,
+    header and chunks, and its analysis is redone (forget_analysis)."""
+    sample.quick_hash, sample.file_hash = hashes
+    sample.file_size_bytes, sample.file_mtime_ns = st.st_size, st.st_mtime_ns
+    sample.modified_at = int(st.st_mtime)
+    for k, v in info.items():
+        setattr(sample, k, v)
+    sample.acid_bpm = sample.acid_beats = sample.root_note = sample.chunks_read = None
+    _fill_chunks(sample, path)
+    forget_analysis(session, sample.id)
+
+
+# a row whose file_hash is only its quick hash (scanned before schema 3), of a file longer
+# than the quick hash reads
+_QUICK_ONLY = (f"file_hash IS NOT NULL AND file_hash = quick_hash "
+               f"AND (file_size_bytes IS NULL OR file_size_bytes > {QUICK_BYTES})")
+
+
+def settle_hashes(session: Session, log_cb=None, counts: dict | None = None, ids=None) -> int:
+    """Give exact identity to the rows that lack it, reading only what that needs:
+    - rows whose file_hash an older version wrote into this database (db/migrations.py moves
+      it to quick_hash and clears file_hash): read in full;
+    - rows scanned before schema 3 whose first 8 KB another row shares: read in full, so
+      file_hash tells them apart and equal hashes mean equal bytes everywhere (twins,
+      ratings, moves).
+    A file whose bytes changed since its row was stored (_content_changed at first sight)
+    gets its new facts and is analyzed again (counts["changed"]).
+    Runs after every scan, whichever source ran: it finds nothing to do once every such row
+    is settled. ids: the candidate rows when the caller has found them (the walk does, from
+    the facts it already read: _unsettled), else one query finds them. A file that isn't
+    there, is cloud-only, or changed since its row's time (the next change check reads it)
+    keeps its row as it is. Returns how many files it read."""
+    cols = ("SELECT id, path, file_size_bytes, quick_hash, file_hash, file_mtime_ns, duration_s, "
+            "sample_rate, channels FROM samples WHERE ")
+    older = "(file_hash IS NULL AND quick_hash IS NOT NULL)"
+    if ids is None:
+        rows = list(session.execute(text(
+            cols + f"{older} OR ({_QUICK_ONLY} AND quick_hash IN (SELECT quick_hash FROM samples "
+            "WHERE quick_hash IS NOT NULL GROUP BY quick_hash HAVING COUNT(*) > 1))")))
+    else:
+        rows, ids = [], sorted(ids)
+        for i in range(0, len(ids), 500):
+            chunk = ", ".join(str(int(x)) for x in ids[i:i + 500])
+            rows += list(session.execute(text(cols + f"id IN ({chunk}) AND ({older} OR ({_QUICK_ONLY}))")))
+    n, settled = 0, []
+    for sid, path, size, quick, full, mtime_ns, dur, sr, ch in rows:
+        if not path or platforms.cloud_only(path):
+            continue
+        try:
+            st = os.stat(path)
+            if mtime_ns is not None and st.st_mtime_ns != mtime_ns:
+                continue                  # changed since its scan: the change check reads it
+            changed, hashes = _content_changed(path, st, (size, quick, full, dur, sr, ch), moved=False)
+        except OSError:
+            continue
+        n += 1
+        if changed:
+            sample = session.get(Sample, sid)
+            info = file_info(path)
+            if sample is None or info is None:
+                continue                  # a file that can't be read: its row as it was
+            _refresh_changed(session, sample, path, st, hashes, info)
+            if counts is not None:
+                counts["changed"] = counts.get("changed", 0) + 1
+            continue
+        settled.append({"i": sid, "q": hashes[0], "h": hashes[1], "s": st.st_size, "t": st.st_mtime_ns})
+    _update_rows(session, settled)
+    if n and log_cb:
+        log_cb(f"read {n:,} files in full to tell them apart")
+    return n
 
 
 def _upsert_sample_from_sononym(
@@ -40,12 +256,15 @@ def _upsert_sample_from_sononym(
     asset: SononymAsset,
     library_root: Path,
     counts: dict | None = None,
+    doubt: list | None = None,
 ) -> tuple[Sample, bool]:
     """
     Insert or update a Sample + SononymMeta from a SononymAsset.
     Returns (sample, created) where created=True if new row inserted. A cloud-only file
     (platforms.cloud_only) isn't hashed, since reading it would download it: counted in
-    counts["cloud_only"], it's hashed by a later scan once it's on this machine.
+    counts["cloud_only"], it's hashed by a later scan once it's on this machine. doubt, a
+    list, gets the rows from before whose time moved with the same bytes as far as they can
+    be told (_settle_moved_times decides at the end of the sync); without it they're changed.
     """
     abs_path = str(asset.abs_path)
 
@@ -58,22 +277,61 @@ def _upsert_sample_from_sononym(
     else:
         sample = existing
 
+    # a known file whose time Sononym saw move: when its bytes changed too, Fourier's own
+    # analysis of it is redone (_content_changed). The file's own time says whether it moved
+    # since this database read it: the walk's or this sync's (file_mtime_ns), else the
+    # whole seconds a walk stored in modified_at. The row takes the size it has on disk.
+    p = asset.abs_path
+    size_on_disk = None
+    if not created and (sample.file_hash or sample.quick_hash) and sample.modified_at != asset.modtime:
+        try:
+            if p.exists() and not platforms.cloud_only(p):
+                st = os.stat(p)
+                size_on_disk = st.st_size
+                old_ns: int | None = None
+                if sample.file_mtime_ns is not None:
+                    moved = (st.st_mtime_ns, st.st_size) != (sample.file_mtime_ns, sample.file_size_bytes)
+                    old_ns = sample.file_mtime_ns
+                else:
+                    moved = sample.modified_at != int(st.st_mtime)
+                    if sample.modified_at is not None:
+                        old_ns = int(sample.modified_at) * 1_000_000_000
+                changed: bool | None = False
+                if moved or sample.file_mtime_ns is None:
+                    changed, hashes = _content_changed(p, st, _row_facts(sample), moved=moved, old_ns=old_ns)
+                    sample.quick_hash, sample.file_hash = hashes
+                    sample.file_mtime_ns = st.st_mtime_ns
+
+                def redo(sample=sample, p=p) -> None:
+                    sample.acid_bpm = sample.acid_beats = sample.root_note = sample.chunks_read = None
+                    _fill_chunks(sample, p)
+                    forget_analysis(session, sample.id)
+                if changed is None and doubt is not None:
+                    doubt.append((sample, st, hashes, redo))
+                elif changed is not False:
+                    redo()
+                    if counts is not None:
+                        counts["changed"] = counts.get("changed", 0) + 1
+        except OSError:
+            pass
+
     # Always refresh these in case file changed
     sample.rel_path = asset.rel_path
     sample.filename = asset.basename
-    sample.file_size_bytes = asset.file_size
+    sample.file_size_bytes = size_on_disk if size_on_disk is not None else asset.file_size
     sample.modified_at = asset.modtime
 
-    # Populate content hash on first ingest (or if missing) — used for dedup
-    if sample.file_hash is None:
+    # The content hash on first ingest (or if missing): the file's identity (dedup, ratings).
+    # (A row an older version wrote has its quick hash only: settle_hashes reads it after the
+    # sync and compares.)
+    if sample.file_hash is None and sample.quick_hash is None:
         try:
-            p = asset.abs_path
             if p.exists():
                 if platforms.cloud_only(p):
                     if counts is not None:
                         counts["cloud_only"] = counts.get("cloud_only", 0) + 1
                 else:
-                    sample.file_hash = _quick_hash(p)
+                    _set_hashes(sample, p)        # (and the size on disk)
         except Exception:
             pass
     sample.duration_s = asset.duration_s
@@ -122,6 +380,9 @@ def _rebuild_generic_metadata(counts: dict) -> None:
 
     from ..metadata.store import SONONYM, rebuild_sononym
     with session_scope() as session:
+        # (whichever rows the sync touched: rows from before schema 3 are settled on the first
+        # sync after it, and rows an older version wrote whenever it has)
+        counts["read_in_full"] = settle_hashes(session, log_cb=log.info, counts=counts)
         changed = any(counts.get(k) for k in ("created", "updated", "pruned", "removed"))
         empty = not session.execute(text("SELECT 1 FROM descriptors WHERE provider = :p LIMIT 1"),
                                     {"p": SONONYM}).first()
@@ -176,11 +437,12 @@ def import_from_sononym(
     counts = {"created": 0, "updated": 0, "skipped": 0, "errors": 0}
     processed = 0
     batch: list[SononymAsset] = []
+    doubt: list = []
 
     def flush_batch(session: Session) -> None:
         for asset in batch:
             try:
-                _, created = _upsert_sample_from_sononym(session, asset, reader.library_root, counts)
+                _, created = _upsert_sample_from_sononym(session, asset, reader.library_root, counts, doubt)
                 if created:
                     counts["created"] += 1
                 else:
@@ -227,6 +489,7 @@ def import_from_sononym(
         # Final batch
         if batch:
             flush_batch(session)
+        _settle_moved_times(doubt, counts)
 
     _rebuild_generic_metadata(counts)
     log.info(
@@ -341,11 +604,13 @@ def sync_from_sononym(
     # --- Step 3: stream + process only new / changed ------------------------
     if to_process:
         batch: list[SononymAsset] = []
+        doubt: list = []
 
         def flush_batch(session: Session) -> None:
             for asset in batch:
                 try:
-                    _, created = _upsert_sample_from_sononym(session, asset, reader.library_root, counts)
+                    _, created = _upsert_sample_from_sononym(session, asset, reader.library_root, counts,
+                                                             doubt)
                     if created:
                         counts["created"] += 1
                     else:
@@ -379,6 +644,7 @@ def sync_from_sononym(
 
             if batch:
                 flush_batch(session)
+            _settle_moved_times(doubt, counts)
 
     if to_process:
         _unmark_missing({str(reader.library_root / p) for p in to_process})
@@ -427,16 +693,16 @@ def file_info(path) -> dict | None:
 
 
 def _fill_scanned(sample: Sample, path: Path, rel: str, info: dict | None = None) -> None:
-    """A walked file's library path, header facts, quick hash and a WAV's own chunks (none of
-    them for a cloud-only file, which reading would download). info: file_info(path), when
-    the caller has read it already."""
+    """A walked file's library path, header facts, hashes (_set_hashes) and a WAV's own chunks
+    (none of them for a cloud-only file, which reading would download). info: file_info(path),
+    when the caller has read it already."""
     sample.rel_path = rel
     for k, v in (info if info is not None else (file_info(path) or {})).items():
         if v is not None and getattr(sample, k) is None:
             setattr(sample, k, v)
     if sample.file_hash is None and not platforms.cloud_only(path):
         try:
-            sample.file_hash = _quick_hash(path)
+            _set_hashes(sample, path)
         except OSError:
             pass
     _fill_chunks(sample, path)
@@ -458,11 +724,106 @@ def _fill_chunks(sample: Sample, path) -> bool:
 ERRORS_LISTED = 10       # files a scan names among its errors (the rest are counted)
 
 
-def _known_rows(session) -> dict:
+def _known_rows(session, facts: dict | None = None) -> dict:
     """{path: (id, rel_path is None, duration_s is None)} for every sample: one query, so the
-    walk looks a file up in memory rather than asking the database for each."""
-    rows = session.execute(text("SELECT id, path, rel_path, duration_s FROM samples")).all()
-    return {p: (i, rel is None, dur is None) for i, p, rel, dur in rows}
+    walk looks a file up in memory rather than asking the database for each. facts, a dict,
+    gets {path: (size, mtime_ns, quick hash, file hash)}: what a scan compares a known file
+    against (_check_known)."""
+    rows = session.execute(text("SELECT id, path, rel_path, duration_s, file_size_bytes, file_mtime_ns, "
+                                "quick_hash, file_hash FROM samples")).all()
+    if facts is not None:
+        facts.update({p: (size, mt, q, h) for _i, p, _r, _d, size, mt, q, h in rows})
+    return {p: (i, rel is None, dur is None) for i, p, rel, dur, *_ in rows}
+
+
+def _check_known(session, sid: int, path: str, fact, baseline: list, doubt: list) -> str | None:
+    """A known file the walk found again: "changed" when its bytes changed (its row refreshed,
+    its analysis to be redone: _refresh_changed), "unreadable" when its new bytes can't be
+    read, else None. Only a size or time that moved since the last scan reads the file. A row
+    with no time yet (scanned before schema 3) takes this scan's as its baseline when its size
+    is the same, with no read (baseline, a list, gets (id, mtime_ns) for the caller to store
+    at once); with another size or none stored, the file is read and its header decides
+    (_content_changed at first sight). A row from before whose time moved with the same size,
+    first 8 KB and header goes to doubt, for _settle_moved_times to decide after the walk."""
+    size, mtime_ns, quick, full = fact or (None, None, None, None)
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    if (st.st_size, st.st_mtime_ns) == (size, mtime_ns) or platforms.cloud_only(path):
+        return None
+    if full is not None and mtime_ns is None and st.st_size == size:
+        baseline.append({"i": sid, "t": st.st_mtime_ns})
+        return None
+    sample = session.get(Sample, sid)
+    if sample is None:
+        return None
+    if full is None and quick is None:     # never hashed (it was cloud-only): hash it now
+        try:
+            _set_hashes(sample, path, st)
+        except OSError:
+            pass
+        return None
+    try:
+        changed, hashes = _content_changed(path, st, _row_facts(sample), moved=mtime_ns is not None,
+                                           old_ns=mtime_ns)
+    except OSError:
+        return None
+    if changed is None:
+        doubt.append((sample, st, hashes,
+                      lambda: _refresh_changed(session, sample, path, st, hashes, file_info(path) or {})))
+        return None
+    if not changed:                        # the same audio (touched only, or a stored size that
+                                           # wasn't the file's): hashed in full now
+        sample.quick_hash, sample.file_hash = hashes
+        sample.file_size_bytes, sample.file_mtime_ns = st.st_size, st.st_mtime_ns
+        return None
+    info = file_info(path)
+    if info is None:
+        return "unreadable"
+    _refresh_changed(session, sample, path, st, hashes, info)
+    return "changed"
+
+
+def _unsettled(facts: dict, known: dict, created: list) -> list[int]:
+    """Ids of the rows settle_hashes reads, found in the facts the walk read (_known_rows) and
+    the rows it created, with no query: rows an older version wrote (a quick hash and no
+    file_hash), and rows with only the quick hash that another row (or a new file) shares."""
+    seen: set = set()
+    shared: set = set()
+    for _s, _m, q, _h in facts.values():
+        if q in seen:
+            shared.add(q)
+        seen.add(q)
+    shared.update(s.quick_hash for s in created if s.quick_hash in seen)
+    shared.discard(None)
+    return [known[p][0] for p, (size, _m, q, h) in facts.items()
+            if q is not None and p in known
+            and ((h is None) or (q in shared and not _full_kind(size, q, h)))]
+
+
+def _update_rows(session, rows: list) -> None:
+    """Set these rows' columns ([{"i": id, "t": file_mtime_ns, and "q", "h", "s": quick_hash,
+    file_hash, file_size_bytes when given}]; every row the same keys), a few statements in
+    all: one UPDATE per row is slow on DuckDB, which takes a list of values in one."""
+    if not rows:
+        return
+    names = {"t": "file_mtime_ns", "q": "quick_hash", "h": "file_hash", "s": "file_size_bytes"}
+    keys = [k for k in ("t", "q", "h", "s") if k in rows[0]]
+
+    def lit(k, v):
+        return f"'{str(v)}'" if k in ("q", "h") else str(int(v))
+    for k in range(0, len(rows), 5000):
+        part = rows[k:k + 5000]
+        if session.get_bind().dialect.name == "duckdb":
+            values = ", ".join("(" + ", ".join([str(int(r["i"]))] + [lit(c, r[c]) for c in keys]) + ")"
+                               for r in part)
+            sets = ", ".join(f"{names[c]} = v.{c}" for c in keys)
+            session.execute(text(f"UPDATE samples SET {sets} FROM (VALUES {values}) AS v(i, {', '.join(keys)}) "
+                                 f"WHERE samples.id = v.i"))
+        else:
+            sets = ", ".join(f"{names[c]} = :{c}" for c in keys)
+            session.execute(text(f"UPDATE samples SET {sets} WHERE id = :i"), part)
 
 
 def _unchunked(session) -> set:
@@ -547,13 +908,13 @@ _MOVED_SAMPLE_FIELDS = ("is_favorite", "is_hidden", "user_tags")
 
 def _match_moves(session, w, exts, seen_ids: set, known: dict, created: list) -> dict:
     """Files the walk found moved: a sample under the folder it didn't find, and a file new
-    to it with the same content (quick hash and size; the same file name first, and only
-    where the match is one to one), or a file marked missing that is back where it was. A new
+    to it with the same content (quick hash and size, and the content hash where both rows
+    have one; the same file name first, and only where the match is one to one), or a file marked missing that is back where it was. A new
     row gets the old one's analysis (sample_features), so a renamed folder isn't analyzed
     again; the old row is marked missing as any file the walk didn't find. Returns {old path:
     new path}."""
     from ..db.models import SampleFeatures
-    new = [s for s in created if s.file_hash and s.id is not None]
+    new = [s for s in created if (s.quick_hash or s.file_hash) and s.id is not None]
     # ...and files marked missing that are back where they were (a folder renamed back):
     # their rows have their analysis, a rating that followed them away comes back
     try:
@@ -561,7 +922,7 @@ def _match_moves(session, w, exts, seen_ids: set, known: dict, created: list) ->
     except Exception:
         flagged = set()
     back = [session.get(Sample, sid) for sid in sorted(flagged & seen_ids)]
-    new += [s for s in back if s is not None and s.file_hash]
+    new += [s for s in back if s is not None and (s.quick_hash or s.file_hash)]
     if not new:
         return {}
     gone = {sid: p for sid, p in _under_walk(w, exts, known).items() if sid not in seen_ids}
@@ -572,14 +933,16 @@ def _match_moves(session, w, exts, seen_ids: set, known: dict, created: list) ->
     ids = sorted(gone)
     for i in range(0, len(ids), 500):
         chunk = ", ".join(str(x) for x in ids[i:i + 500])
-        for sid, h, size in session.execute(text(
-                f"SELECT id, file_hash, file_size_bytes FROM samples WHERE id IN ({chunk})")):
-            if h:
-                by_key[(h, size)].append(sid)
+        for sid, q, h, size in session.execute(text(
+                f"SELECT id, quick_hash, file_hash, file_size_bytes FROM samples WHERE id IN ({chunk})")):
+            if q or h:
+                by_key[(q or h, size)].append((sid, h if _full_kind(size, q, h) else None))
     cands = defaultdict(list)            # old id -> new samples with its content
     for s in new:
-        for sid in by_key.get((s.file_hash, s.file_size_bytes), ()):
-            cands[sid].append(s)
+        for sid, h in by_key.get((s.quick_hash or s.file_hash, s.file_size_bytes), ()):
+            # (the first 8 KB and the size, and every byte where both rows hashed them all)
+            if h is None or not _full_kind(s.file_size_bytes, s.quick_hash, s.file_hash) or h == s.file_hash:
+                cands[sid].append(s)
     taken, moves = set(), {}
     for sid in sorted(cands):
         olds = cands[sid]
@@ -671,7 +1034,16 @@ def scan_filesystem(
     again. A root that is missing or empty is not walked and nothing is marked
     (counts["root"] says why).
 
-    Returns counts: created, skipped (already known), filled, errors, error_files,
+    A known file whose size or time moved since the last scan is read again: when its bytes
+    changed, its row takes the new facts and its analysis is redone (_check_known; a file only
+    touched keeps it when its row has the content hash; a row scanned before schema 3 has only
+    the quick hash: a moved time on it with the same size, first 8 KB and header is a change
+    for a few files and a copy without times for many, _settle_moved_times). Files whose first 8 KB another file shares are read in full (settle_hashes), so
+    file_hash tells every two files apart.
+
+    Returns counts: created, skipped (already known), changed (known, bytes changed),
+    times_moved (rows from before whose times moved with their bytes kept, _settle_moved_times),
+    read_in_full (settle_hashes), filled, errors, error_files,
     skipped_ext {extension: files}, links_followed, links_inside, loops, missing,
     newly_missing, found_again, listed and reused (folders), moved (files found at a new path,
     _match_moves) and unavailable_links [(link, target)]: folder symlinks whose target isn't
@@ -700,7 +1072,10 @@ def scan_filesystem(
         cache = _walk_cache(session, root_s, os.path.realpath(root_s))
         w = walk(root_s, exts, cache=cache, own=own_folders())
         log.info(f"Found {len(w.files):,} audio files under {root}")
-        known = _known_rows(session)
+        facts: dict = {}
+        baseline: list = []
+        doubt: list = []
+        known = _known_rows(session, facts)
         unchunked = _unchunked(session)
         seen_ids: set = set()
         created: list = []
@@ -708,9 +1083,11 @@ def scan_filesystem(
             if progress_cb:
                 progress_cb(i, f.path)
             try:
+                at = f.key
                 hit = known.get(f.key)
                 if hit is None and f.key != _logical(w.root, f.rel):
-                    hit = known.get(_logical(w.root, f.rel))   # a row stored at the root as spelled
+                    at = _logical(w.root, f.rel)
+                    hit = known.get(at)                        # a row stored at the root as spelled
                 if hit is not None:
                     sid, no_rel, no_dur = hit
                     counts["skipped"] += 1
@@ -723,8 +1100,16 @@ def scan_filesystem(
                     if no_rel:                                  # an earlier walk's row: fill it in
                         _fill_scanned(session.get(Sample, sid), Path(f.path), f.rel, info)  # type: ignore[arg-type]
                         counts["filled"] = counts.get("filled", 0) + 1
-                    elif sid in unchunked and _fill_chunks(session.get(Sample, sid), f.path):  # type: ignore[arg-type]
-                        counts["chunks"] = counts.get("chunks", 0) + 1
+                    else:
+                        # (its bytes changed at the same path: read again, analyzed again)
+                        got = _check_known(session, sid, f.path, facts.get(at), baseline, doubt)
+                        if got == "unreadable":               # left out: marked missing below
+                            error(f.path, "can't be read")
+                            continue
+                        if got == "changed":
+                            counts["changed"] = counts.get("changed", 0) + 1
+                        elif sid in unchunked and _fill_chunks(session.get(Sample, sid), f.path):  # type: ignore[arg-type]
+                            counts["chunks"] = counts.get("chunks", 0) + 1
                     seen_ids.add(sid)
                     continue
                 st = os.stat(f.path)
@@ -758,7 +1143,12 @@ def scan_filesystem(
             except Exception as e:
                 log.warning(f"Error scanning {f.path}: {e}")
                 error(f.path, str(e))
+        _settle_moved_times(doubt, counts)
+        _update_rows(session, baseline)
         session.flush()
+        # (a new or changed row may share its first 8 KB with a row scanned before schema 3)
+        todo = _unsettled(facts, known, created)
+        counts["read_in_full"] = settle_hashes(session, counts=counts, ids=todo) if todo else 0
         moves = _match_moves(session, w, set(exts), seen_ids, known, created)
         counts["moved"] = len(moves)
         _record_missing(session, w, set(exts), seen_ids, known, counts, moves)

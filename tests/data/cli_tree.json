@@ -2603,7 +2603,7 @@
  },
  "fourier tools dedup": {
   "group": false,
-  "help": "Find samples that share the same content hash (the first 8 KB of the file): the same\nfile in more than one pack or folder. Nothing on disk changes.\n\n\b\nIn each group, the one kept is chosen by:\n  1. a favorite first\n  2. the highest sample rate\n  3. the longest\n  4. the earliest scanned\n\nWith --hide, the other copies are marked hidden in the database, so `fourier search`\nleaves them out; builds don't use the mark.\n\n\b\n  fourier tools dedup --dry-run\n  fourier tools dedup --hide",
+  "help": "Find samples that share the same content hash (every byte of the file): the same file\nin more than one pack or folder. Nothing on disk changes.\n\n\b\nIn each group, the one kept is chosen by:\n  1. a favorite first\n  2. the highest sample rate\n  3. the longest\n  4. the earliest scanned\n\nWith --hide, the other copies are marked hidden in the database, so `fourier search`\nleaves them out; builds don't use the mark.\n\n\b\n  fourier tools dedup --dry-run\n  fourier tools dedup --hide",
   "hidden": false,
   "params": [
    {
