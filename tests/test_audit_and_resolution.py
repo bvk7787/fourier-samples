@@ -54,6 +54,37 @@ def test_resolve_writes_one_row_per_home_with_conflicts(db, monkeypatch):
     assert rows[3][:3] == ("PADS", 1, 0)                 # one classifier only: no conflict
 
 
+def _master(root, n, name):
+    """A master holding library samples 1..n under the file names a build gives them, with
+    the manifest that names each one's source."""
+    entries = []
+    for i in range(1, n + 1):
+        out = f"fam/{name(i)}"
+        f = root / "KICKS" / out
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(b"")
+        pack = f"Vendor {i % 3}/Pack {i % 5}"
+        entries.append(dict(family="fam", out=out, src=f"/lib/SampleLibrary/{pack}/Qxvwz {i:03d}.wav"))
+    manifests.write(root, dict(fourier_manifest=3, categories={"KICKS": {"entries": entries}}))
+    return root
+
+
+# canonical names (the default) and kept names made safe for a card: neither is the source name
+@pytest.mark.parametrize("name", [lambda i: f"kick_{i:02d}.wav", lambda i: f"Qxvwz_{i:03d}.wav"],
+                         ids=["canonical", "keep"])
+def test_audit_maps_the_master_through_its_manifest(db, monkeypatch, tmp_path, name):
+    from fourier.packs import audit as A
+    n = 60
+    _samples(n)
+    monkeypatch.setattr(A, "load_index", lambda: (np.arange(1, n + 1),
+                                                  np.random.default_rng(0).normal(size=(n, 8))))
+    monkeypatch.setattr(A, "_llm_label", lambda profiles, model: {})
+    master = _master(tmp_path / "master", 12, name)
+    with S.session_scope() as s:
+        got = A.run_audit(s, master, log=lambda m: None)
+    assert got["curated_mapped"] == 12
+
+
 def test_audit_reports_coverage_and_names_the_blindspots(db, monkeypatch, tmp_path):
     from fourier.packs import audit as A
     n = 300
@@ -61,11 +92,7 @@ def test_audit_reports_coverage_and_names_the_blindspots(db, monkeypatch, tmp_pa
     rng = np.random.default_rng(0)
     emb = rng.normal(size=(n, 16)).astype("float32")
     monkeypatch.setattr(A, "load_index", lambda: (np.arange(1, n + 1), emb))
-    master = tmp_path / "master"
-    for i in range(1, 21):                               # the master holds the first 20
-        f = master / "KICKS" / "fam" / f"Qxvwz {i:03d}.wav"
-        f.parent.mkdir(parents=True, exist_ok=True)
-        f.write_bytes(b"")
+    master = _master(tmp_path / "master", 20, lambda i: f"Qxvwz {i:03d}.wav")   # the first 20
     asked = []
     monkeypatch.setattr(A, "_llm_label", lambda profiles, model: asked.append(profiles) or {"0": "invented label"})
     out = tmp_path / "audit.md"
@@ -82,8 +109,13 @@ def test_audit_needs_a_master_it_can_map(db, monkeypatch, tmp_path):
     from fourier.packs import audit as A
     _samples(5)
     monkeypatch.setattr(A, "load_index", lambda: (np.arange(1, 6), np.eye(5, dtype="float32")))
-    with S.session_scope() as s, pytest.raises(RuntimeError, match="no curated files"):
+    with S.session_scope() as s, pytest.raises(RuntimeError, match="is the master built"):
         A.run_audit(s, tmp_path / "empty", log=lambda m: None)
+    other = _master(tmp_path / "other", 3, lambda i: f"kick_{i:02d}.wav")
+    manifests.write(other, dict(fourier_manifest=3, categories={"KICKS": {"entries": [
+        dict(family="fam", out="fam/kick_01.wav", src="/elsewhere/Acme/kick.wav")]}}))
+    with S.session_scope() as s, pytest.raises(RuntimeError, match="no curated files"):
+        A.run_audit(s, other, log=lambda m: None)
 
 
 def test_manifests_pass_odd_documents_through():

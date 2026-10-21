@@ -7,7 +7,9 @@ from pathlib import Path
 
 import click
 from rich import box
+from rich.measure import Measurement
 from rich.table import Table
+from rich.text import Text
 
 from ..devices.loader import DeviceLoader, DeviceProfileError, user_devices_dir, user_devices_dirs
 from ._app import _table_cols, console, log, main  # noqa: F401
@@ -49,25 +51,57 @@ def devices_list():
             profiles[did] = loader.load(did)
         except Exception as e:
             errors[did] = str(e)
-    wide = console.width >= NAME_MIN_WIDTH
     yours = any(p.origin == "user" for p in profiles.values())
-    table = Table(box=box.SIMPLE_HEAD, pad_edge=False)
-    table.add_column("ID", style="cyan", no_wrap=True)
-    if wide:
-        table.add_column("Name", style="green", no_wrap=True)
-    for col in ("Format", "Load", "Storage", "Checked") + (("From",) if yours else ()):
-        table.add_column(col, no_wrap=True, justify="right" if col == "Storage" else "left")
+    rows = []
     for did in device_ids:
         p = profiles.get(did)
         if p is None:
-            table.add_row(did, *([""] if wide else []), f"[red]Error: {errors[did]}[/red]")
+            rows.append([did, "", f"[red]Error: {errors[did]}[/red]"])
             continue
-        row = [did, *([p.name] if wide else []), _format(p), p.load,
-               f"{p.storage_mb / 1000:g} GB" if p.storage_mb else "-",
-               "manual" if p.verified else "[yellow]unverified[/yellow]"]
-        if yours:
-            row.append("yours" if p.origin == "user" else "package")
-        table.add_row(*row)
+        rows.append([did, p.name, _format(p), p.load,
+                     f"{p.storage_mb / 1000:g} GB" if p.storage_mb else "-",
+                     "manual" if p.verified else "[yellow]unverified[/yellow]"]
+                    + (["yours" if p.origin == "user" else "package"] if yours else []))
+    heads = ["ID", "Name", "Format", "Load", "Storage", "Checked"] + (["From"] if yours else [])
+
+    def table_of(cols: list[int], caps: dict) -> Table:
+        table = Table(box=box.SIMPLE_HEAD, pad_edge=False)
+        for i in cols:
+            table.add_column(heads[i], no_wrap=True, max_width=caps.get(i),
+                             style={0: "cyan", 1: "green"}.get(i),
+                             justify="right" if heads[i] == "Storage" else "left")
+        for r in rows:
+            table.add_row(*(r[i] for i in cols if i < len(r)))
+        return table
+
+    def need(table: Table) -> int:
+        return Measurement.get(console, console.options.update_width(10_000), table).maximum
+
+    # the Name column only when the whole table fits with it; past that, the widest of the
+    # other columns is cut to fit (Rich would otherwise cut every column, the ID too), and
+    # when every one is down to a few letters, the last columns are left out
+    every = list(range(len(heads)))
+    wide = need(table_of(every, {})) <= console.width
+    cols = every if wide else [i for i in every if i != 1]
+    width = {i: max(Text.from_markup(r[i]).cell_len if i < len(r) else 0 for r in rows + [heads])
+             for i in cols}
+
+    def fit(cols: list[int]) -> tuple[dict[int, int], int]:
+        caps: dict[int, int] = {}
+        excess = need(table_of(cols, caps)) - console.width
+        while excess > 0 and len(cols) > 1:
+            i = max((c for c in cols if c != 0), key=lambda c: caps.get(c, width[c]))
+            if caps.get(i, width[i]) <= 5:          # a few letters and the ellipsis: no further
+                break
+            caps[i] = caps.get(i, width[i]) - 1
+            excess -= 1
+        return caps, excess
+
+    caps, excess = fit(cols)
+    while excess > 0 and len(cols) > 1:             # From, Checked, Storage ... never the ID
+        cols = cols[:-1]
+        caps, excess = fit(cols)
+    table = table_of(cols, caps)
 
     console.print(table)
     for path, why in loader.problems():
@@ -77,9 +111,6 @@ def devices_list():
                       markup=False, highlight=False)
     console.print("Your device isn't listed? `fourier devices new` makes a profile for it.",
                   markup=False, highlight=False)
-
-
-NAME_MIN_WIDTH = 100     # columns: below this `devices list` leaves the Name column out
 
 
 def _format(p) -> str:

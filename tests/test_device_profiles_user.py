@@ -269,3 +269,28 @@ def test_devices_list_keeps_each_device_on_one_line(monkeypatch):
     monkeypatch.setattr(console, "width", 120)
     r = CliRunner().invoke(main, ["devices", "list"])
     assert "Name" in r.output and "Dirtywave M8" in r.output and "devices show <id>" not in r.output
+
+
+@pytest.mark.parametrize("width", [50, 60, 80, 100, 110, 120, 130])
+@pytest.mark.parametrize("yours", [False, True])
+def test_devices_list_never_cuts_an_id(monkeypatch, tmp_path, width, yours):
+    """Every ID whole on one line at any common width, with or without a profile of your own
+    (its From column); the Name column shown exactly when the table fits with it."""
+    from fourier.cli._app import console
+    if yours:
+        _write(tmp_path / "mine", "a.yaml", id="zz_qxvwz_very_long_sampler_profile")
+        monkeypatch.setenv("FOURIER_DEVICES", str(tmp_path / "mine"))
+    else:
+        monkeypatch.delenv("FOURIER_DEVICES", raising=False)
+    ids = DeviceLoader().list_devices()
+    monkeypatch.setattr(console, "width", width)
+    r = CliRunner().invoke(main, ["devices", "list"])
+    assert r.exit_code == 0, r.output
+    rows = [ln.split()[0] for ln in r.output.splitlines() if ln.split() and ln.split()[0].rstrip("…")
+            in {i[:len(ln.split()[0].rstrip("…"))] for i in ids}]
+    assert sorted(rows) == sorted(ids), r.output
+    assert all(len(ln.rstrip()) <= width for ln in r.output.splitlines())
+    monkeypatch.setattr(console, "width", 10_000)
+    full = max(len(ln) for ln in CliRunner().invoke(main, ["devices", "list"]).output.splitlines()
+               if ln.startswith(" ID"))                 # the table's width, its edges too
+    assert ("Name" in r.output) == (full <= width)

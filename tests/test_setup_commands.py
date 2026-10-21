@@ -1025,3 +1025,107 @@ def test_setup_says_the_first_build_trains_a_sound_model_and_can_turn_it_off(tmp
     res = _run(tmp_path, monkeypatch, "setup", "--yes", "--to", str(cfg), "--sound-model")
     assert tomllib.loads(cfg.read_text())["advanced"]["SOUND_TRAIN"] is True
     assert "the first build also trains a sound model" in _flat(res.output)
+
+
+# --- a shell pointed at another config or home ------------------------------------------------
+def test_setup_stops_in_a_shell_pointed_at_the_demo(tmp_path, monkeypatch):
+    """After `. demo.env` the check and the first build would use the demo's home and config:
+    setup stops before writing anything and says how to get back to your own."""
+    from fourier import demo
+    d = tmp_path / "qxvwz-demo"
+    (d / "home").mkdir(parents=True)
+    (d / demo.MARKER).write_text("a demo\n")
+    (d / "fourier.toml").write_text('library = ["/nowhere"]\n')
+    monkeypatch.setenv("FOURIER_HOME", str(d / "home"))
+    home_cfg = tmp_path / "home" / ".config" / "fourier" / "fourier.toml"
+    lib = _lib(tmp_path)
+    for to in ([], ["--to", str(tmp_path / "mine.toml")]):
+        res = _run(tmp_path, monkeypatch, "setup", "--yes", *to, "--library", str(lib),
+                   "--device", "m8_tracker", "--no-clap", config=d / "fourier.toml")
+        out = _flat(res.output)
+        assert res.exit_code == 1, res.output
+        assert "demo" in out and "unset FOURIER_CONFIG FOURIER_HOME" in out and "new terminal" in out
+        assert not home_cfg.exists() and not (tmp_path / "mine.toml").exists()
+
+
+def test_setup_stops_when_fourier_config_names_another_file(tmp_path, monkeypatch):
+    lib = _lib(tmp_path)
+    other = tmp_path / "acme.toml"
+    other.write_text('library = ["/nowhere"]\n')
+    home_cfg = tmp_path / "home" / ".config" / "fourier" / "fourier.toml"
+    res = _run(tmp_path, monkeypatch, "setup", "--yes", "--library", str(lib), "--device",
+               "m8_tracker", "--no-clap", config=other)
+    assert res.exit_code == 1 and "unset FOURIER_CONFIG" in _flat(res.output), res.output
+    assert not home_cfg.exists()
+    # pointed at the file setup writes: it goes ahead
+    res = _run(tmp_path, monkeypatch, "setup", "--yes", "--library", str(lib), "--device",
+               "m8_tracker", "--no-clap", config=home_cfg)
+    assert res.exit_code == 0 and home_cfg.exists(), res.output
+
+
+def test_setup_tells_a_shell_profile_user_how_to_set_that_file_up(tmp_path, monkeypatch):
+    """$FOURIER_CONFIG set in a shell profile comes back in every new terminal: the advice
+    leads with setting that file up."""
+    lib = _lib(tmp_path)
+    other = tmp_path / "acme.toml"
+    other.write_text('library = ["/nowhere"]\n')
+    res = _run(tmp_path, monkeypatch, "setup", "--yes", "--library", str(lib), "--device",
+               "m8_tracker", "--no-clap", config=other)
+    out = _flat(res.output)
+    assert res.exit_code == 1 and 'fourier setup --to "$FOURIER_CONFIG"' in out, out
+    assert "shell profile" in out, out
+
+
+def test_setup_stops_in_a_folder_holding_another_fourier_toml(tmp_path, monkeypatch):
+    """Without $FOURIER_CONFIG the check reads ./fourier.toml before the user's config, so
+    setup run from a folder holding one (a demo folder, a project) would write the user's
+    config and then check and build the folder's."""
+    lib = _lib(tmp_path)
+    folder = tmp_path / "qxvwz-project"
+    folder.mkdir()
+    (folder / "fourier.toml").write_text('library = ["/nowhere"]\n')
+    home_cfg = tmp_path / "home" / ".config" / "fourier" / "fourier.toml"
+    monkeypatch.chdir(folder)
+    monkeypatch.delenv("FOURIER_LIBRARY", raising=False)
+
+    def setup(*args):
+        monkeypatch.delenv("FOURIER_CONFIG", raising=False)
+        places.reset()
+        try:
+            return CliRunner().invoke(main, ["--db", str(tmp_path / "t.duckdb"), "setup", "--yes",
+                                             "--library", str(lib), "--device", "m8_tracker",
+                                             "--no-clap", "--no-build", *args])
+        finally:
+            places.reset()
+    res = setup()
+    out = _flat(res.output)
+    assert res.exit_code == 1 and str(folder / "fourier.toml") in out and "another folder" in out, out
+    assert not home_cfg.exists()
+    res = setup("--to", str(folder / "fourier.toml"), "--force")    # that one, set up on purpose
+    assert res.exit_code == 0, res.output
+    monkeypatch.chdir(tmp_path)                                       # elsewhere: the user's own
+    res = setup()
+    assert res.exit_code == 0 and home_cfg.exists(), res.output
+
+
+def test_setup_in_a_demo_folder_says_to_run_it_from_another(tmp_path, monkeypatch):
+    """The folder most likely to hold a fourier.toml is a demo's: the way out never offers to
+    set up the demo's own config."""
+    from fourier import demo
+    lib = _lib(tmp_path)
+    d = tmp_path / "qxvwz-demo"
+    d.mkdir()
+    (d / demo.MARKER).write_text("a demo\n")
+    (d / "fourier.toml").write_text('library = ["/nowhere"]\n')
+    monkeypatch.chdir(d)
+    monkeypatch.delenv("FOURIER_LIBRARY", raising=False)
+    monkeypatch.delenv("FOURIER_CONFIG", raising=False)
+    places.reset()
+    try:
+        res = CliRunner().invoke(main, ["--db", str(tmp_path / "t.duckdb"), "setup", "--yes", "--library",
+                                        str(lib), "--device", "m8_tracker", "--no-clap", "--no-build"])
+    finally:
+        places.reset()
+    out = _flat(res.output)
+    assert res.exit_code == 1 and "another folder" in out and "demo" in out, out
+    assert "--to" not in out, out

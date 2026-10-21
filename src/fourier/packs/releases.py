@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import subprocess
 from collections import defaultdict
 
 from sqlalchemy import select, text
@@ -306,12 +305,12 @@ def additive_build(session, base_version, out_dir, per_family=25, transcode=True
     if os.path.isdir(out_dir) and os.listdir(out_dir) \
             and not os.path.exists(os.path.join(out_dir, "manifest.json")):
         raise RuntimeError(f"{out_dir} is not empty and holds no manifest.json; refusing to "
-                           f"overwrite it (rsync --delete would remove its contents)")
-    rsync = shutil.which("rsync")
-    if not rsync:
-        raise RuntimeError("rsync not found")
+                           f"overwrite it (copying the base would remove its contents)")
+    from ..platforms import sync_tree               # rsync when there is one, Python when not
     os.makedirs(out_dir, exist_ok=True)
-    subprocess.run([rsync, "-a", "--delete", vdir + "/", out_dir.rstrip("/") + "/"], check=True)
+    rc, msg = sync_tree(vdir, out_dir, delete=True, skip_dotfiles=False)
+    if rc:
+        raise RuntimeError(f"copying {vdir} to {out_dir} failed: " + "; ".join(msg[-3:]))
     log(f"copied base {base_version} verbatim -> {out_dir}")
 
     # "already in the release" is per category: a sample released in KICKS but rated

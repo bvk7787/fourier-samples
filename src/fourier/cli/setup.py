@@ -982,6 +982,10 @@ def setup(ctx, library, devices, preset, master, renders, publish, path, force, 
     shown = path or str(USER_CONFIG)          # the path as given, in messages (not resolved)
     console.print("Fourier Samples setup. It only reads your sample folders; everything it "
                   "writes is listed as it goes. Press Ctrl-C to stop at any point.", highlight=False)
+    elsewhere = _pointed_elsewhere(ctx, target, to=bool(path))
+    if elsewhere:
+        _say(elsewhere, style="red")
+        raise SystemExit(1)
     given = bool(library or devices or preset or master or renders or publish or size or processing)
     outputs = {"master": master, "renders": renders, "publish": publish}
     if yes and target.exists() and given and not force:
@@ -1009,6 +1013,46 @@ def setup(ctx, library, devices, preset, master, renders, publish, path, force, 
     _sound_model_note(sound_model, target if target.exists() else None, shown)
     _llm_step(w, llm, target if target.exists() else None)
     _check_step(ctx, w, build, target if path else None)
+
+
+def _pointed_elsewhere(ctx, target: Path, to: bool = False) -> str | None:
+    """Why this run would check and build another library than the config setup writes, or
+    None. The check reads the config Fourier finds (layers.find_config: `--config`, then
+    `$FOURIER_CONFIG`, then ./fourier.toml, then the user's config); with `--to` it reads
+    the file setup writes. A demo's home or config is never the user's."""
+    from .. import demo
+    from ..layers import ENV_CONFIG
+    given = (ctx.find_root().obj or {}).get("config_args", (None, ()))[0]
+    env = os.environ.get(ENV_CONFIG)
+    same = lambda p: Path(p).expanduser().resolve() == target.resolve()
+    here = Path.cwd() / "fourier.toml"
+    if demo.active() is not None:
+        why = "the demo's home and config (`. demo.env`)"
+    elif given and not same(given):
+        return (f"This run reads the config {given} (--config), so setup would write {target} and "
+                f"then check and build with the other one. Run `fourier setup` without --config, "
+                f"or with --to {given} to set that one up.")
+    elif env and env.lower() != "none" and not same(env) and not to:
+        names = " ".join(v for v in (ENV_CONFIG, "FOURIER_HOME") if os.environ.get(v))
+        return (f"This shell sets $FOURIER_CONFIG={env}, so setup would write {target} and then "
+                f"check and build with that one. To set that file up, run `fourier setup --to "
+                f"\"$FOURIER_CONFIG\"`. To use {target}, remove FOURIER_CONFIG from your shell "
+                f"profile if it's set there, open a new terminal (or run `unset {names}`), then "
+                f"run `fourier setup` again.")
+    elif not env and not to and here.is_file() and not same(here):
+        if (here.parent / demo.MARKER).is_file():         # a demo's config: set up your own elsewhere
+            return (f"This folder holds the demo's config {here}, which Fourier reads before "
+                    f"{target}, so setup would write {target} and then check and build the demo. "
+                    f"Run `fourier setup` from another folder.")
+        return (f"This folder holds {here}, which Fourier reads before {target}, so setup would "
+                f"write {target} and then check and build with the one here. Run `fourier setup` "
+                f"from another folder, or with --to {here} to set that one up.")
+    else:
+        return None
+    names = " ".join(v for v in (ENV_CONFIG, "FOURIER_HOME") if os.environ.get(v))
+    return (f"This shell points Fourier at {why}, so setup would write {target} and then check "
+            f"and build with the other one. Open a new terminal, or run `unset {names}`, then "
+            f"`fourier setup` again.")
 
 
 def _same_answers(target: Path, library, devices, preset, outputs: dict) -> bool:
