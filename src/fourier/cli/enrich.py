@@ -40,6 +40,131 @@ def _on_this_machine(items):
     return [it for it in items if it[1] not in skip]
 
 
+# the most workers a step starts by itself (more only when asked with --workers)
+WORKER_CAPS = {"librosa": 4, "quality": 4, "loop-trim": 4, "events": 6, "own": 6, "key": 4}
+
+
+def _workers(n, cap: int, jobs=None) -> int:
+    """A step's worker count: n when given (--workers), else one per CPU, at most cap. A
+    build's -j (jobs) can raise that up to cap and never lowers it: -j counts category
+    workers, and setup passes one fewer than the CPUs."""
+    import os
+    if n:
+        return max(1, n)
+    return max(1, min(cap, max(os.cpu_count() or 1, jobs or 0)))
+
+
+def _gone(path) -> bool:
+    """Whether a file a step couldn't read isn't there at all (a drive unplugged, a file moved
+    away), as opposed to there and unreadable."""
+    import os
+    return not path or not os.path.exists(path)
+
+
+def _say_missing(n: int) -> None:
+    """The next step for files that weren't there: nothing was stored for them."""
+    if n:
+        console.print(f"[yellow]{n:,} file(s) weren't there (the library drive unplugged, or "
+                      f"files moved): nothing was stored for them. Connect the library and run "
+                      f"`fourier build` again to analyze them.[/yellow]")
+
+
+def _ignore_sigint() -> None:
+    """A worker process leaves Ctrl-C to its parent, which stops the step (_results)."""
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+def _results(fn, items, workers: int, processes: bool = False, chunksize: int = 1):
+    """fn(item) for each item, as the workers finish them: worker threads, or worker processes
+    with processes=True (then in the order of items), or one after another in this process
+    with one worker. When the caller stops (Ctrl-C, an error) the items not started are
+    cancelled and worker processes ended, so the step stops at once."""
+    if workers <= 1 or len(items) <= 1:
+        for item in items:
+            yield fn(item)
+        return
+    if processes:
+        from ..platforms import process_pool
+        with process_pool(workers, _ignore_sigint) as pool:     # ends its workers on a stop
+            yield from pool.map(fn, items, chunksize=chunksize)
+        return
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    ex = ThreadPoolExecutor(max_workers=workers)
+    try:
+        for fut in as_completed([ex.submit(fn, item) for item in items]):
+            yield fut.result()
+    except BaseException:
+        ex.shutdown(wait=False, cancel_futures=True)
+        raise
+    ex.shutdown()
+
+
+class _Batch:
+    """A step's finished results waiting to be stored: stored every `size` rows, and by
+    save() (at the end, or when the step stops). save() returns how many were stored. A
+    store that was cut off (Ctrl-C during its commit) rolls `session` back before the rows
+    are stored again."""
+
+    def __init__(self, store, size: int, session=None):
+        self.store, self.size, self.rows, self.saved = store, size, [], 0
+        self.session, self._cut = session, False
+
+    def add(self, row) -> None:
+        self.rows.append(row)
+        if len(self.rows) >= self.size:
+            self.save()
+
+    def save(self) -> int:
+        if self.rows:
+            if self._cut and self.session is not None:
+                self.session.rollback()
+            self._cut = True
+            self.store(self.rows)
+            self._cut = False
+            self.saved += len(self.rows)
+            self.rows = []
+        return self.saved
+
+
+def _keep_on_stop(save, step: str):
+    """Around a step's loop: on Ctrl-C (or an error) the results finished so far are saved
+    (save()) before the step stops; a worker process that died (out of memory, killed) ends
+    the step with one line and the next step, its finished results saved too."""
+    from concurrent.futures.process import BrokenProcessPool
+    from contextlib import contextmanager
+
+    @contextmanager
+    def ctx():
+        try:
+            yield
+        except KeyboardInterrupt:
+            try:
+                n = save()
+            except Exception:  # noqa: BLE001 (stopping anyway: the last batch is read again)
+                n = None
+            saved = "the last batch couldn't be saved" if n is None else \
+                f"{n:,} finished sample(s) saved"
+            console.print(f"[yellow]{step}: stopped; {saved}. The next `fourier build` "
+                          f"carries on from there.[/yellow]")
+            raise
+        except BrokenProcessPool:
+            n = save()
+            console.print(f"{step}: a worker process stopped (out of memory, or killed); "
+                          f"{n:,} finished sample(s) saved. Run this step with fewer workers "
+                          f"(`fourier tools analyze --only {step} --workers 1`), then the "
+                          f"command again.", style="red", markup=False, highlight=False,
+                          soft_wrap=True)
+            raise SystemExit(1) from None
+        except Exception:
+            try:                            # the finished results are good: keep them
+                save()
+            except Exception:  # noqa: BLE001 (the error that stopped the step is the one to show)
+                pass
+            raise
+    return ctx()
+
+
 # where to get the CLAP model (the [clap] extra: torch and transformers, then the model)
 CLAP_INSTALL = "`fourier setup` installs it"
 
@@ -369,7 +494,8 @@ def enrich_bpm_fix(force):
 
 @steps.command("librosa")
 @click.option("--limit", default=0, type=int, help="Limit to N samples (0 = all)")
-@click.option("--workers", default=4, type=int, help="Parallel worker threads")
+@click.option("--workers", default=None, type=int,
+              help="Parallel worker threads (default: one per CPU, at most 4)")
 @click.option("--force", is_flag=True, help="Re-compute even if already enriched")
 @click.option("--category", "category_filter", default=None, help="Only enrich samples in this category")
 def enrich_librosa(limit, workers, force, category_filter):
@@ -387,7 +513,6 @@ def enrich_librosa(limit, workers, force, category_filter):
     Runs in `fourier tools analyze` (--only librosa).
     """
     import time
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
 
@@ -438,14 +563,15 @@ def enrich_librosa(limit, workers, force, category_filter):
             console.print("[green]All samples already have librosa features.[/green]")
             return
 
+        workers = _workers(workers, WORKER_CAPS["librosa"])
         console.print(
             f"[cyan]Computing librosa features for {len(samples):,} samples "
             f"({workers} workers)...[/cyan]"
         )
 
         paths = _on_this_machine([(s.id, s.path) for s in samples])
-        n_ok = 0
-        n_err = 0
+        where = dict(paths)
+        n_ok = n_err = n_gone = 0
         t0 = time.monotonic()
 
         def process_one(item):
@@ -465,25 +591,19 @@ def enrich_librosa(limit, workers, force, category_filter):
             # Use a fresh session per batch to avoid long transactions
             batch_session = get_session()
             try:
-                with ThreadPoolExecutor(max_workers=workers) as executor:
-                    futures = {executor.submit(process_one, item): item for item in paths}
-                    batch = []
-                    for future in as_completed(futures):
-                        sample_id, feats = future.result()
+                batch = _Batch(lambda rows: _upsert_librosa_batch(batch_session, rows), 500,
+                               batch_session)
+                with _keep_on_stop(batch.save, "librosa"):
+                    for sample_id, feats in _results(process_one, paths, workers):
                         if feats:
-                            batch.append((sample_id, feats))
+                            batch.add((sample_id, feats))
                             n_ok += 1
+                        elif _gone(where.get(sample_id)):
+                            n_gone += 1
                         else:
                             n_err += 1
                         progress.advance(task)
-
-                        # Commit every 500 rows
-                        if len(batch) >= 500:
-                            _upsert_librosa_batch(batch_session, batch)
-                            batch = []
-
-                    if batch:
-                        _upsert_librosa_batch(batch_session, batch)
+                batch.save()
             finally:
                 batch_session.close()
 
@@ -492,13 +612,15 @@ def enrich_librosa(limit, workers, force, category_filter):
             f"[green]✓ Enriched {n_ok:,} samples[/green] "
             f"[dim]({n_err} skipped/errored) in {elapsed:.0f}s[/dim]"
         )
+        _say_missing(n_gone)
 
     finally:
         session.close()
 
 
 @steps.command("quality")
-@click.option("--workers", default=4, type=int, help="Parallel worker threads")
+@click.option("--workers", default=None, type=int,
+              help="Parallel worker threads (default: one per CPU, at most 4)")
 @click.option("--force", is_flag=True, help="Re-check even if already computed")
 def enrich_quality(workers, force):
     """
@@ -514,7 +636,6 @@ def enrich_quality(workers, force):
     """
     import os
     import time
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     import numpy as np
     from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
@@ -576,12 +697,14 @@ def enrich_quality(workers, force):
             console.print("[green]All samples already have quality data.[/green]")
             return
 
+        workers = _workers(workers, WORKER_CAPS["quality"])
         console.print(
             f"[cyan]Quality checking {len(samples):,} samples ({workers} workers)…[/cyan]"
         )
         paths = _on_this_machine([(s.id, s.path) for s in samples])
+        where = dict(paths)
         t0 = time.monotonic()
-        n_ok = n_err = n_clipped = n_dc = 0
+        n_ok = n_err = n_clipped = n_dc = n_gone = 0
 
         with Progress(
             TextColumn("[progress.description]{task.description}"),
@@ -593,27 +716,23 @@ def enrich_quality(workers, force):
             task = progress.add_task("quality", total=len(paths))
             batch_session = get_session()
             try:
-                with ThreadPoolExecutor(max_workers=workers) as executor:
-                    futures = {executor.submit(_check_quality, item): item for item in paths}
-                    batch = []
-                    for future in as_completed(futures):
-                        sample_id, result = future.result()
+                batch = _Batch(lambda rows: _upsert_quality_batch(batch_session, rows), 500,
+                               batch_session)
+                with _keep_on_stop(batch.save, "quality"):
+                    for sample_id, result in _results(_check_quality, paths, workers):
                         if result is not None:
-                            batch.append((sample_id, result))
+                            batch.add((sample_id, result))
                             n_ok += 1
                             if result["is_clipped"]:
                                 n_clipped += 1
                             if result["dc_offset_ratio"] > 0.02:
                                 n_dc += 1
+                        elif _gone(where.get(sample_id)):
+                            n_gone += 1
                         else:
                             n_err += 1
                         progress.advance(task)
-
-                        if len(batch) >= 500:
-                            _upsert_quality_batch(batch_session, batch)
-                            batch = []
-                    if batch:
-                        _upsert_quality_batch(batch_session, batch)
+                batch.save()
             finally:
                 batch_session.close()
 
@@ -624,6 +743,7 @@ def enrich_quality(workers, force):
             + (f", [yellow]{n_dc} with DC offset[/yellow]" if n_dc else "")
             + (f" [dim]({n_err} skipped)[/dim]" if n_err else "")
         )
+        _say_missing(n_gone)
     finally:
         session.close()
 
@@ -737,7 +857,6 @@ def enrich_clap(limit, category_filter, workers, force, build_index_flag):
     installs it).
     """
     import time
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
     from sqlalchemy import text
@@ -800,8 +919,8 @@ def enrich_clap(limit, category_filter, workers, force, build_index_flag):
                           "once (`fourier setup` does it ahead of time).[/dim]")
 
         paths = _on_this_machine([(s.id, s.path) for s in samples])
-        n_ok = 0
-        n_err = 0
+        where = dict(paths)
+        n_ok = n_err = n_gone = 0
         t0 = time.monotonic()
 
         def embed_one(item):
@@ -819,41 +938,20 @@ def enrich_clap(limit, category_filter, workers, force, build_index_flag):
                 console=console, disable=not console.is_terminal,
             ) as progress:
                 task = progress.add_task("clap", total=len(paths))
-
-                if workers > 1:
-                    # Multi-thread only makes sense on CPU; GPU enrichment is serial
-                    ctx = ThreadPoolExecutor(max_workers=workers)
-                    futures = {ctx.submit(embed_one, item): item for item in paths}
-                    batch: list[tuple[int, bytes]] = []
-                    with ctx:
-                        for future in as_completed(futures):
-                            sample_id, vec = future.result()
-                            if vec is not None and vec.any():
-                                batch.append((sample_id, embedding_to_bytes(vec)))
-                                n_ok += 1
-                            else:
-                                n_err += 1
-                            progress.advance(task)
-                            if len(batch) >= 200:
-                                _upsert_clap_batch(batch_session, batch, CLAP_MODEL_ID)
-                                batch = []
-                        if batch:
-                            _upsert_clap_batch(batch_session, batch, CLAP_MODEL_ID)
-                else:
-                    batch = []
-                    for item in paths:
-                        sample_id, vec = embed_one(item)
+                # more than one worker: threads (CPU only; on a GPU one at a time)
+                batch = _Batch(lambda rows: _upsert_clap_batch(batch_session, rows, CLAP_MODEL_ID), 200,
+                               batch_session)
+                with _keep_on_stop(batch.save, "clap"):
+                    for sample_id, vec in _results(embed_one, paths, workers):
                         if vec is not None and vec.any():
-                            batch.append((sample_id, embedding_to_bytes(vec)))
+                            batch.add((sample_id, embedding_to_bytes(vec)))
                             n_ok += 1
+                        elif _gone(where.get(sample_id)):
+                            n_gone += 1
                         else:
                             n_err += 1
                         progress.advance(task)
-                        if len(batch) >= 200:
-                            _upsert_clap_batch(batch_session, batch, CLAP_MODEL_ID)
-                            batch = []
-                    if batch:
-                        _upsert_clap_batch(batch_session, batch, CLAP_MODEL_ID)
+                batch.save()
         finally:
             batch_session.close()
 
@@ -862,6 +960,7 @@ def enrich_clap(limit, category_filter, workers, force, build_index_flag):
             f"[green]✓ Embedded {n_ok:,} samples[/green] "
             f"[dim]({n_err} skipped/errored) in {elapsed:.0f}s[/dim]"
         )
+        _say_missing(n_gone)
 
         if build_index_flag or (limit == 0 and not category_filter):
             _write_index(session, build_index)
@@ -907,8 +1006,8 @@ def _upsert_clap_batch(session, batch: list[tuple[int, bytes]], model_id: str) -
 
 
 @steps.command("loop-trim")
-@click.option("--workers", default=4, type=int, show_default=True,
-              help="Parallel worker threads")
+@click.option("--workers", default=None, type=int,
+              help="Parallel worker threads (default: one per CPU, at most 4)")
 @click.option("--force", is_flag=True,
               help="Re-compute even if trim_computed_at is already set")
 @click.option("--limit", default=0, type=int,
@@ -937,7 +1036,6 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
     """
     import os
     import time
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
     from sqlalchemy import text
@@ -996,12 +1094,14 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
             console.print("[green]All eligible loop samples already have trim data.[/green]")
             return
 
+        workers = _workers(workers, WORKER_CAPS["loop-trim"])
         console.print(
             f"[cyan]Loop-trim analysis: {len(samples):,} samples ({workers} workers)...[/cyan]"
         )
         paths = _on_this_machine([(s.id, s.path) for s in samples])
+        where = dict(paths)
         t0 = time.monotonic()
-        n_trimmed = n_skipped = n_err = 0
+        n_trimmed = n_skipped = n_err = n_gone = 0
 
         with Progress(
             TextColumn("[progress.description]{task.description}"),
@@ -1013,27 +1113,22 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
             task = progress.add_task("loop-trim", total=len(paths))
             batch_session = get_session()
             try:
-                with ThreadPoolExecutor(max_workers=workers) as executor:
-                    futures = {
-                        executor.submit(_compute_trim, item): item for item in paths
-                    }
-                    batch = []
-                    for future in as_completed(futures):
-                        sample_id, result = future.result()
-                        if result is not None:
-                            batch.append((sample_id, result))
+                batch = _Batch(lambda rows: _upsert_loop_trim_batch(batch_session, rows), 500,
+                               batch_session)
+                with _keep_on_stop(batch.save, "loop-trim"):
+                    for sample_id, result in _results(_compute_trim, paths, workers):
+                        if result is not None and not result.get("unreadable"):
+                            batch.add((sample_id, result))
                             if result["trim_end_s"] is not None:
                                 n_trimmed += 1
                             else:
                                 n_skipped += 1
+                        elif _gone(where.get(sample_id)):
+                            n_gone += 1
                         else:
                             n_err += 1
                         progress.advance(task)
-                        if len(batch) >= 500:
-                            _upsert_loop_trim_batch(batch_session, batch)
-                            batch = []
-                    if batch:
-                        _upsert_loop_trim_batch(batch_session, batch)
+                batch.save()
             finally:
                 batch_session.close()
 
@@ -1043,38 +1138,22 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
             f"[cyan]{n_trimmed:,} with trim point[/cyan] . "
             f"[dim]{n_skipped:,} no silence . {n_err} errors[/dim]"
         )
+        _say_missing(n_gone)
     finally:
         session.close()
 
 
-def _jobs(workers):
-    """A map over worker processes, or with one worker (or fewer) a plain map in this process:
-    nothing to spawn, and no worker whose sudden death stops the step."""
-    from contextlib import contextmanager
-
-    from ..platforms import process_pool
-
-    @contextmanager
-    def ctx():
-        if workers <= 1:
-            yield lambda fn, items, chunksize=1: map(fn, items)
-        else:
-            with process_pool(workers) as ex:
-                yield ex.map
-    return ctx()
-
-
 def _event_profile_job(item):
+    """(id, event profile or None, whether the file is gone) for one (id, path)."""
     sample_id, path = item
-    import os as _os
     from fourier.analysis.events import event_profile
-    if not path or not _os.path.exists(path):
-        return sample_id, None
-    return sample_id, event_profile(path)
+    prof = None if _gone(path) else event_profile(path)
+    return sample_id, prof, prof is None and _gone(path)
 
 
 @steps.command("events")
-@click.option("--workers", default=6, type=int, show_default=True, help="Worker processes")
+@click.option("--workers", default=None, type=int,
+              help="Worker processes (default: one per CPU, at most 6)")
 @click.option("--force", is_flag=True, help="Re-profile samples already done")
 @click.option("--limit", default=0, type=int, help="Cap at N samples (0 = all)")
 @click.option("--max-dur", "max_dur", default=60.0, type=float, show_default=True,
@@ -1113,17 +1192,19 @@ def enrich_events(workers, force, limit, max_dur):
         if not items:
             console.print("[green]Every sample already has an event profile.[/green]")
             return
+        workers = _workers(workers, WORKER_CAPS["events"])
         console.print(f"[cyan]Event profiles: {len(items):,} samples ({workers} workers)...[/cyan]")
         t0 = time.monotonic()
-        n_chain = n_err = 0
-        batch = []
+        n_chain = n_err = n_gone = 0
 
-        def flush():
+        def store(rows):
+            # a file that is there but unreadable is marked done with no profile (it isn't
+            # read again); one that isn't there never reaches this
             now = datetime.utcnow()
-            ids = [sid for sid, _ in batch]
+            ids = [sid for sid, _ in rows]
             feats = {f.sample_id: f for f in session.query(SampleFeatures)
                      .filter(SampleFeatures.sample_id.in_(ids)).all()}
-            for sid, prof in batch:
+            for sid, prof in rows:
                 f = feats.get(sid)
                 if f is None:
                     f = SampleFeatures(sample_id=sid)
@@ -1133,25 +1214,27 @@ def enrich_events(workers, force, limit, max_dur):
                 f.event_echo = prof["event_echo"] if prof else None
                 f.events_computed_at = now
             session.commit()
-            batch.clear()
 
+        batch = _Batch(store, 1000, session)
         with Progress(TextColumn("[progress.description]{task.description}"), BarColumn(),
                       TaskProgressColumn(), TimeRemainingColumn(), console=console, disable=not console.is_terminal) as progress:
             task = progress.add_task("events", total=len(items))
-            with _jobs(workers) as jobs:
-                for sid, prof in jobs(_event_profile_job, items, chunksize=64):
+            with _keep_on_stop(batch.save, "events"):
+                for sid, prof, gone in _results(_event_profile_job, items, workers,
+                                                processes=True, chunksize=16):
+                    progress.advance(task)
+                    if gone:
+                        n_gone += 1
+                        continue
                     if prof is None:
                         n_err += 1
                     elif prof["n_events"] >= 2 and not prof["event_echo"]:
                         n_chain += 1
-                    batch.append((sid, prof))
-                    progress.advance(task)
-                    if len(batch) >= 1000:
-                        flush()
-            if batch:
-                flush()
+                    batch.add((sid, prof))
+            batch.save()
         console.print(f"[green]Done: {len(items):,} samples in {time.monotonic() - t0:.0f}s[/green]"
                       f" -- {n_chain:,} with 2+ separate events, {n_err} unreadable")
+        _say_missing(n_gone)
     finally:
         session.close()
 
@@ -1173,9 +1256,9 @@ def _key_items(session, all_classes=False, force=False, limit=0) -> list:
 
 
 def _read_keys(paths, workers) -> None:
-    """Estimate and store the key of each (id, path)."""
+    """Estimate and store the key of each (id, path). A file that can't be read gets no
+    key and no confidence, so it's read again next time."""
     import time
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     from fourier.analysis.key_detection import estimate_key
     from fourier.db.models import SampleFeatures
@@ -1183,9 +1266,8 @@ def _read_keys(paths, workers) -> None:
 
     console.print(f"[cyan]Key detection: {len(paths):,} samples, {workers} workers[/cyan]")
     t0 = time.monotonic()
-    n_keyed = n_skipped = n_err = 0
-    batch: list[tuple[int, dict]] = []
-    BATCH_SIZE = 200
+    n_keyed = n_skipped = n_err = n_gone = 0
+    where = dict(paths)
 
     def _process(args):
         sid, path = args
@@ -1204,44 +1286,43 @@ def _read_keys(paths, workers) -> None:
                 feat.detected_key   = result.get("detected_key")
                 feat.key_confidence = result.get("key_confidence")
 
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futs = {pool.submit(_process, args): args[0] for args in paths}
-        with console.status("[cyan]Estimating keys…[/cyan]") as status:
-            done = 0
-            for fut in as_completed(futs):
-                done += 1
-                sid, result = fut.result()
-                if "error" in result:
-                    n_err += 1
+    batch = _Batch(_flush, 200)
+    with console.status("[cyan]Estimating keys…[/cyan]") as status, \
+            _keep_on_stop(batch.save, "key"):
+        done = 0
+        for sid, result in _results(_process, paths, workers):
+            done += 1
+            if "error" in result:
+                if _gone(where.get(sid)):
+                    n_gone += 1
                 else:
-                    batch.append((sid, result))
-                    if result.get("detected_key"):
-                        n_keyed += 1
-                    else:
-                        n_skipped += 1
-                if len(batch) >= BATCH_SIZE:
-                    _flush(batch)
-                    batch.clear()
-                if done % 50 == 0:
-                    status.update(
-                        f"[cyan]{done:,}/{len(paths):,} — "
-                        f"{n_keyed:,} keyed, {n_skipped:,} unpitched[/cyan]"
-                    )
-
-    if batch:
-        _flush(batch)
+                    n_err += 1
+            else:
+                batch.add((sid, result))
+                if result.get("detected_key"):
+                    n_keyed += 1
+                else:
+                    n_skipped += 1
+            if done % 50 == 0:
+                status.update(
+                    f"[cyan]{done:,}/{len(paths):,} — "
+                    f"{n_keyed:,} keyed, {n_skipped:,} unpitched[/cyan]"
+                )
+    batch.save()
 
     elapsed = time.monotonic() - t0
     console.print(
         f"[green]Done: {len(paths):,} samples in {elapsed:.0f}s[/green] — "
         f"[cyan]{n_keyed:,} keyed[/cyan] · "
-        f"[dim]{n_skipped:,} unpitched · {n_err} errors[/dim]"
+        f"[dim]{n_skipped:,} unpitched · {n_err} unreadable[/dim]"
     )
+    _say_missing(n_gone)
 
 
 @steps.command("key")
 @click.option("--limit",   default=0,  type=int,  help="Limit to N samples (0 = all)")
-@click.option("--workers", default=4,  type=int,  help="Parallel worker threads")
+@click.option("--workers", default=None, type=int,
+              help="Parallel worker threads (default: one per CPU, at most 4)")
 @click.option("--force",   is_flag=True,          help="Re-compute even if already enriched")
 @click.option("--all-classes", is_flag=True,      help="Process all classes, not just pitched samples")
 def enrich_key(limit, workers, force, all_classes):
@@ -1269,21 +1350,25 @@ def enrich_key(limit, workers, force, all_classes):
     if not paths:
         console.print("[yellow]No samples to process.[/yellow]")
         return
-    _read_keys(paths, workers)
+    _read_keys(paths, _workers(workers, WORKER_CAPS["key"]))
 
 
 def _root_job(item):
-    """(id, MIDI pitch or None) by pYIN for one (id, path): curation's own detector
-    (packs/curate._detect_pitch), whose cache a build then reads."""
+    """(id, MIDI pitch or None, read) by pYIN for one (id, path): curation's own detector
+    (packs/curate._detect_pitch), whose cache a build then reads. read is False for a file
+    that isn't there or can't be read: nothing is stored for it."""
     sample_id, path = item
-    import os as _os
-    if not path or not _os.path.exists(path):
+    if _gone(path):
         return sample_id, None, False
+    import soundfile as sf
+
     from fourier.packs.curate import _detect_pitch
     try:
-        return sample_id, _detect_pitch(path), True
+        sf.info(path)                  # unreadable: no "no clear pitch" stored for it
+        midi = _detect_pitch(path)
     except Exception:
         return sample_id, None, False
+    return sample_id, midi, not _gone(path)
 
 
 def own_pending(session) -> int:
@@ -1301,7 +1386,8 @@ def own_pending(session) -> int:
 
 
 @steps.command("own")
-@click.option("--workers", default=6, type=int, show_default=True, help="Worker processes")
+@click.option("--workers", default=None, type=int,
+              help="Worker processes (default: one per CPU, at most 6)")
 @click.option("--force", is_flag=True, help="Re-read samples already done")
 @click.option("--limit", default=0, type=int, help="Cap at N samples (0 = all)")
 def enrich_own(workers, force, limit):
@@ -1336,47 +1422,49 @@ def enrich_own(workers, force, limit):
                f"WHERE {ROOT_CANDIDATE_SQL}" + ("" if force else " AND f.own_root_at IS NULL")
                + " ORDER BY s.id" + (f" LIMIT {int(limit)}" if limit else ""))
         items = _on_this_machine([(i, p) for i, p in session.execute(text(sql))])
+        workers = _workers(workers, WORKER_CAPS["own"])
         if not items:
             console.print("[green]Every tonal one-shot already has Fourier's own root.[/green]")
         else:
             console.print(f"[cyan]Own roots (pYIN): {len(items):,} samples ({workers} workers)...[/cyan]")
             t0 = time.monotonic()
-            n_pitched = n_err = 0
-            batch = []
+            n_pitched = n_err = n_gone = 0
+            where = dict(items)
 
-            def flush():
+            def store(rows):
                 now = datetime.utcnow()
                 feats = {f.sample_id: f for f in session.query(SampleFeatures)
-                         .filter(SampleFeatures.sample_id.in_([sid for sid, _m in batch])).all()}
-                for sid, midi in batch:
+                         .filter(SampleFeatures.sample_id.in_([sid for sid, _m in rows])).all()}
+                for sid, midi in rows:
                     f = feats.get(sid)
                     if f is not None:
                         f.own_root_midi, f.own_root_at = midi, now
                 session.commit()
-                batch.clear()
 
+            batch = _Batch(store, 500, session)
             with Progress(TextColumn("[progress.description]{task.description}"), BarColumn(),
                           TaskProgressColumn(), TimeRemainingColumn(), console=console, disable=not console.is_terminal) as progress:
                 task = progress.add_task("own", total=len(items))
-                with _jobs(workers) as jobs:
-                    for sid, midi, ok in jobs(_root_job, items, chunksize=16):
-                        if not ok:
-                            n_err += 1          # unreadable: tried again next time
-                        else:
+                with _keep_on_stop(batch.save, "own"):
+                    for sid, midi, ok in _results(_root_job, items, workers, processes=True,
+                                                  chunksize=4):
+                        if ok:
                             n_pitched += midi is not None
-                            batch.append((sid, midi))
+                            batch.add((sid, midi))
+                        elif _gone(where.get(sid)):
+                            n_gone += 1
+                        else:
+                            n_err += 1          # unreadable: tried again next time
                         progress.advance(task)
-                        if len(batch) >= 500:
-                            flush()
-                if batch:
-                    flush()
+                batch.save()
             console.print(f"[green]Done: {len(items):,} samples in {time.monotonic() - t0:.0f}s[/green]"
                           f" -- {n_pitched:,} with one clear pitch, {n_err} unreadable")
+            _say_missing(n_gone)
         keys = _on_this_machine(_key_items(session))
     finally:
         session.close()
     if keys:
-        _read_keys(keys, max(1, workers))
+        _read_keys(keys, workers)
 
 
 @steps.command("sound")
@@ -1511,9 +1599,12 @@ ANALYZE_STEPS = ("derived", "librosa", "clap", "events", "quality", "bpm-fix", "
                  "key", "sound")
 
 
-def run_analysis(ctx, only=(), workers=None, force=False, download=False) -> None:
+def run_analysis(ctx, only=(), workers=None, force=False, download=False, jobs=None) -> None:
     """Every analysis step in order (or only these), each on the samples it hasn't done yet
-    (all of them with force), recording each step's rate for the estimates."""
+    (all of them with force), recording each step's rate for the estimates. workers
+    (--workers) goes to every step that takes it, the CLAP step too; else each step runs
+    on one worker per CPU up to its cap, raised up to the cap by a build's -j (jobs,
+    _workers), and the CLAP step on its own default."""
     import time
 
     from ..timings import record_analyze
@@ -1524,8 +1615,11 @@ def run_analysis(ctx, only=(), workers=None, force=False, download=False) -> Non
             continue
         cmd = steps.commands[step]
         kw = {"force": force} if any(p.name == "force" for p in cmd.params) else {}
-        if workers and any(p.name == "workers" for p in cmd.params):
-            kw["workers"] = workers
+        if any(p.name == "workers" for p in cmd.params):
+            if workers:
+                kw["workers"] = workers
+            elif step in WORKER_CAPS:
+                kw["workers"] = _workers(None, WORKER_CAPS[step], jobs)
         if step == "clap":
             kw["build_index_flag"] = True
         console.print(f"[bold]{step}[/bold]")
@@ -1533,7 +1627,8 @@ def run_analysis(ctx, only=(), workers=None, force=False, download=False) -> Non
         ctx.invoke(cmd, **kw)
         after = pending_analysis().get(step)
         if before is not None and after is not None and not force:
-            used = kw.get("workers") or next((p.default for p in cmd.params if p.name == "workers"), 1)
+            used = kw.get("workers") or next((p.default for p in cmd.params if p.name == "workers"), 1) \
+                or _workers(None, WORKER_CAPS.get(step, 1))
             record_analyze(step, time.perf_counter() - t0, before - after, used or 1)  # type: ignore[arg-type]
 
 

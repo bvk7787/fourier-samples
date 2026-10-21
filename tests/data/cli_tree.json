@@ -236,7 +236,7 @@
    },
    {
     "default": "1",
-    "help": "Parallel category workers for --all (process pool; per-category output is identical to serial)",
+    "help": "Parallel category workers for --all (process pool; per-category output is identical to serial); the analysis runs one worker per CPU, more with a larger -j (up to each step's cap)",
     "hidden": false,
     "is_flag": false,
     "kind": "Option",

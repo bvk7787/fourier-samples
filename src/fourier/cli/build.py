@@ -42,7 +42,9 @@ ESTIMATE_FROM = 200
 @click.option("--base", default=None,
               help="Build ADDITIVELY as a superset of this published version (e.g. v2): copy it verbatim, add only new samples, never move/remove existing paths")
 @click.option("--jobs", "-j", default=1, show_default=True, type=int,
-              help="Parallel category workers for --all (process pool; per-category output is identical to serial)")
+              help="Parallel category workers for --all (process pool; per-category output is identical "
+                   "to serial); the analysis runs one worker per CPU, more with a larger -j (up to each "
+                   "step's cap)")
 @click.option("--no-loudness", is_flag=True, default=False,
               help="Skip the per-kind trim/loudness export pass (copy/transcode verbatim)")
 @click.option("--only-pack", default=None,
@@ -173,7 +175,7 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
     ctx.meta[STAGES_KEY] = (["Build", "Verify"] if no_scan else
                             ["Scan the library", "Analyze what's new", "Build", "Verify"])
     if not no_scan:
-        _scan_and_analyze(ctx, out_dir, allow_missing)
+        _scan_and_analyze(ctx, out_dir, allow_missing, jobs)
     _stage("Build")
     _q = ctx.meta.get(QUIET_KEY)
     if _q is not None:                  # the detail from here on goes to the log
@@ -701,11 +703,13 @@ def _os_basename(p):
     return _os.path.basename(p)
 
 
-def _scan_and_analyze(ctx, out_dir=None, allow_missing=False) -> None:
+def _scan_and_analyze(ctx, out_dir=None, allow_missing=False, jobs=None) -> None:
     """A build's first two stages: the library scan (as `fourier tools scan`), then every
     analysis step on what's new (as `fourier tools analyze`), with an estimate first when a
-    lot is new. Without the CLAP model it stops before scanning: a build needs it."""
-    from .enrich import clap_extra_missing, run_analysis
+    lot is new. Without the CLAP model it stops before scanning: a build needs it. Each step
+    runs on one worker per CPU, raised by a larger -j (jobs), at most its own cap
+    (enrich._workers, WORKER_CAPS); the CLAP step on its own default."""
+    from .enrich import _workers, clap_extra_missing, run_analysis
     from .ingest import run_scan
     from .setup import pending_analysis
     if clap_extra_missing():
@@ -731,7 +735,7 @@ def _scan_and_analyze(ctx, out_dir=None, allow_missing=False) -> None:
     new = max((v for k, v in pending.items() if k != "own"), default=0)
     if new >= ESTIMATE_FROM or own >= ESTIMATE_FROM:
         from ..timings import estimate_analyze, human
-        secs, basis = estimate_analyze(pending, workers=4)
+        secs, basis = estimate_analyze(pending, workers=_workers(None, 4, jobs))
         roots = f"Fourier's own roots (pYIN) for {own:,} tonal one-shot{'s' if own != 1 else ''}"
         if new:
             console.print(f"{new:,} new samples to analyze, {human(secs)} (from {basis})"
@@ -741,7 +745,7 @@ def _scan_and_analyze(ctx, out_dir=None, allow_missing=False) -> None:
                           f"samples.", highlight=False)
     elif new:
         console.print(f"{new:,} new sample{'s' if new != 1 else ''} to analyze.", highlight=False)
-    run_analysis(ctx)
+    run_analysis(ctx, jobs=jobs)
 
 
 def _stop_cloud_only(e, out_dir, build_dir=None):

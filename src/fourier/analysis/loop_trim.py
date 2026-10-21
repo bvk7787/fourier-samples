@@ -153,9 +153,9 @@ def compute_loop_trim(
         trailing_silence_s  float         — detected trailing silence (s)
         trim_computed_at    datetime      — always set (UTC)
 
-    None trim_end_s means either:
-      • trailing silence was < min_silence_s (not worth trimming), OR
-      • file unreadable / librosa not installed.
+    None trim_end_s means trailing silence was < min_silence_s (not worth trimming). A file
+    that isn't there or can't be read (or no librosa) also has "unreadable": True, and
+    nothing should be stored for it.
     """
     _null = {
         "trim_end_s": None,
@@ -164,23 +164,24 @@ def compute_loop_trim(
         "trim_computed_at": datetime.now(timezone.utc),
     }
 
+    unread = {**_null, "unreadable": True}
     path = Path(path)
     if not path.exists():
         log.debug("loop_trim: file missing %s", path)
-        return _null
+        return unread
 
     try:
         import librosa
     except ImportError:
         log.warning("loop_trim: librosa not installed — skipping %s", path)
-        return _null
+        return unread
 
     try:
         from ..audioio import load as load_audio
         y, _ = load_audio(path, sr=sr, mono=True)
     except Exception as exc:
         log.warning("loop_trim: cannot load %s: %s", path, exc)
-        return _null
+        return unread
 
     if len(y) == 0:
         return _null

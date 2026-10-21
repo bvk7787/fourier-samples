@@ -67,15 +67,14 @@ def estimate_key(
         dict with:
             detected_key   str | None  — e.g. "C# minor" / "F major"; None if unpitched
             key_confidence float       — Pearson r of best match (0.0–1.0)
+
+    Raises the loader's error for a file that isn't there or can't be read: that isn't an
+    unpitched sample, and nothing should be stored for it.
     """
     import librosa
 
-    try:
-        from ..audioio import load as load_audio
-        y, _ = load_audio(path, sr=sr, mono=True, duration=max_duration_s)
-    except Exception as exc:
-        log.warning("estimate_key: failed to load %s: %s", Path(path).name, exc)
-        return {"detected_key": None, "key_confidence": 0.0}
+    from ..audioio import load as load_audio
+    y, _ = load_audio(path, sr=sr, mono=True, duration=max_duration_s)
 
     try:
         chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
