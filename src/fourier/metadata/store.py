@@ -94,9 +94,10 @@ def rebuild(session, provider: str, log=lambda m: None) -> dict:
                 f"FROM {s.table} m, json_each(m.{col}) j WHERE m.{col} IS NOT NULL"),
                 {**p, "k": kind})
         else:                                  # portable: decode in Python, insert in chunks
+            # read whole first: on DuckDB an insert on the connection ends an open result
             batch = []
             for sid, raw in session.execute(text(
-                    f"SELECT {s.id_col}, {col} FROM {s.table} WHERE {col} IS NOT NULL")):
+                    f"SELECT {s.id_col}, {col} FROM {s.table} WHERE {col} IS NOT NULL")).all():
                 for i, lab in enumerate(json.loads(raw) or []):
                     batch.append(dict(sample_id=sid, provider=provider, kind=kind, label=lab,
                                       rank=i, confidence=None))

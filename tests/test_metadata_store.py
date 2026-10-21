@@ -99,3 +99,19 @@ def test_an_unmapped_label_is_a_parity_difference(db):
         rep = M.sononym_parity(s)
         assert rep["differences"] == {"unmapped": 1}
         assert (None, "unmapped", "category:Perc Kazoos", 1) in rep["examples"]
+
+
+@pytest.mark.parametrize("provider", [M.SONONYM, M.ABLETON])
+def test_rebuild_reads_every_row_while_it_writes_in_chunks(db, monkeypatch, provider):
+    """Label lists are written in chunks while the source rows are read. Every row must still
+    be read, on DuckDB too, where a write on the connection ends an open result."""
+    with S.session_scope() as s:
+        s.execute(text("UPDATE samples SET ableton_tags = '[\"Kick\", \"Drums\"]'"))
+        whole = M.rebuild(s, provider)
+        want = s.execute(text("SELECT sample_id, kind, label, rank FROM labels WHERE provider = :p "
+                              "ORDER BY 1, 2, 4"), {"p": provider}).all()
+    monkeypatch.setattr(M, "_CHUNK", 1)
+    with S.session_scope() as s:
+        assert M.rebuild(s, provider) == whole
+        assert s.execute(text("SELECT sample_id, kind, label, rank FROM labels WHERE provider = :p "
+                              "ORDER BY 1, 2, 4"), {"p": provider}).all() == want

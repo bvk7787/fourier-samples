@@ -163,3 +163,46 @@ def test_changed_rules_rebuild_the_labels(db, monkeypatch):
         monkeypatch.setattr(SH, "rules_version", lambda p: real(p) + (1.0 if p == "path" else 0.0))
         assert SH.ensure_current(s) == ["path"]
         assert SH.ensure_current(s) == []
+
+
+def _rows(s, provider):
+    return s.execute(text("SELECT sample_id, kind, label, rank FROM labels WHERE provider = :p "
+                          "ORDER BY 1, 2, 4"), {"p": provider}).all(), \
+        s.execute(text("SELECT sample_id, name, value FROM descriptors WHERE provider = :p "
+                       "ORDER BY 1, 2"), {"p": provider}).all()
+
+
+@pytest.mark.parametrize("provider", ["path", "audio"])
+def test_rebuild_reads_every_row_while_it_writes_in_chunks(db, monkeypatch, provider):
+    """The rebuild writes its rows in chunks while it reads the samples. Every sample must
+    still be read, on DuckDB too, where a write on the connection ends an open result."""
+    with S.session_scope() as s:
+        whole = SH.rebuild(s, provider)
+        want = _rows(s, provider)
+    monkeypatch.setattr(SH, "_CHUNK", 2)                # a write after every sample or two
+    with S.session_scope() as s:
+        assert SH.rebuild(s, provider) == whole
+        assert _rows(s, provider) == want
+
+
+@pytest.mark.slow
+def test_audio_rebuild_past_the_real_chunk_on_duckdb(tmp_path):
+    """The audio provider writes 3 descriptors a sample: 7,000 samples cross the real chunk."""
+    S._engine = S._SessionLocal = None
+    S.init_db(tmp_path / "big.duckdb")
+    n = 7000
+    try:
+        with S.session_scope() as s:
+            s.execute(text(
+                "INSERT INTO samples (id, path, rel_path, filename, duration_s, scanned_at, "
+                "is_favorite, is_hidden) "
+                "SELECT i, '/l/Acme/Kicks/Kick ' || i || '.wav', 'Acme/Kicks/Kick ' || i || '.wav', "
+                "'Kick ' || i || '.wav', 0.4, now(), false, false FROM range(1, :n + 1) t(i)"),
+                {"n": n})
+            s.execute(text("INSERT INTO sample_features (sample_id, n_events, harmonic_percussive_ratio) "
+                           "SELECT i, 1, 0.5 FROM range(1, :n + 1) t(i)"), {"n": n})
+        with S.session_scope() as s:
+            got = SH.rebuild(s, "audio")
+        assert got["descriptors"] == 3 * n
+    finally:
+        S._engine = S._SessionLocal = None

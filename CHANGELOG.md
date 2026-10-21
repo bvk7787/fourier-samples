@@ -25,6 +25,9 @@ change the CLI or the config).
 
 ### Fixed
 
+- a build on a DuckDB home (the default for a new home) without Sononym stopped with
+  "not enough values to unpack" once about 6,700 samples were analyzed; large Sononym or Live
+  tag imports could stop the same way. The label rebuilds now read their rows before writing.
 - `fourier devices list` keeps each device on one line in an 80-column terminal: a short
   format ("44.1 kHz 16-bit stereo"), the Name column from 100 columns up (`devices show` has
   it), and a From column only once there's a profile of your own (#80).

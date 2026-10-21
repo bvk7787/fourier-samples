@@ -308,15 +308,17 @@ def rebuild(session, provider: str, log=lambda m: None) -> dict:
         if len(descs) >= _CHUNK:
             _flush(session, labels, descs)
 
+    # Each SELECT is read whole before the loop: add() writes on the same connection, and on
+    # DuckDB a write ends a result that is still being read.
     if provider == PATH:
-        for sid, rel, path in session.execute(text("SELECT id, rel_path, path FROM samples")):
+        for sid, rel, path in session.execute(text("SELECT id, rel_path, path FROM samples")).all():
             rel = rel or path or ""
             add(sid, path_labels(rel), bpm=path_bpm(rel))
     elif provider == AUDIO:
         for sid, dur, n_ev, hpr, onsets, rel, path in session.execute(text(
                 "SELECT s.id, s.duration_s, f.n_events, "
                 "f.harmonic_percussive_ratio, f.onset_rate_hz, s.rel_path, s.path FROM samples s "
-                "JOIN sample_features f ON f.sample_id = s.id")):
+                "JOIN sample_features f ON f.sample_id = s.id")).all():
             cls = audio_label(rel or path or "", dur, n_ev, onsets, hpr)
             add(sid, {cls} if cls else set(), duration_s=dur, harmonicity=hpr)
     else:
