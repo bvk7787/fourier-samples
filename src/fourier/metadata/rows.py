@@ -134,7 +134,7 @@ CANDIDATE_FIELDS = (
     "attack_time_ms", "decay_time_ms", "sub_weight", "is_clipped", "tempo_bpm", "bpm_reliable",
     "onset_rate_hz", "chroma_concentration", "spectral_flatness_mean", "rms_mean",
     "dc_offset_ratio", "n_events", "event_regularity", "event_echo", "canonical",
-    "acid_bpm", "acid_beats", "root_note",
+    "acid_bpm", "acid_beats", "root_note", "own_root_midi",
 )                                                     # selection: a category's candidates
 
 _SID = "_sid"               # the sample id fetch() needs, when the caller didn't ask for it
