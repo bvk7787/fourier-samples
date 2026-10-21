@@ -1153,7 +1153,7 @@ Per kind (`_export_policy`):
 | Step | Rule |
 |---|---|
 | 1. Retune | `RETUNE_CATS` (SUB, SYNTH, STABS, PADS, PIANO, ACOUSTIC, VOX), and how the root is found; see [Retune](#retune) |
-| 2. Mono | not WAVES: KICKS and SUB always (`MONO_CATS`); any stereo file whose side is under -30 dB of its mid (`NEAR_MONO_SIDE_DB`: no audible width, and stereo doubles Digitakt RAM). A forced file whose channels cancel keeps its left channel. |
+| 2. Mono | first, a file with more than two channels is folded to stereo (`exporter.fold_to_stereo`, below); not WAVES: KICKS and SUB always (`MONO_CATS`); any stereo file whose side is under -30 dB of its mid (`NEAR_MONO_SIDE_DB`: no audible width, and stereo doubles Digitakt RAM). A forced file whose channels cancel keeps its left channel. |
 | 3. DC | when a channel's mean exceeds 1.5% of peak (`DC_FIX`): a 5 Hz zero-phase high-pass for files of 0.6 s or more (mean subtraction if a residual remains), else a fade-weighted mean subtraction with 2 ms / 5 ms fades. WAVES: exact mean subtraction. |
 | 4. Trim | lead at -50 dB of peak with a 3 ms pad, on a 10 ms RMS envelope (at a category's `trim_lead_db` where set: KICKS / SNARES / CLAPS / TOMS at -40 dB, `HIT_LEAD_FLOOR_DB`, so low noise ahead of a hit is cut); tail on a 10 ms RMS envelope at -50 dB of its max (instruments -60 dB), never kept under -50 dB of the sample peak (`TAIL_PEAK_FLOOR_DB`), ending at the last run of 20 ms or more, 5 ms fade |
 | 5. End fade | a one-shot whose last millisecond (last eighth, for a hit under 8 ms) is above -40 dB of peak gets a 10 ms squared fade (at most half the file) |
@@ -1309,7 +1309,7 @@ off; unused entries are pruned after 14 days.
 
 | | Dirtywave M8 | Digitakt 2 |
 |---|---|---|
-| Format | 44.1 kHz, 16-bit, file's channels (dual mono collapsed) | 48 kHz, 16-bit, file's channels (dual mono collapsed) |
+| Format | 44.1 kHz, 16-bit, file's channels (dual mono collapsed; more than two folded to stereo) | 48 kHz, 16-bit, file's channels (dual mono collapsed; more than two folded to stereo) |
 | Card folder | `/Samples/Fourier` | `/fourier`, made on the +Drive in Transfer |
 | Layout | `NN_CATEGORY/family/name.wav`, depth 2 | same |
 | Files per folder | 128 (convention) | 128 (convention) |
@@ -1319,6 +1319,7 @@ off; unused entries are pruned after 14 days.
 | Topic | Rule |
 |---|---|
 | Names | the same file name on every device and in Live, for the devices the master is sized for (`devices`). On another device, a family folder holding a path over the limit gets one shorter name, sized from its longest path, and each of its files is cut as much as it still needs (in the middle, to 8 characters at least). `render --check` names them as the render does, and both say how many were cut; a render stops, writing nothing, on a path that can't fit (`render._fit_all`) |
+| Channels | a file with more than two channels (in the master, or a render of an older master) is folded to stereo by channel position, in the order WAV and FLAC files use: 3 = L R C, 4 = L R and back L R, 5 = L R C L R, 6 = L R C LFE L R, 7 = L R C LFE back-C L R, 8 = L R C LFE L R L R, and past 8 the channels after the first two alternate sides. Front left and right go to their side whole, a center or LFE channel to both sides at -3 dB, every other channel to its side at -3 dB; nothing is dropped, and the fold is scaled down where its peak would pass the source's. AIFF and other formats are folded by the same positions: a 6-channel AIFF written in the AIFF-C spec's order (L, left center, C, R, right center, surround) keeps all its content with its image shifted. Render verify FAILs a file with more channels than the device takes |
 | Conversion | content-seeded TPDF dither and exact-length resampling; a resampled file whose peaks overshoot is scaled back to its source peak, never clipped (render verify FAILs on full-scale runs); a mono downmix of a wide file keeps the channels' level (up to the source peak); a first or last sample the resampling filter lifts off a quiet master edge gets the master's 0.5 ms ramp |
 | WAVES | relabeled, never resampled (a cycle must stay a whole number of samples), so the Digitakt plays them 48/44.1 faster, 1.47 semitones above the M8. Neither lands on a note (a 256-sample cycle is F3 -23 cents on the M8, F#3 +23 cents on the Digitakt): tune by ear. |
 | Safety | a render refuses an output that overlaps the master or isn't a previous render (`.fourier-render` marker) and exits non-zero when a file fails |
