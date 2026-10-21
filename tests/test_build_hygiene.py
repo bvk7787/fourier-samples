@@ -2,6 +2,7 @@
 cross-category dedupe, levels read wide stereo as it plays, single cycles reach the ceiling,
 a phase-fixed one-shot keeps its peak, and verify checks the sets' out_md5."""
 import concurrent.futures as cf
+import contextlib
 import hashlib
 import json
 from types import SimpleNamespace
@@ -81,6 +82,7 @@ def test_a_parallel_build_prints_each_categorys_lines_and_failed_exports(monkeyp
     from fourier.db import session as S
     _worker_env(monkeypatch)
     monkeypatch.setattr(S, "session_scope", lambda: _Scope())
+    monkeypatch.setattr(S, "shared_with_workers", lambda path: contextlib.nullcontext())  # no database
     monkeypatch.setattr(cf, "ProcessPoolExecutor", _Pool)
     monkeypatch.setattr(C, "index_stale", lambda s: (False, 1, 1))
     monkeypatch.setattr(C, "load_index", lambda: (np.arange(1), np.ones((1, 4), dtype="float32")))
@@ -88,6 +90,7 @@ def test_a_parallel_build_prints_each_categorys_lines_and_failed_exports(monkeyp
     monkeypatch.setattr(C, "_dedupe_across", lambda *a, **k: 0)
     monkeypatch.setattr(C, "merge_manifest", lambda *a: None)
     monkeypatch.setattr(C, "POOL_SURPLUS", False)
+    monkeypatch.setattr(C, "_prompt_vectors", lambda *a, **k: {})   # no CLAP model in tests
 
     def built(session, category, out_dir, log=print, **k):
         log(f"{category}: 4 extra notes of multisample sets left out (at most 2 a set a folder)")

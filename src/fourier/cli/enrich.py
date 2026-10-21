@@ -1050,15 +1050,16 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
 def _jobs(workers):
     """A map over worker processes, or with one worker (or fewer) a plain map in this process:
     nothing to spawn, and no worker whose sudden death stops the step."""
-    from concurrent.futures import ProcessPoolExecutor
     from contextlib import contextmanager
+
+    from ..platforms import process_pool
 
     @contextmanager
     def ctx():
         if workers <= 1:
             yield lambda fn, items, chunksize=1: map(fn, items)
         else:
-            with ProcessPoolExecutor(max_workers=workers) as ex:
+            with process_pool(workers) as ex:
                 yield ex.map
     return ctx()
 

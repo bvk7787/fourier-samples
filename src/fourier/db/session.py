@@ -99,6 +99,44 @@ def peek(sql: str):
         return None
 
 
+@contextmanager
+def shared_with_workers(db_path: Path | str) -> Generator[None, None, None]:
+    """While worker processes read this database (open_in_worker): this process closes its
+    own connections and reads it read-only too, then opens it as before. DuckDB lets one
+    process write and locks every other process out while it does, readers included; any
+    number of processes may read it while none writes. SQLite allows either."""
+    if is_read_only():                   # read-only already (a dry run): nothing to hand over
+        yield
+        return
+    path = Path(db_path)
+    if _engine is not None:
+        if getattr(_engine.pool, "checkedout", lambda: 0)() and not _is_sqlite(path):
+            raise RuntimeError("a database session is still open, so worker processes can't "
+                               "read the database; run with -j 1")
+        _engine.dispose()
+    use_db(path)
+    if not read_only():
+        raise RuntimeError("the database couldn't be opened read-only for the worker "
+                           "processes; run with -j 1")
+    try:
+        yield
+    finally:
+        if _engine is not None:
+            _engine.dispose()
+        use_db(path)
+
+
+def open_in_worker(db_path: Path | str) -> None:
+    """A worker process's database, read-only beside its parent's (shared_with_workers). A
+    forked worker's copy of the parent's engine is the parent's to close: it is dropped
+    unclosed."""
+    if _engine is not None:
+        _engine.dispose(close=False)
+    use_db(db_path)
+    if not read_only():
+        raise RuntimeError(f"the database at {db_path} didn't open read-only in a worker process")
+
+
 def is_read_only() -> bool:
     """Whether this process's database is open read-only (read_only())."""
     return _engine is not None and _engine is _RO_ENGINE

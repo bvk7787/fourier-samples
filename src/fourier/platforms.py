@@ -17,6 +17,10 @@
   reuses an unchanged folder's listing only there).
 - open_path(path, text): a folder in the file browser (Finder), or a text file in the
   system's text editor (`fourier open`, `fourier config edit`).
+- process_pool(workers, ...): worker processes started the platform's way (fork on Linux
+  before Python 3.14, spawn on macOS and Windows, forkserver on Linux from 3.14). A worker
+  forked from a process that already ran torch runs it on one thread: torch's OpenMP
+  threads don't survive a fork, and a second thread would wait for them forever.
 """
 from __future__ import annotations
 
@@ -306,3 +310,48 @@ def open_path(path, text: bool = False) -> list[str] | None:
     subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                      start_new_session=True)
     return cmd
+
+
+def _worker_start(initializer, initargs):
+    """A pool worker's first step (process_pool): one torch thread when this worker inherited
+    a loaded torch (fork), then the pool's own initializer."""
+    if "torch" in sys.modules:
+        try:
+            sys.modules["torch"].set_num_threads(1)
+        except Exception:  # noqa: BLE001 (a torch stub or a broken install: nothing to set)
+            pass
+    if initializer is not None:
+        initializer(*initargs)
+
+
+def process_pool(workers: int, initializer=None, initargs=()):
+    """A ProcessPoolExecutor of `workers` processes, started the platform's default way, each
+    run through _worker_start. Every start method works: a worker must not count on state
+    this process set up after its imports (a forked worker has it, a spawned one hasn't),
+    and gets what it needs through initargs or its task's arguments. Left by an exception
+    (Ctrl-C, an error), the pool cancels the work not started and ends its workers instead
+    of waiting for them."""
+    from concurrent.futures import ProcessPoolExecutor
+
+    class Pool(ProcessPoolExecutor):
+        _seen: list = []
+
+        def shutdown(self, wait=True, *, cancel_futures=False):
+            # shutdown() forgets the worker processes; keep them so __exit__ can end them
+            # after an early shutdown too
+            self._seen = list((getattr(self, "_processes", None) or {}).values()) \
+                or self._seen
+            super().shutdown(wait=wait, cancel_futures=cancel_futures)
+
+        def __exit__(self, exc_type, exc, tb):
+            if exc_type is None:
+                return super().__exit__(exc_type, exc, tb)
+            self.shutdown(wait=False, cancel_futures=True)
+            for proc in self._seen:
+                proc.terminate()
+            for proc in self._seen:     # ended before the caller cleans up after them
+                proc.join(timeout=2)
+            return False
+
+    return Pool(max_workers=workers, initializer=_worker_start,
+                initargs=(initializer, tuple(initargs)))

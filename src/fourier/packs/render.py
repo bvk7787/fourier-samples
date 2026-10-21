@@ -583,8 +583,8 @@ def render_master_to_device(master_dir, device, out_dir, max_mb=None, log=print,
                 cpath = None
         todo.append((i, str(src), str(dest), opts, str(cpath) if cpath else None))
     if len(todo) >= RENDER_POOL_MIN and RENDER_JOBS > 1:
-        from concurrent.futures import ProcessPoolExecutor
-        with ProcessPoolExecutor(max_workers=RENDER_JOBS) as ex:
+        from ..platforms import process_pool
+        with process_pool(RENDER_JOBS) as ex:
             results = list(ex.map(_convert_job, todo, chunksize=16))
     else:
         results = [_convert_job(t) for t in todo]

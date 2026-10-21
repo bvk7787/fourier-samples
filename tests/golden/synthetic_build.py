@@ -1,6 +1,6 @@
 """Build the synthetic library end to end: the CI golden (tests/test_synthetic_golden.py).
 
-    python tests/golden/synthetic_build.py <work dir> [--jobs 1]
+    python tests/golden/synthetic_build.py <work dir> [--jobs 1] [--start-method spawn]
 
 1. Writes the synthetic library (fourier.synthlib) under <work>/lib/SampleLibrary.
 2. Fills a fresh SQLite library DB in <work>/home with a Sample, a Sononym-style row and a
@@ -213,6 +213,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("work")
     ap.add_argument("--jobs", type=int, default=1)
+    ap.add_argument("--start-method", choices=("fork", "spawn", "forkserver"),
+                    help="how worker processes start (else the platform's default)")
     ap.add_argument("--check", action="store_true", help="compare with the golden for this OS")
     ap.add_argument("--update", action="store_true", help="write the golden for this OS")
     ap.add_argument("--preset", help="build with this style preset (config/presets/) over the "
@@ -235,6 +237,9 @@ def main(argv=None) -> int:
                     help="then read Fourier's own analysis (tools analyze --only own) and build again; "
                          "with --check both builds must equal the golden")
     a = ap.parse_args(argv)
+    if a.start_method:
+        import multiprocessing
+        multiprocessing.set_start_method(a.start_method, force=True)
     without = tuple(x for x in a.without.split(",") if x)
     if (without or a.preset or a.scale) and (a.check or a.update):
         ap.error("--without, --preset and --scale builds have no golden; drop --check/--update")
