@@ -201,15 +201,16 @@ def test_a_worker_hands_the_stop_to_the_parent(monkeypatch):
     assert isinstance(err, CloudOnlySources) and summary is None
 
     class Ex:
-        cancelled = False
+        shut = False
 
         def shutdown(self, wait=True, cancel_futures=False):
-            Ex.cancelled = cancel_futures
+            Ex.shut = True
     curate._stop_on_unsafe(Ex(), "some other failure")             # an ordinary failure: no stop
-    assert not Ex.cancelled
     with pytest.raises(CloudOnlySources):
         curate._stop_on_unsafe(Ex(), err)
-    assert Ex.cancelled
+    # leaving the pool cancels the rest and ends the running workers (process_pool), which
+    # an earlier shutdown() here kept it from doing
+    assert not Ex.shut
 
 
 # --- analyze --------------------------------------------------------------------------------
