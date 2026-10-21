@@ -28,6 +28,7 @@ them unset renders exactly as before, byte for byte and path for path):
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import time
@@ -235,6 +236,131 @@ def _card_prefix(device) -> str:
 
 
 RENDER_MARKER = ".fourier-render"
+# The marker of a finished render: JSON with every file's size and md5, written last, after
+# every file is in place. A render is written into a hidden folder beside its own place and
+# renamed into it only when it finished, so the previous render stays until then; a marker
+# in any other form (an older Fourier's, or a render that never finished) isn't one sync takes.
+RENDER_FORMAT = 1
+
+
+def _visible_files(root: Path):
+    """(relative posix path, path) of every file under root outside dot folders and files."""
+    for dp, dns, fns in os.walk(root):
+        dns[:] = sorted(d for d in dns if not d.startswith("."))
+        for f in sorted(fns):
+            if not f.startswith("."):
+                p = Path(dp) / f
+                yield p.relative_to(root).as_posix(), p
+
+
+def write_render_marker(root, device_id: str, **extra) -> dict:
+    """Record root as a finished render: each file's [size, md5]. Call it last."""
+    root = Path(root)
+    files = {rel: [p.stat().st_size, _md5_file(p)] for rel, p in _visible_files(root)}
+    doc = dict(fourier_render=RENDER_FORMAT, device=device_id, files=files, **extra)
+    tmp = root / f"{RENDER_MARKER}.tmp"
+    tmp.write_text(json.dumps(doc, indent=0, sort_keys=True))
+    os.replace(tmp, root / RENDER_MARKER)
+    return doc
+
+
+def read_render_marker(root) -> dict | None:
+    """The finished-render record in root, or None (no marker, or not a finished one)."""
+    try:
+        doc = json.loads((Path(root) / RENDER_MARKER).read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(doc, dict) or doc.get("fourier_render") != RENDER_FORMAT \
+            or not isinstance(doc.get("files"), dict):
+        return None
+    return doc
+
+
+def render_problem(root) -> str | None:
+    """Why root isn't a finished render whose files are all as it recorded them, or None."""
+    root = Path(root)
+    if not (root / RENDER_MARKER).exists():
+        return f"{root} isn't a Fourier render (no {RENDER_MARKER})"
+    doc = read_render_marker(root)
+    if doc is None:
+        return (f"{root} isn't a finished render: it stopped before the end, or an older "
+                f"version of Fourier made it")
+    have = {rel: p.stat().st_size for rel, p in _visible_files(root)}
+    want = {rel: v[0] for rel, v in doc["files"].items()}
+    gone = sorted(set(want) - set(have))
+    added = sorted(set(have) - set(want))
+    resized = sorted(r for r in set(want) & set(have) if want[r] != have[r])
+    if gone or added or resized:
+        what = "; ".join(f"{n} {label} (e.g. {xs[0]})" for n, label, xs in (
+            (len(gone), "missing", gone), (len(added), "added", added), (len(resized), "changed", resized)) if xs)
+        return f"{root} changed after it was rendered: {what}"
+    return None
+
+
+def _beside(base: Path, kind: str) -> Path:
+    """A hidden folder beside base for a render being written ("partial") or the one it
+    replaces ("old"); dot folders are never synced or counted as part of a render."""
+    return base.parent / f".{base.name}.fourier-{kind}"
+
+
+def _clear_own(d: Path) -> None:
+    """Remove a leftover render folder of ours (it holds the render marker, or is empty);
+    anything else at that name is someone's and stops the render."""
+    if not d.exists() and not d.is_symlink():
+        return
+    if d.is_dir() and not d.is_symlink() and ((d / RENDER_MARKER).exists() or not any(d.iterdir())):
+        shutil.rmtree(d)
+        return
+    raise RuntimeError(f"{d} is in the way and isn't a render Fourier left: move it, then render again")
+
+
+RENDER_FULL_FREE = 64 * 2**20     # a render that failed with less room left than this ran out of it
+
+
+def _out_of_room(err: str) -> bool:
+    import errno
+    return "Errno 28" in err or os.strerror(errno.ENOSPC) in err
+
+
+def _disk_full(folder: Path) -> bool:
+    try:
+        return shutil.disk_usage(folder).free < RENDER_FULL_FREE
+    except OSError:
+        return False
+
+
+def room_note(base: Path) -> str:
+    """What to do when a render ran out of room: the previous render stays until the new one
+    is finished, so a render needs room for both."""
+    if not (base / RENDER_MARKER).exists():
+        return "The disk ran out of room: make room on it, then render again."
+    mb = sum(p.stat().st_size for _rel, p in _visible_files(base)) / 2**20
+    return (f"The disk ran out of room. A render is written beside the previous one and replaces "
+            f"it once it finishes, so it needs room for both: the previous render at {base} holds "
+            f"{mb:,.0f} MB. Delete that folder (the next render writes it again) or make room "
+            f"elsewhere, then render again.")
+
+
+def start_render_folder(base: Path, label: str) -> Path:
+    """A clean hidden folder beside base to render into, marked unfinished."""
+    stage = _beside(base, "partial")
+    _clear_own(stage)
+    _clear_own(_beside(base, "old"))
+    stage.mkdir(parents=True)
+    (stage / RENDER_MARKER).write_text(f"{label} (unfinished)\n")
+    return stage
+
+
+def put_render_in_place(stage: Path, base: Path) -> None:
+    """Replace base with the finished render in stage (its marker already written)."""
+    old = _beside(base, "old")
+    if base.exists():
+        os.rename(base, old)
+    os.rename(stage, base)
+    if old.exists():
+        shutil.rmtree(old)
+
+
 # single-cycle waveforms: rendered sample-exact (relabelled, never resampled) so they
 # loop seamlessly in the M8's OSC/FWDLOOP play modes (manual p. 61) and the Digitakt II's
 # FORWARD LOOP (manual p. 70)
@@ -489,14 +615,15 @@ def render_master_to_device(master_dir, device, out_dir, max_mb=None, log=print,
     their original audio (taken from the release they were locked from if the master's copy
     changed), and retired locked files are rendered from their release too, so the image is
     a superset of what the device already has. write_lock records new paths (use it when
-    rendering a release you're about to transfer)."""
-    from .device_lock import record, save_lock
+    rendering a release you're about to transfer).
 
+    The render is written into a hidden folder beside its place and moved in when every file
+    converted, its marker (write_render_marker) written last; a render with a failed file is
+    discarded and the previous one stays (summary "replaced": False)."""
     master = Path(master_dir)
     if not master.is_dir():
         raise RuntimeError(f"no master at {master} yet: run `fourier build` first"
                            if release is None else f"release not found at {master}: `fourier releases` lists them")
-    c = device
     why = _lock_mismatch(lock, device) if lock else None
     if why:
         raise RuntimeError(f"{device.device_id}: files already on the device would change ({why}). "
@@ -504,11 +631,43 @@ def render_master_to_device(master_dir, device, out_dir, max_mb=None, log=print,
     root = _device_root(device)
     base = Path(out_dir) / root if root else Path(out_dir)
     _check_out_dir(base, master)
-    if base.exists():
-        shutil.rmtree(base)
-    base.mkdir(parents=True, exist_ok=True)
-    (base / RENDER_MARKER).write_text(f"{device.device_id}\n")
+    # written beside base and moved into it only when every file converted, so a render
+    # that fails or is stopped leaves the previous one as it was
+    stage = start_render_folder(base, device.device_id)
+    try:
+        summary = _render_into(master, device, base, stage, max_mb, log, lock, release, write_lock,
+                               lock_dir)
+    except BaseException as e:
+        full = isinstance(e, OSError) and _out_of_room(str(e))
+        shutil.rmtree(stage, ignore_errors=True)
+        if full:
+            raise RuntimeError(f"{e}. {room_note(base)}") from e
+        raise
+    missing = summary.pop("_missing")
+    no_room = summary.pop("_no_room") or (summary["failed"] and _disk_full(stage))
+    if summary["failed"]:
+        shutil.rmtree(stage, ignore_errors=True)
+        summary["replaced"] = False
+        log(f"  {summary['failed']} file(s) failed to convert, so this render was discarded: "
+            + (f"{base} still holds the previous render" if (base / RENDER_MARKER).exists()
+               else "nothing was written"))
+        if no_room:
+            summary["no_room"] = room_note(base)
+        return summary
+    # locked files the image can't hold are recorded, so a sync never removes them from a card
+    write_render_marker(stage, device.device_id, release=release, missing=missing)
+    put_render_in_place(stage, base)
+    summary["replaced"] = True
+    return summary
 
+
+def _render_into(master, device, base, stage, max_mb, log, lock, release, write_lock, lock_dir):
+    """render_master_to_device's work: every file converted into stage (base is where the
+    render will be); returns the summary."""
+    from .device_lock import record, save_lock
+
+    c = device
+    root = _device_root(device)
     budget =int(max_mb * 1024 * 1024) if max_mb else None  # SD holds more than RAM; no cap unless asked
 
     files, a = _assignment(master, device, lock)
@@ -516,7 +675,6 @@ def render_master_to_device(master_dir, device, out_dir, max_mb=None, log=print,
     too_long = sorted((p for p in (_full(prefix, r) for r in a.paths.values())
                        if c.max_path_length and len(p) > c.max_path_length), key=lambda p: -len(p))
     if too_long:          # never written: a device can't load a path over its limit
-        shutil.rmtree(base, ignore_errors=True)
         raise RuntimeError(
             f"{device.device_id}: {len(too_long)} path(s) would exceed its {c.max_path_length}-character "
             f"limit on {device.card_dir or 'the card root'} even with their names cut (longest "
@@ -563,7 +721,7 @@ def render_master_to_device(master_dir, device, out_dir, max_mb=None, log=print,
     md5s = _manifest_md5s(master) if cdir else {}
     errors, todo, hits = {}, [], 0
     for i, (key, src, rel, cat, locked) in enumerate(jobs):
-        dest = base / rel
+        dest = stage / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         opts = _convert_opts(device, cat)
         cpath = None
@@ -592,7 +750,7 @@ def render_master_to_device(master_dir, device, out_dir, max_mb=None, log=print,
     if cdir:
         log(f"  render cache: {hits} reused, {len(todo)} converted")
     for i, (key, src, rel, cat, locked) in enumerate(jobs):
-        dest = base / rel
+        dest = stage / rel
         if i in errors:
             failed += 1
             log(f"  {'ERROR (locked path, projects on the device use it)' if locked else 'FAILED'}: "
@@ -636,7 +794,8 @@ def render_master_to_device(master_dir, device, out_dir, max_mb=None, log=print,
     return dict(device=device.device_id, files=nfiles, mb=round(mb, 1), skipped=skipped, failed=failed,
                 fmt=f"{c.sample_rate}Hz/{c.bit_depth}bit/{c.channels}", out=str(base), ram_note=note.strip(),
                 new=len(a.new), kept=len(a.kept), retired=len(a.retired), changed=len(a.changed),
-                missing=len(missing))
+                missing=len(missing), _missing=sorted(missing),
+                _no_room=any(_out_of_room(e) for e in errors.values()))
 
 
 def device_plan(master_dir, device, lock, log=print) -> dict:

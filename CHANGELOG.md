@@ -25,6 +25,13 @@ change the CLI or the config).
 
 ### Fixed
 
+- A render that fails or is stopped leaves the previous render as it was, and `fourier sync`
+  copies only a render that finished (its marker records each file's size and md5). A render
+  that runs out of room says how much the previous render holds and that it can be deleted.
+- `fourier sync` keeps a card file the device changed since the last sync (M8 slice points
+  saved in the WAV) and lists it; `--overwrite-changed` replaces it. `--delete` removes only
+  unchanged files a sync wrote, and refuses a `--new-only` folder; sync refuses a render made
+  for another device.
 - Sources with more than two channels are folded to stereo in the master and every render
   (WAV/FLAC channel order; center and LFE to both sides, nothing dropped), so the M8 and the
   Digitakt 2 can play them; render verify fails a file with more channels than the device takes.

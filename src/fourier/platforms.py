@@ -11,7 +11,9 @@
 - mount_points(): where removable cards show up (/Volumes, /media/<user>, /run/media/<user>,
   drive letters).
 - sync_tree(...) / copy_tree(...): rsync when it's installed (as before), else the same
-  copy in Python, so publish and card sync work where rsync doesn't exist (Windows).
+  copy in Python, so publish works where rsync doesn't exist (Windows).
+- copy_file_whole(src, dst): one file copied through a temporary file and renamed into
+  place, without extended attributes (card sync, which decides file by file what to copy).
 - dir_mtimes_reliable(path): whether the file system a folder is on updates a folder's
   modification time whenever an entry in it is added, removed or renamed (the library walk
   reuses an unchanged folder's listing only there).
@@ -202,6 +204,26 @@ def sync_tree(src, dst, delete=False, skip_dotfiles=True, dry_run=False,
                         and not os.path.isdir(os.path.join(src, rel)):
                     os.rmdir(dp)
     return 0, changes
+
+
+def copy_file_whole(src, dst, tmp_suffix: str = ".fourier-tmp") -> None:
+    """Copy one file's bytes (no extended attributes, so no "._" twins on a FAT/exFAT card)
+    and its times into dst through a hidden temporary file beside it, renamed into place: a
+    copy that stops leaves dst as it was."""
+    src, dst = Path(src), Path(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(f".{dst.name}{tmp_suffix}")
+    st = src.stat()
+    try:
+        shutil.copyfile(src, tmp)
+        os.utime(tmp, (st.st_atime, st.st_mtime))
+        os.replace(tmp, dst)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def copy_tree(src, dst, exclude_top=(), dry_run=False, use_rsync: bool | None = None) -> tuple[int, list[str]]:
