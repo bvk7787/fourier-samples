@@ -322,7 +322,12 @@ class SampleFeatures(Base):
 
     # ── Quality gate ─────────────────────────────────────────────────────────────────────
 
-    # 1 if >0.1% of samples are at ±0.999 — audible digital clipping.
+    # The share of the file's samples (each channel, at its own rate) in runs of 3 or more at
+    # full scale: the flat tops clipping leaves (the quality step; analysis.librosa_features
+    # .full_scale_share). NULL: not measured that way yet (the quality step measures it).
+    clip_share: Mapped[float | None] = mapped_column(Float)
+    # 1 when clip_share is over 0.1%: audible digital clipping (a database measured before
+    # clip_share holds the older reading, of a 22,050 Hz mono copy, until the quality step).
     is_clipped: Mapped[int | None] = mapped_column(Integer)
 
     # Absolute mean of the waveform (ideal = 0.0). >0.02 is an audible DC thump.

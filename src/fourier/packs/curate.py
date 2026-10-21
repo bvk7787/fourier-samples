@@ -4500,9 +4500,11 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             stats["long_wavetables"] = stats.get("long_wavetables", 0) + 1
             _out(r, "long_wavetable", [round(float(r.duration_s), 2), WAVE_MAX_DUR])
             continue                     # a wavetable for a wavetable synth: never a sample to play
-        # hygiene: drop clipped samples and corrupt multi-minute files
+        # hygiene: drop clipped samples and corrupt multi-minute files (said in the why log of
+        # the category the file is homed in, and of one the previous build had it in)
         if r.is_clipped or (r.duration_s and r.duration_s > 60):
-            _out_prev(r, "hygiene", "clipped" if r.is_clipped else "over 60 s")
+            if not use_home or homes.get(r.id) == category or (prev and r.path in prev):
+                _out(r, "hygiene", "clipped" if r.is_clipped else "over 60 s")
             continue
         if r.path in drops:
             stats["dropped"] = stats.get("dropped", 0) + 1
