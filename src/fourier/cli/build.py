@@ -573,9 +573,10 @@ def _export_failure_message(short: dict, out_dir) -> str:
     where = ", ".join(f"{c} {k}" for c, k in sorted(short.items()))
     msg = (f"{n:,} picked file{'' if n == 1 else 's'} couldn't be exported ({where}): a source "
            f"that's gone or can't be read (an unmounted drive, a moved or corrupt file), so the "
-           f"build would be short. `fourier tools db-stats --missing` lists samples whose files "
-           f"are gone (--prune removes them); `fourier tools scan` marks them for a library "
-           f"Sononym doesn't index.")
+           f"build would be short. A drive that isn't mounted? Reconnect it and build again. "
+           f"`fourier tools db-stats --missing` lists samples whose files are gone; once they're "
+           f"deleted or moved on purpose, `fourier tools scan` marks them for a library Sononym "
+           f"doesn't index.")
     if out_dir:
         msg += f" The master at {out_dir} is unchanged."
     return msg

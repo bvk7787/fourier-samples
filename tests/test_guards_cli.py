@@ -549,3 +549,255 @@ def test_build_never_clears_a_next_that_isnt_a_build(env, args):
     assert res.exit_code != 0
     assert "isn't a Fourier build" in _flat(res.output), res.output
     assert (nxt / "set.wav").read_bytes() == b"mine"
+
+
+# ---------------------------------------------------------------------------
+# where renders and releases may go
+# ---------------------------------------------------------------------------
+def _config(env, **output):
+    """fourier.toml with these [output] folders (the master and publish root as the env's)."""
+    from fourier import places
+    out = dict(master=str(env.master), publish=str(env.pub), **output)
+    (env.tmp / "fourier.toml").write_text(f'preset = "balanced"\nlibrary = ["{env.lib}"]\n[output]\n'
+                                         + "".join(f'{k} = "{v}"\n' for k, v in out.items()))
+    places.reset()
+
+
+def test_the_usual_layouts_are_fine(env):
+    from fourier.safety import check_output_place
+    _master(env.master)
+    for out in (env.home / "Music" / "FourierRenders" / "m8_tracker", env.tmp / "R"):
+        check_output_place(out, "the render folder", "renders")
+    check_output_place(env.pub, "the publish root", "publish")
+    one = env.tmp / "Fourier"                      # everything in one folder
+    _config(env, renders=one / "renders")
+    (env.tmp / "fourier.toml").write_text(
+        f'library = ["{env.lib}"]\n[output]\nmaster = "{one}/master"\nrenders = "{one}/renders"\n'
+        f'publish = "{one}"\n')
+    from fourier import places
+    places.reset()
+    check_output_place(one / "renders" / "m8_tracker", "the render folder", "renders")
+    check_output_place(one, "the publish root", "publish")
+
+
+@pytest.mark.parametrize("where", ["master", "next", "prev", "home", "releases", "library"])
+def test_render_refuses_a_folder_of_fouriers_own_or_in_the_library(env, where):
+    m = _master(env.master)
+    out = {"master": m / "Renders", "next": Path(str(m) + ".next") / "R",
+           "prev": Path(str(m) + ".prev"), "home": env.tmp / "fourier-home" / "renders",
+           "releases": env.pub / "releases" / "R", "library": env.lib / "Renders"}[where]
+    before = _files(env.tmp)
+    res = _run(env, "render", "m8_tracker", "--out", str(out))
+    text = _flat(res.output)
+    assert res.exit_code == 1 and ("can't be, hold or sit in" in text or "inside a library" in text), text
+    assert not out.exists() and {k: v for k, v in _files(env.tmp).items() if "lib.db" not in k} == \
+        {k: v for k, v in before.items() if "lib.db" not in k}
+
+
+def test_renders_set_inside_the_library_are_skipped_by_the_scan_so_allowed(env):
+    from fourier.safety import UnsafePath, check_output_place
+    _config(env, renders=env.lib / "_Renders")
+    check_output_place(env.lib / "_Renders" / "m8_tracker", "the render folder", "renders")
+    with pytest.raises(UnsafePath, match="inside a library folder"):
+        check_output_place(env.lib / "Elsewhere", "the render folder", "renders")
+    with pytest.raises(UnsafePath, match="can't be or hold a library folder"):
+        check_output_place(env.lib, "the render folder", "renders")
+
+
+@pytest.mark.parametrize("where", ["master", "in-master", "prev", "home", "library"])
+def test_publish_refuses_a_root_that_would_copy_the_master_into_itself(env, where):
+    m = _master(env.master)
+    to = {"master": m, "in-master": m / "Pub", "prev": Path(str(m) + ".prev"),
+          "home": env.tmp / "fourier-home", "library": env.lib / "Pub"}[where]
+    before = _files(m)
+    res = _run(env, "publish", "--from", str(m), "--to", str(to), "--no-verify")
+    text = _flat(res.output)
+    assert res.exit_code == 1 and ("can't be, hold or sit in" in text or "inside a library" in text), text
+    assert _files(m) == before and not (to / "releases").exists()
+
+
+def test_a_publish_root_set_inside_the_library_is_allowed(env):
+    _master(env.master)
+    _config(env)
+    (env.tmp / "fourier.toml").write_text((env.tmp / "fourier.toml").read_text().replace(
+        f'publish = "{env.pub}"', f'publish = "{env.lib}/_Releases"'))
+    from fourier import places
+    places.reset()
+    res = _run(env, "publish", "--no-verify")
+    assert res.exit_code == 0 and (env.lib / "_Releases" / "releases" / "v1").is_dir(), res.output
+
+
+# ---------------------------------------------------------------------------
+# a publish that stopped
+# ---------------------------------------------------------------------------
+def test_a_publish_that_stops_leaves_nothing_in_the_way(env, monkeypatch):
+    import fourier.platforms as plat
+    m = _master(env.master)
+    real = plat.copy_tree
+    with monkeypatch.context() as mp:
+        def stop(src, dst, **kw):
+            real(src, dst, **kw)
+            raise KeyboardInterrupt
+        mp.setattr(plat, "copy_tree", stop)
+        _run(env, "publish", "--from", str(m), "--no-verify")
+    assert not (env.pub / "releases" / "v1.partial").exists()
+    res = _run(env, "publish", "--from", str(m), "--no-verify")
+    assert res.exit_code == 0 and (env.pub / "releases" / "v1").is_dir(), res.output
+
+
+def test_a_publish_left_by_a_killed_run_is_removed_by_the_next(env):
+    from fourier.cli.releases import PUBLISH_MARK
+    m = _master(env.master)
+    left = env.pub / "releases" / "v1.partial"                 # what a killed publish leaves
+    (left / "KICKS").mkdir(parents=True)
+    (left / PUBLISH_MARK).write_text("v1\n")
+    res = _run(env, "publish", "--from", str(m), "--no-verify")
+    assert res.exit_code == 0 and "left by a publish that stopped" in _flat(res.output), res.output
+    assert (env.pub / "releases" / "v1").is_dir() and not left.exists()
+    assert not (env.pub / "releases" / "v1" / PUBLISH_MARK).exists()
+
+
+def test_leftovers_publish_cant_prove_its_own_name_the_fix(env):
+    m = _master(env.master)
+    rel = env.pub / "releases"
+    (rel / "v1.partial" / "KICKS").mkdir(parents=True)            # an earlier version's
+    res = _run(env, "publish", "--from", str(m), "--no-verify")
+    text = _flat(res.output)
+    assert res.exit_code == 1 and f"delete {rel / 'v1.partial'}" in text, text
+    assert (rel / "v1.partial" / "KICKS").is_dir()               # never removed for the user
+    import shutil
+    shutil.rmtree(rel / "v1.partial")
+    back = _master(rel / "v3.partial")                         # a release a sync client renamed back
+    man = json.loads((back / "manifest.json").read_text())
+    (back / "manifest.json").write_text(json.dumps(dict(man, release="v3")))
+    res = _run(env, "publish", "--from", str(m), "--no-verify")
+    assert res.exit_code == 1 and "rename it to v3" in _flat(res.output), res.output
+    assert (back / "KICKS").is_dir()
+    shutil.rmtree(back)
+    (rel / "v2.replaced").mkdir()
+    res = _run(env, "releases")
+    assert "rename it back to v2" in _flat(res.output), res.output
+    (rel / "v2").mkdir()
+    res = _run(env, "releases")
+    assert f"v2 is in place, so delete {rel / 'v2.replaced'}" in _flat(res.output), res.output
+
+
+def _publish_force_stopped_between_renames(env, monkeypatch, m):
+    """v1 published, then `publish --force --as-version 1` stopped right after it moved the old
+    v1 aside (the kill window between its two renames)."""
+    assert _run(env, "publish", "--from", str(m), "--no-verify").exit_code == 0
+    real = os.rename
+
+    def stop(a, b):
+        real(a, b)
+        if str(a).endswith(os.sep + "v1") and str(b).endswith("v1.replaced"):
+            raise KeyboardInterrupt
+    with monkeypatch.context() as mp:
+        mp.setattr(os, "rename", stop)
+        res = _run(env, "publish", "--from", str(m), "--no-verify", "--force", "--as-version", "1")
+    assert res.exit_code == 1 and "Aborted" in res.output, res.output
+
+
+@pytest.mark.parametrize("cloud", [False, True])
+def test_a_publish_force_stopped_between_renames_names_one_way_out(env, monkeypatch, cloud):
+    """Killed between moving the old vN aside and moving the new one in, publish --force
+    leaves vN.partial (the new release) and vN.replaced (the old one). The advice says which
+    is which and to keep one; in a cloud-synced publish root both sit in the staging folder
+    and are still listed, and the next publish never removes them."""
+    import shutil
+    if cloud:
+        pub = env.tmp / "Dropbox" / "Pub"
+        st = env.tmp / "staging"
+        monkeypatch.setenv("FOURIER_STAGING_DIR", str(st))
+        cfg = env.tmp / "fourier.toml"
+        cfg.write_text(cfg.read_text().replace(f'publish = "{env.pub}"', f'publish = "{pub}"'))
+        from fourier import places
+        places.reset()
+    else:
+        pub = env.pub
+        st = pub / "releases"
+    m = _master(env.master)
+    _publish_force_stopped_between_renames(env, monkeypatch, m)
+    rel = pub / "releases"
+    assert not (rel / "v1").exists() and (st / "v1.partial").is_dir() and (st / "v1.replaced").is_dir()
+    res = _run(env, "releases")
+    text = _flat(res.output)
+    assert f"{st / 'v1.partial'} is the new v1 and {st / 'v1.replaced'} the v1 it replaced" in text, text
+    assert "Keep one" in text and "rename it back" not in text and "renamed back by a sync" not in text, text
+    res = _run(env, "publish", "--from", str(m), "--no-verify")
+    assert res.exit_code == 1 and "needs fixing first" in _flat(res.output), res.output
+    assert (st / "v1.partial").is_dir() and (st / "v1.replaced").is_dir()      # never removed
+    os.rename(st / "v1.partial", rel / "v1")                                 # the advice works
+    shutil.rmtree(st / "v1.replaced")
+    res = _run(env, "publish", "--from", str(m), "--no-verify")
+    assert res.exit_code == 0 and (rel / "v2").is_dir(), res.output
+
+
+def test_a_publish_out_of_room_says_how_much_it_needs(env, monkeypatch):
+    import fourier.platforms as plat
+    m = _master(env.master)
+    monkeypatch.setattr(plat, "copy_tree", lambda *a, **k: (1, ["[Errno 28] No space left on device"]))
+    res = _run(env, "publish", "--from", str(m), "--no-verify")
+    text = _flat(res.output)
+    assert res.exit_code == 1 and "No space left" in text and "A release needs about" in text, text
+    assert not (env.pub / "releases" / "v1.partial").exists()
+
+
+# ---------------------------------------------------------------------------
+# db-stats --missing --prune
+# ---------------------------------------------------------------------------
+def _db(env, n_here, n_gone, where=None):
+    from fourier.db import session as sess
+    from fourier.db.models import Sample
+    sess._engine = sess._SessionLocal = None
+    sess.init_db(env.db)
+    s = sess.get_session()
+    where = where or env.lib / "Acme"
+    for i in range(n_here):
+        p = where / f"Kick {i:02}.wav"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"RIFF")
+        s.add(Sample(path=str(p), filename=p.name))
+    for i in range(n_gone):
+        s.add(Sample(path=str(where / "Gone" / f"Snare {i:02}.wav"), filename=f"Snare {i:02}.wav"))
+    s.commit()
+    s.close()
+    sess._engine = sess._SessionLocal = None
+
+
+def _count(env):
+    from sqlalchemy import text
+    from fourier.db import session as sess
+    sess._engine = sess._SessionLocal = None
+    sess.init_db(env.db)
+    s = sess.get_session()
+    try:
+        return s.execute(text("SELECT COUNT(*) FROM samples")).scalar()
+    finally:
+        s.close()
+        sess._engine = sess._SessionLocal = None
+
+
+def test_prune_refuses_while_a_library_folder_is_missing(env, monkeypatch):
+    _db(env, 5, 0)
+    import shutil
+    shutil.move(str(env.lib), str(env.tmp / "unplugged"))       # the drive is gone
+    res = _run(env, "tools", "db-stats", "--missing", "--prune")
+    text = _flat(res.output)
+    assert res.exit_code == 1 and "is missing" in text and "Nothing was removed" in text, text
+    assert _count(env) == 5
+    res = _run(env, "tools", "db-stats", "--missing", "--prune", "--force")
+    assert res.exit_code == 1 and _count(env) == 5                # --force never prunes an absent drive
+
+
+def test_prune_asks_before_removing_much_of_the_library(env):
+    _db(env, 20, 12)
+    res = _run(env, "tools", "db-stats", "--missing", "--prune")
+    text = _flat(res.output)
+    assert res.exit_code == 1 and "12 of 32 samples" in text and "--force" in text, text
+    assert _count(env) == 32
+    res = _run(env, "tools", "db-stats", "--missing", "--prune", "--force")
+    assert res.exit_code == 0 and _count(env) == 20, res.output
+    _db(env, 0, 2)                                              # a few: removed as before
+    res = _run(env, "tools", "db-stats", "--missing", "--prune")
+    assert res.exit_code == 0 and "Removed 2 samples" in res.output, res.output

@@ -25,6 +25,14 @@ change the CLI or the config).
 
 ### Fixed
 
+- `fourier render` and `fourier publish` refuse a folder that is, holds or sits in the master,
+  its `.next` or `.prev`, the Fourier home or a release; inside a library only the configured
+  renders or publish folder is allowed.
+- `fourier tools db-stats --missing --prune` refuses while a library folder is missing or
+  empty, and asks for `--force` before removing more than a fifth of the samples.
+- An interrupted `fourier publish` no longer blocks the next one: it removes its own leftover
+  copy, and names the fix for one it can't prove is its own, in the staging folder of a
+  cloud-synced publish folder too.
 - A render that fails or is stopped leaves the previous render as it was, and `fourier sync`
   copies only a render that finished (its marker records each file's size and md5). A render
   that runs out of room says how much the previous render holds and that it can be deleted.

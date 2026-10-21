@@ -429,9 +429,11 @@ def test_publish_checks_the_copy_and_refuses_locked_versions(tmp_path, db, fake_
     json.dump(man, open(os.path.join(master, "manifest.json"), "w"))
     res = CliRunner().invoke(cli.main, args)
     assert res.exit_code == 1 and not (rel / "v2").exists() and (rel / "v2.partial").exists()
-    # ...and the leftover copy blocks the next publish until it's dealt with
+    # ...and the next publish removes that copy of its own before it tries again
     res = CliRunner().invoke(cli.main, args)
-    assert res.exit_code == 1 and "leftover copy: v2.partial" in res.output
+    out = " ".join(res.output.split())
+    assert res.exit_code == 1 and "left by a publish that stopped" in out, out
+    assert "doesn't match the manifest" in out and not (rel / "v2").exists()
     import shutil
     shutil.rmtree(rel / "v2.partial")
     # --force over a version a device lock uses is refused
@@ -459,7 +461,8 @@ def test_releases_folder_problems_block_publish_and_show_in_versions(tmp_path, d
     (locks / "m8_tracker.lock.json").write_text(json.dumps({"files": {"k": {"release": "v1"}}}))
     monkeypatch.setattr(device_lock, "LOCK_DIR", locks)
     probs = cli._release_problems(str(rel))
-    assert "leftover copy: v1.partial" in probs and "sync duplicate: 'v1 2'" in probs
+    assert any(p.startswith("leftover copy: v1.partial") for p in probs)
+    assert "sync duplicate: 'v1 2'" in probs
     assert "LATEST.txt says v1, which isn't there" in probs
     assert "m8_tracker lock serves files from v1, which isn't there" in probs
     res = CliRunner().invoke(cli.main, ["--db", db.path, "releases", "--to", str(root)])

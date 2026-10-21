@@ -66,8 +66,17 @@ def render(device_id, master_dir, release, no_lock, out_dir, max_mb, check, card
         _device_preview(device_id, master_dir)
         return
     from ..packs.render import render_device
+    from ..safety import UnsafePath, check_output_place
     master_dir = master_dir or _master_dir()
     out_dir = out_dir or _renders_dir(device_id)
+    try:
+        check_output_place(out_dir, "the render folder", "renders", masters=(master_dir,))
+        if new_only:
+            check_output_place(out_dir.rstrip("/") + f"-new-in-{release}", "the --new-only folder",
+                               "renders", masters=(master_dir,))
+    except UnsafePath as e:
+        console.print(str(e), style="red", markup=False, highlight=False, soft_wrap=True)
+        raise SystemExit(1) from None
     try:
         # a render's lines name paths: never hard-wrapped (soft_wrap; the terminal folds them)
         r = render_device(device_id, master_dir, out_dir, max_mb=max_mb,
@@ -373,20 +382,59 @@ def _check_paths(device_id, master_dir, card_dir, show=10):
         raise SystemExit(1)
 
 
-def _release_staging(reldir):
+def _release_staging(reldir, create: bool = True):
     """Where a release is copied and checked before it appears. Outside a cloud-synced
     folder (iCloud Drive, Dropbox, OneDrive, ...; platforms.cloud_synced) when the releases
     live in one, on the same volume so it moves in with one rename: a folder filled and
     renamed inside a synced folder can be renamed back by the sync client, which can also leave
-    empty "vN 2" copies behind."""
+    empty "vN 2" copies behind. create=False only looks (a staging folder not made yet is
+    reldir's)."""
     import os as _os
     from ..platforms import cloud_synced
     if not cloud_synced(reldir):
         return reldir
     from fourier.paths import home_path
     st = _os.environ.get("FOURIER_STAGING_DIR") or str(home_path("staging"))
-    _os.makedirs(st, exist_ok=True)
-    return st if _os.stat(st).st_dev == _os.stat(reldir).st_dev else reldir
+    if create:
+        _os.makedirs(st, exist_ok=True)
+    try:
+        return st if _os.stat(st).st_dev == _os.stat(reldir).st_dev else reldir
+    except OSError:
+        return reldir
+
+
+PUBLISH_MARK = ".fourier-publish"     # in v<N>.partial while publish fills it
+
+
+def _own_partial(path) -> bool:
+    """A v<N>.partial folder this version's publish made (it marks one before copying)."""
+    import os as _os
+    return _os.path.isdir(path) and _os.path.isfile(_os.path.join(path, PUBLISH_MARK))
+
+
+def _partial_manifest(path) -> dict | None:
+    """The manifest in a v<N>.partial folder, or None."""
+    import os as _os
+    from ..packs import manifests
+    try:
+        doc = manifests.read(_os.path.join(path, "manifest.json"))
+    except (OSError, ValueError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _remove_own_partials(*dirs) -> None:
+    """Remove the v<N>.partial copies a publish that stopped left in dirs (only marked ones)."""
+    import os as _os
+    import re as _re
+    import shutil
+    for d in dict.fromkeys(dirs):
+        for name in sorted(_os.listdir(d)) if _os.path.isdir(d) else ():
+            p = _os.path.join(d, name)
+            if _re.fullmatch(r"v\d+\.partial", name) and _own_partial(p):
+                shutil.rmtree(p)
+                console.print(f"removed {p}, left by a publish that stopped", markup=False,
+                              highlight=False, soft_wrap=True)
 
 
 def _release_problems(reldir):
@@ -401,7 +449,45 @@ def _release_problems(reldir):
         return out
     names = _os.listdir(reldir)
     have = {d for d in names if _re.fullmatch(r"v\d+", d) and _os.path.isdir(_os.path.join(reldir, d))}
-    out += [f"leftover copy: {d}" for d in names if _re.fullmatch(r"v\d+\.(partial|replaced)", d)]
+    places = [(reldir, names)]
+    staging = _release_staging(reldir, create=False)      # outside a cloud-synced publish root
+    if staging != reldir and _os.path.isdir(staging):
+        places.append((staging, _os.listdir(staging)))
+    for where, ds in places:
+        here = set(ds)
+        for d in sorted(ds):
+            p, v = _os.path.join(where, d), d.split(".")[0]
+            # where vN goes: named as is in the releases folder, by its path from staging
+            to_v = v if where == reldir else _os.path.join(reldir, v)
+            new_whole = (f"{v}.partial" in here and not _own_partial(_os.path.join(where, f"{v}.partial"))
+                         and "release" in (_partial_manifest(_os.path.join(where, f"{v}.partial")) or {}))
+            if v not in have and new_whole and f"{v}.replaced" in here:
+                # a publish --force stopped between its two renames: one line for the pair
+                if d == f"{v}.partial":
+                    old = _os.path.join(where, f"{v}.replaced")
+                    out.append(f"leftover copies: {p} is the new {v} and {old} the {v} it replaced "
+                               f"(a `publish --force` stopped before putting the new one in place). "
+                               f"Keep one: rename {p} to {to_v} and delete {old}, or rename {old} "
+                               f"to {to_v} and delete {p}")
+                continue
+            if _re.fullmatch(r"v\d+\.partial", d):
+                if _own_partial(p):
+                    out.append(f"leftover copy: {p if where != reldir else d} (a publish that "
+                               f"stopped; the next publish removes it)")
+                elif v in have:
+                    out.append(f"leftover copy: {d} ({v} is in place, so delete {p})")
+                elif "release" in (_partial_manifest(p) or {}):
+                    out.append(f"leftover copy: {p if where != reldir else d} (the whole release "
+                               f"{v}, which a publish stopped before putting in place or a sync "
+                               f"client renamed back: rename it to {to_v})")
+                else:
+                    out.append(f"leftover copy: {d} (a publish that stopped before it finished; "
+                               f"nothing uses it: delete {p}, then publish again)")
+            elif _re.fullmatch(r"v\d+\.replaced", d):
+                out.append(f"leftover copy: {d} (the copy of {v} a `publish --force` replaced; {v} is "
+                           f"in place, so delete {p})" if v in have else
+                           f"{p if where != reldir else d} is {v} as it was before a `publish "
+                           f"--force` that stopped: rename it back to {to_v}")
     out += [f"sync duplicate: {d!r}" for d in names if _re.fullmatch(r"v\d+ \d+", d)]
     lp = _os.path.join(reldir, "LATEST.txt")
     if _os.path.exists(lp):
@@ -458,13 +544,21 @@ def publish(src, root, notes, as_version, force, as_release, dry_run, base, no_v
         console.print(f"No master yet at {src}: `fourier build` makes it, then publish saves it "
                       "as a release.", style="red", markup=False, highlight=False)
         raise SystemExit(1)
+    from ..safety import UnsafePath, check_output_place
+    try:
+        check_output_place(root, "the publish root", "publish", masters=(src,))
+    except UnsafePath as err:
+        console.print(str(err), style="red", markup=False, highlight=False, soft_wrap=True)
+        raise SystemExit(1) from None
     reldir = _os.path.join(root, "releases")
     if not dry_run:                 # a dry run writes nothing, folders included
         _os.makedirs(reldir, exist_ok=True)
+        _remove_own_partials(reldir, _release_staging(reldir))
     probs = _release_problems(reldir)
     if probs:
-        console.print("[red]the releases folder needs fixing first:[/red] " + "; ".join(probs)
-                      + " (fourier releases)")
+        console.print("the releases folder needs fixing first: " + "; ".join(probs)
+                      + " (fourier releases)", style="red", markup=False, highlight=False,
+                      soft_wrap=True)
         raise SystemExit(1)
     existing = sorted((d for d in (_os.listdir(reldir) if _os.path.isdir(reldir) else ())
                        if _re.fullmatch(r"v\d+", d) and _os.path.isdir(_os.path.join(reldir, d))),
@@ -508,9 +602,22 @@ def publish(src, root, notes, as_version, force, as_release, dry_run, base, no_v
     if _os.path.exists(partial):
         shutil.rmtree(partial)
     console.print(f"Cutting RELEASE {src} -> {target} ...")
-    code, lines = copy_tree(src, partial, exclude_top=("_REVIEW",))
+    _os.makedirs(partial)
+    open(_os.path.join(partial, PUBLISH_MARK), "w").write(f"v{n}\n")    # this copy is publish's
+    try:
+        code, lines = copy_tree(src, partial, exclude_top=("_REVIEW",))
+    except BaseException:
+        shutil.rmtree(partial, ignore_errors=True)
+        raise
     if code != 0:
-        console.print(f"copy failed: {chr(10).join(lines)[-400:]}", style="red", markup=False)
+        shutil.rmtree(partial, ignore_errors=True)
+        need = sum(_os.path.getsize(_os.path.join(d_, f)) for d_, _d, fs in _os.walk(src)
+                   if _os.path.relpath(d_, src).split(_os.sep)[0] != "_REVIEW" for f in fs)
+        why = (lines[0] if lines else "")
+        console.print(f"copy failed: {why[:300]}{' ...' if len(why) > 300 else ''}", style="red",
+                      markup=False, highlight=False, soft_wrap=True)
+        console.print(f"A release needs about {need / 2**20:,.0f} MB free in {staging}. Nothing was "
+                      f"published.", style="red", markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1)
     import hashlib as _h
     from ..packs import manifests
@@ -531,6 +638,7 @@ def publish(src, root, notes, as_version, force, as_release, dry_run, base, no_v
     # or sync ever writes into it (fourier/safety.py)
     _mp = _os.path.join(partial, "manifest.json")
     manifests.write(_mp, dict(man, release=f"v{n}"))
+    _os.remove(_os.path.join(partial, PUBLISH_MARK))
     if _os.path.exists(target):
         old = _os.path.join(staging, f"v{n}.replaced")
         if _os.path.exists(old):
@@ -608,7 +716,7 @@ def _list_releases(root):
     if not _os.path.isdir(reldir):
         console.print("[yellow]no releases yet[/yellow] (fourier publish)"); return
     for p_ in _release_problems(reldir):
-        console.print(f"  [red]problem:[/red] {p_}")
+        console.print(f"  problem: {p_}", style="red", markup=False, highlight=False, soft_wrap=True)
     latest = None
     lp = _os.path.join(reldir, "LATEST.txt")
     if _os.path.exists(lp):

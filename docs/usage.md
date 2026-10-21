@@ -158,11 +158,15 @@ whichever the installed soundfile reads (not `.m4a`). It reports what it skipped
   and a scan reads them again only once they change.
 - Dot files and Fourier's own folders are skipped. With Sononym the scan skips them too: a
   publish root inside the library (releases, device locks) is indexed by Sononym, never taken
-  back in by Fourier.
+  back in by Fourier. A render or release folder inside the library is refused unless it's the
+  `[output] renders` or `publish` folder (or inside it), which the scan skips. None of them may
+  be, hold or sit in the master, its `.next` or `.prev`, or the Fourier home.
 - A folder symlink that leads out of the library folder (a pack on another drive) is followed,
   and its files are filed where the link puts them. Each real folder is walked once.
 - Samples the walk no longer finds (moved, renamed, deleted) are marked missing and left out of
-  builds until they're back. `fourier tools db-stats --missing --prune` removes them.
+  builds until they're back. `fourier tools db-stats --missing --prune` removes them. It refuses
+  while a library folder is missing or empty (an unplugged drive), and asks for `--force`
+  before removing more than a fifth of the samples.
 - A file found at a new path with the same content (a renamed folder) is a move. Its analysis
   and ratings go with it, and the next build keeps it where the master had it, with the same
   name and audio. The scan, `db-stats --missing` ("moved (old rows)") and CHANGELOG.md say so.

@@ -38,7 +38,10 @@ SONONYM_HINTS = {
 @click.option("--missing", is_flag=True,
               help="Also list samples whose files are no longer on disk")
 @click.option("--prune", is_flag=True,
-              help="With --missing: remove those samples from the database")
+              help="With --missing: remove those samples from the database (refused while a "
+                   "library folder is missing, or for more than a fifth of the samples)")
+@click.option("--force", is_flag=True,
+              help="With --prune: remove them even when they're more than a fifth of the samples")
 @click.option("--metadata", is_flag=True,
               help="Also check each provider's labels and descriptors against its source "
                    "(exits 1 on any difference)")
@@ -52,7 +55,7 @@ SONONYM_HINTS = {
                    "model's category): a report, nothing changes")
 @click.option("--examples", default=10, show_default=True,
               help="With --metadata or --disagreements: differences to print (of each kind)")
-def db_stats(missing, prune, metadata, do_rebuild, shadow, disagreements, examples):
+def db_stats(missing, prune, metadata, do_rebuild, shadow, disagreements, examples, force=False):
     """Show what the library database holds: samples, favorites, and with Sononym's data its
     categories (count, average length, brightness and noisiness; the names `fourier search
     --categories` takes). --missing lists samples whose files are gone (--prune removes
@@ -68,11 +71,13 @@ def db_stats(missing, prune, metadata, do_rebuild, shadow, disagreements, exampl
     """
     if prune and not missing:
         raise click.UsageError("--prune goes with --missing")
+    if force and not prune:
+        raise click.UsageError("--force goes with --prune")
     if (do_rebuild or shadow) and not metadata:
         raise click.UsageError("--rebuild and --shadow go with --metadata")
     _stats()
     if missing:
-        _missing(prune)
+        _missing(prune, force)
     if disagreements:
         _disagreements(examples)
     if metadata and not _metadata(do_rebuild, examples, shadow):
@@ -212,10 +217,20 @@ def _stats() -> None:
     console.print('[dim]Use these names with: fourier search --categories "Cat Name"[/dim]')
 
 
-def _missing(prune) -> None:
+# the most of the database's samples --prune removes without --force (from PRUNE_MIN_ASKED
+# samples on): more are gone than a library's files usually are, which is a drive or folder
+# that isn't there
+PRUNE_MAX_SHARE = 0.2
+PRUNE_MIN_ASKED = 10
+
+
+def _missing(prune, force=False) -> None:
     """Samples whose files are no longer on disk; with prune, removed from the database. The
     old rows of files a walk found moved (missing_files.moved_to) aren't missing: they're
-    counted apart, as the scan counts them, and --prune removes them too."""
+    counted apart, as the scan counts them, and --prune removes them too. Prune refuses
+    while a library folder is missing, empty or unreadable (an unmounted drive: its files
+    are only out of reach), and for more than PRUNE_MAX_SHARE of the samples (PRUNE_MIN_ASKED
+    or more) without force."""
     import os
     import time
 
@@ -255,13 +270,33 @@ def _missing(prune) -> None:
         if len(gone) > 50:
             table.add_row("...", f"({len(gone) - 50} more)", "")
         console.print(table)
+        from ..ingest.walk import root_state
+        from ..places import library
+        bad = [(r, why) for r in library()[0] for why in [root_state(r)] if why]
+        for r, why in bad:
+            console.print(f"The library folder {r} is {why}: an unmounted drive or a renamed "
+                          f"folder? Its files are only out of reach.", style="red",
+                          markup=False, highlight=False, soft_wrap=True)
+        share = len(gone) / max(1, len(samples) - len(moved))
+        if prune and bad:
+            console.print("Not pruning: reconnect it (or point library in fourier.toml at where "
+                          "it is now) and run this again. Nothing was removed.", style="red",
+                          markup=False, highlight=False, soft_wrap=True)
+            raise SystemExit(1)
+        if prune and share > PRUNE_MAX_SHARE and len(gone) >= PRUNE_MIN_ASKED and not force:
+            console.print(f"Not pruning: {len(gone):,} of {len(samples) - len(moved):,} samples "
+                          f"({share:.0%}) is more than a library usually loses, so a drive or "
+                          f"folder may be out of reach. Check they're there; --force removes them "
+                          f"anyway. Nothing was removed.", style="red", markup=False,
+                          highlight=False, soft_wrap=True)
+            raise SystemExit(1)
         if prune:
             from ..db.session import delete_samples
             n = delete_samples(session, [s.id for s in gone + moved])
             console.print(f"[green]Removed {n:,} samples (and their analysis) from the database"
                           + (f", {len(moved):,} of them old rows of moved files" if moved else "")
                           + ".[/green]")
-        else:
+        elif not bad:
             console.print(f"\n[dim]--prune removes these {len(gone):,} samples from the database.[/dim]")
     finally:
         session.close()
