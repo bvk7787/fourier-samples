@@ -61,3 +61,16 @@ def test_the_synthetic_library_scaled_builds_every_category(tmp_path):
     folders = {c: len({e["family"] for e in cd["entries"]}) for c, cd in man["categories"].items()}
     assert max(folders.values()) <= 3 and sum(folders.values()) < 30, folders
     assert all(len(cd["entries"]) <= cd["budget"] <= 24 for cd in man["categories"].values())
+
+
+@pytest.mark.slow
+def test_the_synthetic_library_passes_verify_without_sononym_or_live(tmp_path):
+    """Without Sononym and Live, the names, Fourier's own pitch analysis and the audio stand
+    in, and a first build of the synthetic library passes verify and swaps its master in: the
+    acoustic notes its folders name (curate._name_tags) never put two notes of a numbered set
+    on one C (curate._fill_roots reading Fourier's own roots)."""
+    r = run_child([sys.executable, str(ROOT / "tests" / "golden" / "synthetic_build.py"),
+                   str(tmp_path / "work"), "--without", "sononym,ableton"])
+    assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
+    assert "verify: PASS" in r.stdout, r.stdout[-3000:]
+    assert (tmp_path / "work" / "out" / "FourierCurated" / "manifest.json").exists()

@@ -211,6 +211,19 @@ def pack_key(path: str | None):
     return "/".join(segs[:2]) if len(segs) > 2 else None
 
 
+def pack_depth(rel: str | None, path: str | None = None) -> int:
+    """How many leading folders of a library path name its vendor and pack (the ones pack_key
+    counts by): two, three under an umbrella folder, none in a library laid out by sound type
+    or flat. first-folder: two."""
+    if mode() != AUTO:
+        return 2
+    lay = _layout_for(path)
+    if lay["layout"] in (TYPES, FLAT):
+        return 0
+    segs = [s for s in (rel or "").split("/") if s]
+    return 3 if lay["layout"] == UMBRELLA and segs and segs[0] in lay["umbrellas"] else 2
+
+
 def describe(layouts: dict) -> str:
     """One line on what was detected (doctor, setup)."""
     roots = {k: v for k, v in layouts.items() if k != "_key"}

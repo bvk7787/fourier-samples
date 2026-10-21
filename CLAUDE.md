@@ -88,7 +88,8 @@ naming, routing, loudness, ratings). `fourier why --rules` prints the routing pr
   `audio` providers (`metadata/shadow.py`; a change to their rules in code bumps
   `_PATH_RULES` / `_AUDIO_RULES` so the labels rebuild). With Sononym they route nothing (only
   the agreement report reads them), and without Live `NAME_TAGS` words stand in for its tags
-  (`curate._name_tags`): changes there can't move a build that has Sononym and Live. Without
+  (`curate._name_tags`; an acoustic instrument's from the folder just above too, never a
+  vendor's or pack's, for a one-shot whose own name and folder name no sound and no drums): changes there can't move a build that has Sononym and Live. Without
   Sononym, a loop guess from the audio alone yields to a sound named in the file's own name or
   folder (`shadow.audio_label`), except a file cut to whole beats of a tempo its path states,
   naming no note and under no one-shot folder (`shadow.on_path_grid`: a bass line in "Pack

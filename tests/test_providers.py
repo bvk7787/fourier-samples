@@ -159,9 +159,9 @@ def test_without_live_path_words_stand_in_for_its_tags(tmp_path, monkeypatch):
     s = _db(tmp_path, monkeypatch, ableton=False)                   # Sononym only
     rows = C._with_name_tags(s, R.fetch(s, R.sample_select("id", "rel_path", "ableton_tags", session=s)))
     assert {r.rel_path: r.ableton_tags for r in rows}["A/Loops/Break 170bpm.wav"] == ["Drum Loop"]
-    sql, p = C._name_tag_sql(["Cello", "Harp"], "n")
+    sql, p = C._name_tag_sql(["Cello", "Misc Plucked"], "n")
     assert "LIKE" in sql and set(p.values()) == {"%cello%"}
-    assert C._name_tag_sql(["Harp"], "n") == ("1 = 0", {})
+    assert C._name_tag_sql(["Misc Plucked"], "n") == ("1 = 0", {})
     R.forget_current()
     (tmp_path / "live").mkdir()
     s2 = _db(tmp_path / "live", monkeypatch)                         # Sononym and Live
