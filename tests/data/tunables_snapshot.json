@@ -6134,7 +6134,7 @@
  "curate_config.PHRASE_LOOP_DIR_RE": {
   "type": "Pattern",
   "value": {
-   "$re": "(?<![a-z])(?:loops?|lps|phrases?|riffs?|basslines?|grooves?|patterns?|progressions?|sequences?)(?![a-z])",
+   "$re": "(?<![a-z])(?:loops?|lps|phrases?|riffs?|bass[ _-]?lines?|lines|grooves?|patterns?|progressions?|sequences?)(?![a-z])",
    "flags": 34
   }
  },

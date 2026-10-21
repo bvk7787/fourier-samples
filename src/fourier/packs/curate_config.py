@@ -335,7 +335,7 @@ BPM_NAME_GUARD = _tunable("BPM_NAME_GUARD", {"KICKS", "SNARES", "CLAPS", "HATS",
 # are not phrases: slicing them is work Fourier doesn't ask for.
 PHRASES_CATEGORY = _tunable("PHRASES_CATEGORY", _tax.home("phrases"))
 PHRASE_LOOP_DIR_RE = _tunable("PHRASE_LOOP_DIR_RE", _re.compile(
-    r"(?<![a-z])(?:loops?|lps|phrases?|riffs?|basslines?|grooves?|patterns?|progressions?|sequences?)(?![a-z])",
+    r"(?<![a-z])(?:loops?|lps|phrases?|riffs?|bass[ _-]?lines?|lines|grooves?|patterns?|progressions?|sequences?)(?![a-z])",
     _re.I))
 # a folder of single sounds below (or beside) a loop folder: "Loops/Chords/..."
 PHRASE_ONESHOT_DIR_RE = _tunable("PHRASE_ONESHOT_DIR_RE", _re.compile(
