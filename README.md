@@ -224,9 +224,10 @@ an app update can break the reading. The only command that writes into a library
 - **Nothing is replaced until it passes.** A whole build goes into `<master>.next`. It replaces
   the master only when every category built and `fourier verify` (more than 100 checks)
   passed. If it stops part way, the master is unchanged, and `fourier build --resume` picks up
-  where it left off. A one-category build, such as `fourier build KICKS`, writes into the
-  master directly, so run `fourier verify` after it. A render that fails or stops leaves the
-  previous render as it was, and `fourier sync` copies only a render that finished.
+  where it left off. If it stops while it puts the new master in place, the next `fourier
+  build` finishes that first. A one-category build, such as `fourier build KICKS`, writes into
+  the master directly, so run `fourier verify` after it. A render that fails or stops leaves
+  the previous render as it was, and `fourier sync` copies only a render that finished.
 - **Undo.** The previous master stays in `<master>.prev` until the next build. Move it back to
   undo one. A release never changes: `fourier publish` never overwrites one without `--force`,
   and never one a device uses. To roll a device back, render an earlier release.

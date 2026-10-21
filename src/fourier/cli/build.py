@@ -1165,6 +1165,7 @@ def _check_build_target(out_dir):
         real = check_master_dir(given)
         for suffix in (".next", ".prev"):
             check_clear(given + suffix, f"the master's {suffix} folder")
+        _finish_swap(given)                 # a swap the last build didn't finish
         if real.is_dir() and _os.path.exists(_os.path.join(real, "manifest.json")):
             check_master_contents(real)
     except UnsafePath as e:
@@ -1205,14 +1206,201 @@ def _kept_note(prev, out_dir) -> str:
     return f" ({'; '.join(parts)})" if parts else ""
 
 
-def _swap_in(build_dir, out_dir):
+SWAP_MARK = ".fourier-swap.json"    # in <master>.next while it's being put in place
+
+
+def _write_swap_mark(build_dir, stage, files=None) -> None:
+    """Record the swap's stage in the build folder, and the build's files (_build_files) when
+    given."""
+    import json as _json
+    import os as _os
+    p = _os.path.join(build_dir, SWAP_MARK)
+    with open(p + ".tmp", "w") as f:
+        _json.dump({"stage": stage} if files is None else {"stage": stage, "files": files}, f)
+    _os.replace(p + ".tmp", p)
+
+
+def _read_swap_mark(build_dir) -> dict | None:
+    import json as _json
+    import os as _os
+    try:
+        with open(_os.path.join(build_dir, SWAP_MARK)) as f:
+            mark = _json.load(f)
+        return mark if isinstance(mark, dict) else {}
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError):
+        return {}
+
+
+def _build_files(build_dir) -> list[str]:
+    """The files of a build that a swap puts in place (master_known_files that it holds, or
+    every file in it when it has no manifest to read): what its swap mark records when the
+    swap begins."""
+    import os as _os
+    from ..safety import UnsafePath, master_known_files
+    try:
+        known = master_known_files(build_dir)
+    except UnsafePath:                      # no manifest to read: every file it holds
+        known = {_os.path.relpath(_os.path.join(dp, f), build_dir).replace(_os.sep, "/")
+                 for dp, _dns, fns in _os.walk(build_dir) for f in fns
+                 if f not in (SWAP_MARK, SWAP_MARK + ".tmp")}
+    return sorted(k for k in known
+                  if k != "manifest.json" and not k.startswith("_REVIEW/")
+                  and _os.path.isfile(_os.path.join(build_dir, k)))
+
+
+def _missing_from_build(build_dir, out_dir=None) -> list[str]:
+    """The files a build held when its swap began (its mark's list) that aren't in its folder
+    any more: putting it in place would remove those from the master. A build of an earlier
+    version, with no list: the files its manifest lists that aren't in its folder, and the
+    files a build writes beside them (a category's _manifest.json, CHANGELOG.md, loops.csv,
+    phrases.csv) that the master out_dir holds and the build doesn't."""
+    import os as _os
+    from ..safety import master_known_files
+    listed = (_read_swap_mark(build_dir) or {}).get("files")
+    if isinstance(listed, list):
+        return sorted(k for k in listed if isinstance(k, str)
+                      and not _os.path.isfile(_os.path.join(build_dir, k)))
+    beside = lambda k: "/" not in k or k.endswith("/_manifest.json")      # noqa: E731
+    known = [k for k in master_known_files(build_dir)
+             if k != "manifest.json" and not k.startswith("_REVIEW/")]
+    return sorted(k for k in known if not _os.path.isfile(_os.path.join(build_dir, k))
+                  and (not beside(k) or (out_dir and _os.path.isfile(_os.path.join(out_dir, k)))))
+
+
+def pending_swap(out_dir) -> str | None:
+    """The stage a swap of <out>.next into out stopped at ("snapshot": copying the old master
+    to .prev; "sync": updating the master; "done": removing .next), or None when none stopped.
+    A swap by an earlier version left no record, but it replaced manifest.json first: a
+    master whose manifest is that of a whole .next is one it left half way."""
+    import filecmp as _fc
+    import os as _os
+    nxt = out_dir.rstrip("/") + ".next"
+    mark = _read_swap_mark(nxt) if _os.path.isfile(_os.path.join(nxt, SWAP_MARK)) else None
+    if mark is not None:
+        stage = mark.get("stage")
+        return stage if stage in ("snapshot", "sync", "done") else "sync"
+    a, b = _os.path.join(out_dir, "manifest.json"), _os.path.join(nxt, "manifest.json")
+    try:
+        if _os.path.isfile(a) and _os.path.isfile(b) and (
+                _os.path.samefile(a, b) or _fc.cmp(a, b, shallow=False)) \
+                and not _missing_from_build(nxt, out_dir):
+            return "sync"
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def _finish_swap(out_dir) -> None:
+    """Finish putting <out>.next in place when a build stopped while doing it: the new build
+    passed verify before the swap began, and .prev already holds the old master."""
+    import os as _os
+    stage = pending_swap(out_dir)
+    if not stage:
+        return
+    nxt, prev = out_dir.rstrip("/") + ".next", out_dir.rstrip("/") + ".prev"
+    if stage == "snapshot":
+        gone = _missing_from_build(nxt, out_dir)
+        if gone:
+            _drop_swap(out_dir, nxt, prev, gone)
+            return
+    if stage != "done":
+        gone = _missing_from_build(nxt, out_dir)
+        if gone:
+            console.print(
+                f"The last build stopped while it put the new master in place at {out_dir}, and "
+                f"the new build in {nxt} is missing {len(gone)} file(s) (e.g. {gone[0]}), so it "
+                f"can't be finished. To go back to the previous master, move {out_dir} aside and "
+                f"rename {prev} to {_os.path.basename(out_dir)}; then build again.",
+                style="red", markup=False, highlight=False, soft_wrap=True)
+            raise SystemExit(1)
+        console.print(f"The last build stopped while it put the new master in place at {out_dir}: "
+                      f"finishing that first.", style="yellow", markup=False, highlight=False,
+                      soft_wrap=True)
+        _swap_in(nxt, out_dir, resume=stage)
+    else:
+        _remove_build(nxt)
+    from ..packs.builddiff import archive_build
+    archive_build(out_dir)
+
+
+def _drop_swap(out_dir, nxt, prev, gone) -> None:
+    """A swap that stopped while it copied the master to .prev changed nothing in the master;
+    when its build has since lost files it can't be put in place, so it's dropped: its mark is
+    removed, and so is the copy at .prev when it's unfinished (one that's whole is kept). The
+    build that found it goes ahead."""
+    import os as _os
+    import shutil as _sh
+    whole = False
+    if _os.path.isfile(_os.path.join(prev, "manifest.json")):
+        try:
+            whole = not _missing_from_build(prev)
+        except Exception:
+            whole = False
+    removed = _os.path.isdir(prev) and not whole
+    if removed:
+        _sh.rmtree(prev)
+    _os.remove(_os.path.join(nxt, SWAP_MARK))
+    console.print(
+        f"The last build stopped while it copied the master to {prev}, before it changed the "
+        f"master: {out_dir} is unchanged. The new build in {nxt} has since lost {len(gone)} "
+        f"file(s) (e.g. {gone[0]}), so it won't be put in place"
+        + (f", and the unfinished copy at {prev} was removed" if removed else "")
+        + ". Building again makes a new one.",
+        style="yellow", markup=False, highlight=False, soft_wrap=True)
+
+
+def _swap_failed(e, stage, build_dir, out_dir, prev) -> None:
+    """What to do when putting the build in place failed with an error (a permission, a full
+    disk, a file another app holds): fix that, then build. Building alone would fail the same
+    way."""
+    if stage is None:
+        console.print(f"Putting the new master in place failed before it began: {e}. The master at "
+                      f"{out_dir} is unchanged and the new build stays in {build_dir}. Fix that "
+                      f"first (the error names the file), then run `fourier build`.", style="red",
+                      markup=False, highlight=False, soft_wrap=True)
+        return
+    if stage == "snapshot":
+        where = (f"Copying the master to {prev} failed: {e}. The master at {out_dir} is unchanged "
+                 f"and the new build stays in {build_dir}.")
+    else:
+        where = (f"Putting the new master in place at {out_dir} failed: {e}. It's partly in place "
+                 f"(the new build is in {build_dir}, the previous master in {prev}).")
+    console.print(f"{where} Fix that first (the error names the file), then run `fourier build`: "
+                  f"it finishes putting the new master in place.", style="red", markup=False,
+                  highlight=False, soft_wrap=True)
+
+
+def _remove_build(build_dir) -> None:
+    """Remove a build folder that's in place, its swap mark last: until then a stop here
+    leaves it marked done (nothing to finish but this)."""
+    import os as _os
+    import shutil as _sh
+    _write_swap_mark(build_dir, "done")
+    for name in sorted(_os.listdir(build_dir), key=lambda n: n != "manifest.json"):
+        p = _os.path.join(build_dir, name)
+        if name == SWAP_MARK:
+            continue
+        if _os.path.isdir(p) and not _os.path.islink(p):
+            _sh.rmtree(p)
+        else:
+            _os.remove(p)
+    _os.remove(_os.path.join(build_dir, SWAP_MARK))
+    _os.rmdir(build_dir)
+
+
+def _swap_in(build_dir, out_dir, resume=None):
     """Bring a finished build into place, touching only what changed. The old master is
     snapshotted as out_dir.prev (hardlinks, replacing an older .prev); then a file identical
     in the new build stays as it is (same inode, same mtime), changed and new files are
-    linked in (each replaced atomically), and files the build dropped are removed. Live's
-    indexer and Spotlight then see only the changes; swapping in a whole new folder made
-    Live re-index every file (re-adding the folder doesn't help)."""
-    import filecmp as _fc
+    linked in (each replaced atomically), files the build dropped are removed, and
+    manifest.json is replaced last. Live's indexer and Spotlight then see only the changes;
+    swapping in a whole new folder made Live re-index every file (re-adding the folder
+    doesn't help).
+
+    A mark in the build folder (SWAP_MARK) records the stage, so a swap that stops is
+    finished by the next build (resume: the stage it stopped at, pending_swap)."""
     import os as _os
     import shutil as _sh
     prev = out_dir.rstrip("/") + ".prev"
@@ -1220,19 +1408,71 @@ def _swap_in(build_dir, out_dir):
         _os.rename(build_dir, out_dir)
         return prev
     if _os.path.exists(_os.path.join(out_dir, "manifest.json")):
-        # files the user added since the build started would be deleted below
+        # files the user added since the build started would be deleted below; a swap that
+        # stopped half way leaves files of the old master (.prev) and the new build (.next)
         from ..safety import UnsafePath, check_master_contents
         try:
-            check_master_contents(out_dir)
+            check_master_contents(out_dir, also=(prev, build_dir) if resume == "sync" else ())
         except UnsafePath as e:
-            console.print(f"{e}\nThe new build stays in {build_dir}; the master is unchanged.",
+            console.print(f"{e}\nThe new build stays in {build_dir}"
+                          + ("." if resume == "sync" else "; the master is unchanged."),
                           style="red", markup=False, highlight=False)
             raise SystemExit(1) from None
-    if _os.path.exists(prev):
-        _check_own(prev)
-        _sh.rmtree(prev)
-    _sh.copytree(out_dir, prev, copy_function=_link_or_copy)
+    if resume != "sync" and _os.path.exists(prev) and resume is None:
+        _check_own(prev)                    # a snapshot that stopped is ours to replace
+    # the build's files when the swap began: a file missing from them later is lost
+    files = (_read_swap_mark(build_dir) or {}).get("files") if resume else None
+    if not isinstance(files, list):
+        files = _build_files(build_dir)
+    stage = resume if resume in ("snapshot", "sync") else None    # the mark on disk
+    try:
+        if resume != "sync":
+            _write_swap_mark(build_dir, "snapshot", files)
+            stage = "snapshot"
+            if _os.path.exists(prev):
+                _sh.rmtree(prev)
+            _sh.copytree(out_dir, prev, copy_function=_link_or_copy)
+        _write_swap_mark(build_dir, "sync", files)
+        stage = "sync"
+        n = _sync_into(build_dir, out_dir)
+    except Exception as e:
+        _swap_failed(e, stage, build_dir, out_dir, prev)
+        raise SystemExit(1) from None
+    except BaseException:
+        if stage is None:
+            console.print(f"This stopped before it changed the master: {out_dir} is unchanged, "
+                          f"and the new build in {build_dir} isn't in place.",
+                          style="red", markup=False, highlight=False, soft_wrap=True)
+            raise
+        console.print(f"This stopped while it copied the master to {prev}, before it changed the "
+                      f"master: {out_dir} is unchanged." if stage == "snapshot" else
+                      f"The new master was only partly in place at {out_dir} when this stopped.",
+                      style="red", markup=False, highlight=False, soft_wrap=True)
+        console.print(f"The next `fourier build` finishes putting it in place (the new build is "
+                      f"in {build_dir}" + (")." if stage == "snapshot" else
+                                           f", the previous master in {prev})."),
+                      style="red", markup=False, highlight=False, soft_wrap=True)
+        raise
+    _remove_build(build_dir)
+    console.print(f"synced into {out_dir}: {n['same']:,} unchanged, {n['changed']:,} changed, "
+                  f"{n['added']:,} added, {n['removed']:,} removed")
+    return prev
+
+
+def _sync_into(build_dir, out_dir) -> dict:
+    """_swap_in's update of the master from the build, manifest.json last (it says which
+    files are Fourier's). Running it again after it stopped finishes the same update."""
+    import filecmp as _fc
+    import os as _os
     new_files, n = set(), dict(same=0, changed=0, added=0, removed=0)
+
+    def put(src, dst, f):
+        tmp = _os.path.join(_os.path.dirname(dst), f".{f}.fourier-swap")
+        if _os.path.lexists(tmp):
+            _os.remove(tmp)
+        _link_or_copy(src, tmp)
+        _os.replace(tmp, dst)
+
     for root, _dirs, files in _os.walk(build_dir):
         rel_root = _os.path.relpath(root, build_dir)
         odir = _os.path.join(out_dir, rel_root)
@@ -1242,7 +1482,11 @@ def _swap_in(build_dir, out_dir):
         actual = {x.lower(): x for x in _os.listdir(odir)}
         for f in files:
             rel = _os.path.normpath(_os.path.join(rel_root, f))
+            if rel in (SWAP_MARK, SWAP_MARK + ".tmp"):
+                continue
             new_files.add(rel)
+            if rel == "manifest.json":
+                continue                         # last, below
             src, dst = _os.path.join(build_dir, rel), _os.path.join(out_dir, rel)
             if actual.get(f.lower(), f) != f:
                 _os.remove(_os.path.join(odir, actual[f.lower()]))    # same name, other case
@@ -1256,9 +1500,7 @@ def _swap_in(build_dir, out_dir):
                 n["same"] += 1
                 continue
             n["changed" if had else "added"] += 1
-            tmp = _os.path.join(_os.path.dirname(dst), f".{f}.fourier-swap")
-            _link_or_copy(src, tmp)
-            _os.replace(tmp, dst)
+            put(src, dst, f)
     for root, dirs, files in _os.walk(out_dir, topdown=False):
         for f in files:
             rel = _os.path.normpath(_os.path.relpath(_os.path.join(root, f), out_dir))
@@ -1267,10 +1509,10 @@ def _swap_in(build_dir, out_dir):
                 n["removed"] += 1
         if root != out_dir and not _os.listdir(root):
             _os.rmdir(root)
-    _sh.rmtree(build_dir)
-    console.print(f"synced into {out_dir}: {n['same']:,} unchanged, {n['changed']:,} changed, "
-                  f"{n['added']:,} added, {n['removed']:,} removed")
-    return prev
+    src, dst = _os.path.join(build_dir, "manifest.json"), _os.path.join(out_dir, "manifest.json")
+    if _os.path.exists(src) and not (_os.path.exists(dst) and _os.path.samefile(src, dst)):
+        put(src, dst, "manifest.json")
+    return n
 
 
 def _link_or_copy(src, dst):

@@ -362,15 +362,21 @@ def master_known_files(root) -> set[str]:
     return known
 
 
-def unknown_master_files(root) -> list[str]:
+def unknown_master_files(root, also=()) -> list[str]:
     """Files in a master that Fourier didn't make (a build would delete them). Live's own
     files are Fourier's to replace: "Ableton Folder Info" sidecars and a known file's .asd
-    analysis; so are dotfiles (.DS_Store, AppleDouble) and the review queue being built."""
+    analysis; so are dotfiles (.DS_Store, AppleDouble) and the review queue being built.
+    also: other builds whose files count as Fourier's too (a swap that stopped half way
+    leaves the master holding files of the old build and the new one)."""
     root = Path(root)
     if not root.is_dir():
         return []
     fold = _case_insensitive(root)
-    known = {_norm(k, fold) for k in master_known_files(root)}
+    known = master_known_files(root)
+    for other in also:
+        if other and (Path(other) / "manifest.json").is_file():
+            known |= master_known_files(other)
+    known = {_norm(k, fold) for k in known}
     out = []
     for dp, dns, fns in os.walk(root):
         rel_dir = Path(dp).relative_to(root)
@@ -387,10 +393,10 @@ def unknown_master_files(root) -> list[str]:
     return sorted(out)
 
 
-def check_master_contents(root, show: int = 10) -> None:
+def check_master_contents(root, show: int = 10, also=()) -> None:
     """Refuse to rebuild a master holding files Fourier didn't make: a build replaces the
     master's contents, and .prev (its only other copy) is replaced by the next build."""
-    strange = unknown_master_files(root)
+    strange = unknown_master_files(root, also)
     if strange:
         more = f"\n  ... and {len(strange) - show} more" if len(strange) > show else ""
         raise UnsafePath(

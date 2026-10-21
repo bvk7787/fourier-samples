@@ -68,6 +68,8 @@ def render(device_id, master_dir, release, no_lock, out_dir, max_mb, check, card
     from ..packs.render import render_device
     from ..safety import UnsafePath, check_output_place
     master_dir = master_dir or _master_dir()
+    if not release:
+        _stop_on_pending_swap(master_dir)
     out_dir = out_dir or _renders_dir(device_id)
     try:
         check_output_place(out_dir, "the render folder", "renders", masters=(master_dir,))
@@ -98,6 +100,17 @@ def render(device_id, master_dir, release, no_lock, out_dir, max_mb, check, card
         raise SystemExit(1)
     if new_only:
         _new_only(device_id, release, out_dir, r["out"])
+
+
+def _stop_on_pending_swap(master_dir) -> None:
+    """Stop when the last build didn't finish putting the master in place (it holds files of
+    the old build and the new one): the next build finishes that."""
+    from .build import pending_swap
+    if pending_swap(master_dir):
+        console.print(f"The last build stopped while it put the new master in place at "
+                      f"{master_dir}: run `fourier build` (it finishes that first), then try again.",
+                      style="red", markup=False, highlight=False, soft_wrap=True)
+        raise SystemExit(1)
 
 
 def _new_only(device_id, release, out_dir, base) -> None:
@@ -550,6 +563,7 @@ def publish(src, root, notes, as_version, force, as_release, dry_run, base, no_v
     except UnsafePath as err:
         console.print(str(err), style="red", markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1) from None
+    _stop_on_pending_swap(src)
     reldir = _os.path.join(root, "releases")
     if not dry_run:                 # a dry run writes nothing, folders included
         _os.makedirs(reldir, exist_ok=True)
