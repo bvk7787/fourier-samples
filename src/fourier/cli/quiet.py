@@ -127,6 +127,9 @@ class Quiet:
             secs = int(time.monotonic() - self.t0)
             what = (f"{done} of {self.total} categories" if self.total > 1 and done < self.total
                     else "checking and finishing")
+            text = _text_progress()
+            if text and not done:
+                what = f"CLAP text prompts, {text['done']} of {text['total']} (first build only)"
             self.term.write(f"\r\033[K{frames[i % 4]} Building the master: {what} "
                             f"({secs // 60}:{secs % 60:02d})")
             self.term.flush()
@@ -188,6 +191,14 @@ class Quiet:
         """After a build that stopped: the log's last lines, and where the rest is."""
         tail = [ln for ln in self.lines() if ln.strip()][-TAIL:]
         return ["", *tail, "", f"The build stopped. Everything it said: {self.path}"]
+
+
+def _text_progress() -> dict | None:
+    """The CLAP text prompts being encoded ({done, total}), or None. Read only when the
+    module is loaded: the spinner never loads PyTorch."""
+    cf = sys.modules.get("fourier.analysis.clap_features")
+    p = getattr(cf, "TEXT_PROGRESS", None)
+    return p if p and p.get("total") else None
 
 
 def _fd(stream) -> int | None:

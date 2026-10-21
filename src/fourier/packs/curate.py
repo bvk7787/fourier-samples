@@ -140,6 +140,34 @@ def text_prompts() -> list[str]:
     return list(dict.fromkeys(out))
 
 
+_EMBED_TEXT = embed_text
+
+
+def prepare_prompts(log=print) -> int:
+    """Encode the build's prompts the text cache doesn't hold yet, in batches and with a
+    progress line, before any category reads them (and before a parallel build's workers
+    start). A first build has hundreds, slow one at a time. A stand-in text encoder (a
+    demo's, a test's) has nothing to prepare. Returns how many it encoded."""
+    import time
+
+    from ..analysis import clap_features as CF
+    if embed_text is not _EMBED_TEXT or CF.embed_text is not CF._EMBED_TEXT:
+        return 0
+    todo = [p for p in text_prompts() if not CF.text_cached(p)]
+    if not todo:
+        return 0
+    log(f"CLAP text prompts: encoding {len(todo)} (once; later builds reuse them)...")
+    t0, shown = time.monotonic(), [0]
+
+    def progress(done, total):
+        if done == total or done - shown[0] >= max(CF.TEXT_BATCH, total // 4):
+            shown[0] = done
+            log(f"  {done} of {total} prompts")
+    n = CF.embed_texts(todo, log=progress)
+    log(f"CLAP text prompts: {n} encoded in {time.monotonic() - t0:.0f}s.")
+    return n
+
+
 def load_index():
     """The cached CLAP search index (ids, embeddings) from ~/.fourier/clap_index.npz, via its
     memory-mapped .npy copies (clap_features.load_index_fast)."""
@@ -1546,6 +1574,7 @@ def _resolve_misc_fx(rec, emb_n):
 def _get_homes(session, emb_n, id2row, log):
     key = (id(session), len(id2row))
     if key not in _HOMES_CACHE:
+        prepare_prompts(log)
         _HOMES_CACHE.clear()
         _HOMES_CACHE[key] = compute_homes(session, emb_n, id2row, log)
     return _HOMES_CACHE[key]
@@ -6746,18 +6775,12 @@ def surplus_budgets(results, budgets=None) -> dict:
     return {c: full[c] + n for c, n in add.items() if n}
 
 
-def _prompt_vectors(log=print) -> dict:
-    """{prompt: vector} for every prompt a category build embeds (text_prompts), embedded here
-    so that build workers never run the CLAP text encoder: torch's threads don't survive a
-    fork, and a worker that starts fresh would load the model once per worker."""
-    from ..analysis.clap_features import _text_cache_path
-    from ..demo import active
-    prompts = text_prompts()
-    if not active():
-        cold = sum(not _text_cache_path(p).exists() for p in prompts)
-        if cold:
-            log(f"CLAP: embedding {cold} text prompts once before the workers start...")
-    return {p: embed_text(p) for p in prompts}
+def _prompt_vectors() -> dict:
+    """{prompt: vector} for every prompt a category build embeds (text_prompts), read here
+    (prepare_prompts encoded them first) so that build workers never run the CLAP text
+    encoder: torch's threads don't survive a fork, and a worker that starts fresh would
+    load the model once per worker."""
+    return {p: embed_text(p) for p in text_prompts()}
 
 
 def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, progress=None, done=None,
@@ -6771,6 +6794,7 @@ def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, prog
     from ..db.session import session_scope, shared_with_workers
     from ..platforms import process_pool
 
+    prepare_prompts(log)                # the workers then find every prompt in the cache
     with session_scope() as session:
         stale, idx_n, db_n = index_stale(session)
         if stale:
@@ -6783,7 +6807,7 @@ def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, prog
         id2row = {int(i): r for r, i in enumerate(ids)}
         homes, support, votes = compute_homes(session, emb_n, id2row, log)
     del emb, emb_n  # free ~0.5 GB in the parent before the workers start
-    texts = _prompt_vectors(log)
+    texts = _prompt_vectors()
 
     # a resumed build (packs/progress.py) keeps the categories it already finished
     results = [(c, *done[c]) for c in categories if done and c in done]

@@ -155,6 +155,28 @@ def _text_cache_path(text: str) -> Path:
     return Path(base) / (hashlib.sha256(f"{CLAP_MODEL_ID}\n{text}".encode()).hexdigest() + ".npy")
 
 
+# vectors embed_texts encoded but couldn't write to the disk cache (a read-only or full
+# home), by cache path: embed_text reads them from here then
+_UNSAVED: dict[str, bytes] = {}
+
+
+def _save_text(p: Path, vec: np.ndarray) -> bool:
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_name(f".{p.stem}.{os.getpid()}.npy")
+        np.save(tmp, vec)
+        os.replace(tmp, p)
+        return True
+    except OSError:
+        return False
+
+
+def text_cached(text: str) -> bool:
+    """Whether embed_text has this text's vector without the model."""
+    p = _text_cache_path(text)
+    return str(p) in _UNSAVED or p.is_file()
+
+
 @lru_cache(maxsize=4096)
 def _embed_text_cached(text: str) -> bytes:
     p = _text_cache_path(text)
@@ -162,15 +184,44 @@ def _embed_text_cached(text: str) -> bytes:
         return np.load(p).astype(np.float32).tobytes()
     except (OSError, ValueError):
         pass
+    if str(p) in _UNSAVED:
+        return _UNSAVED[str(p)]
     vec = _embed_text_model(text)
-    try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_name(f".{p.stem}.{os.getpid()}.npy")
-        np.save(tmp, vec)
-        os.replace(tmp, p)
-    except OSError:
-        pass
+    _save_text(p, vec)
     return vec.tobytes()
+
+
+TEXT_BATCH = 32                         # prompts encoded at once: about 5x cheaper than one by one
+TEXT_PROGRESS = {"done": 0, "total": 0}     # embed_texts' progress, for a build's spinner
+
+
+def embed_texts(texts, log=None) -> int:
+    """Encode the texts the disk cache doesn't hold yet into it, TEXT_BATCH at a time, so
+    embed_text then reads each from the cache (or from memory when the cache can't be
+    written); log(done, total) after each batch. Returns
+    how many it encoded (none in a demo, whose text encoder is a stand-in)."""
+    from ..demo import active
+    if active():
+        return 0
+    todo = [t for t in dict.fromkeys(texts) if not text_cached(t)]
+    if not todo:
+        return 0
+    one_by_one = _embed_text_model is not _EMBED_TEXT_MODEL      # a stand-in model: its own way
+    TEXT_PROGRESS.update(done=0, total=len(todo))
+    try:
+        for i in range(0, len(todo), TEXT_BATCH):
+            part = todo[i:i + TEXT_BATCH]
+            vecs = [_embed_text_model(t) for t in part] if one_by_one else _embed_text_batch(part)
+            for t, vec in zip(part, vecs):
+                p = _text_cache_path(t)
+                if not _save_text(p, vec):
+                    _UNSAVED[str(p)] = np.asarray(vec, np.float32).tobytes()
+            TEXT_PROGRESS["done"] = i + len(part)
+            if log is not None:
+                log(i + len(part), len(todo))
+    finally:
+        TEXT_PROGRESS.update(done=0, total=0)
+    return len(todo)
 
 
 def embed_text(text: str) -> np.ndarray:
@@ -193,19 +244,28 @@ def embed_text(text: str) -> np.ndarray:
     return np.frombuffer(_embed_text_cached(text), dtype=np.float32).copy()
 
 
-def _embed_text_model(text: str) -> np.ndarray:
+_EMBED_TEXT = embed_text
+
+
+def _embed_text_batch(texts: list[str]) -> list[np.ndarray]:
+    """The model's embedding of each text, encoded together (padded to the longest)."""
     import torch
 
     model, processor, device = _load_model_and_processor()
-    inputs = processor(text=[text], return_tensors="pt", padding=True).to(device)
+    inputs = processor(text=list(texts), return_tensors="pt", padding=True).to(device)
     with torch.no_grad():
         out = model.get_text_features(**inputs)
     # transformers ≥5.x returns BaseModelOutputWithPooling; ≤4.x returns a tensor
     if hasattr(out, "pooler_output"):
-        vec = out.pooler_output[0].cpu().float().numpy()  # (512,)
-    else:
-        vec = out[0].cpu().float().numpy()
-    return _normalise(vec)
+        out = out.pooler_output
+    return [_normalise(v) for v in out.cpu().float().numpy()]       # each (512,)
+
+
+def _embed_text_model(text: str) -> np.ndarray:
+    return _embed_text_batch([text])[0]
+
+
+_EMBED_TEXT_MODEL = _embed_text_model
 
 
 def embed_audio_file(path: str | Path) -> np.ndarray:

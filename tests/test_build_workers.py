@@ -55,7 +55,7 @@ def test_the_parent_embeds_every_prompt_a_category_build_uses(monkeypatch):
     for group in (*NAME_PHRASES.values(), *FX_BAND_PHRASES.values(), PIANO_ANCHOR, PIANO_ANTI):
         assert set(group) <= prompts
     monkeypatch.setattr(CF, "embed_text", fake_embed_text)
-    assert set(curate._prompt_vectors(log=lambda m: None)) == prompts
+    assert set(curate._prompt_vectors()) == prompts
 
 
 def _library(tmp_path, monkeypatch, suffix):
