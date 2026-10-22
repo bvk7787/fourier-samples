@@ -582,7 +582,10 @@ drum candidates; ACOUSTIC and PIANO leave it out (why reason `drum_folder`).
     (`drum_folder`, 3.1); a key or pedal noise recorded beside an instrument's notes
     (`KEY_NOISE_NAME_RE`: "Key Release", "Key Press", "Key Off", a pedal's or a release's
     noise, read with CamelCase and "_" / "-" as spaces; not a note's "rel" take or an organ's
-    "Pedal" notes) is out of the tonal categories (`KEY_NOISE_CATS`: SUB, SYNTH, STABS, PADS,
+    "Pedal" notes), or a release, pedal or noise take (`rules._release_worded`) in a folder of
+    them ("Releases", "Rel", "Key Off", "Mechanical") or `RELEASE_QUIET_DB` under the notes of
+    its own folder, or, in a "Pedal" or "Noise" folder, under the notes of the folders beside
+    it (`_quiet_release`), is out of the tonal categories (`KEY_NOISE_CATS`: SUB, SYNTH, STABS, PADS,
     PIANO, ACOUSTIC, VOX; why reason `key_noise`), and verify fails a master holding one.
 14. Instrument kinds: single-note guard (`max_onsets`), chord / chroma test, `dur_max`,
     `pack_exclude`, `name_exclude`, `ableton_exclude`, then in-pack / tag / name or CLAP.

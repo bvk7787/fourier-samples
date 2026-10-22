@@ -318,6 +318,7 @@ curate:
   SOUND_MODEL_OVERRIDE_MIN: engine
   CLAP_REHOME_MARGIN: engine
   ANON_LOOP_HAR_MAX: engine
+  RELEASE_QUIET_DB: engine
   ANON_LOOP_ONSET_MIN_HZ: engine
   NAME_SHARE: engine
   DEFAULT_PER_FAMILY: knob:size
