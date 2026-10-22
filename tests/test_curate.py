@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from fourier.metadata import shadow as SH
 from fourier.packs import curate as C
 from fourier.packs.curate_config import CATEGORIES
 from fourier.packs import manifests
@@ -371,6 +372,60 @@ def test_without_sononym_the_phrase_rule_leaves_drum_loops_to_the_drum_loops():
     assert not C._pack_drum_named("Loops/Lead 120 01.wav")
     cfg = CATEGORIES["DRUMLOOPS"]
     assert C._drum_loop_evidence(pack_loop, [], cfg)        # and its DRUMLOOPS vote stands
+
+
+def test_without_sononym_a_loop_on_its_folders_tempo_grid_is_a_phrase():
+    """A riff in a folder named for its sound ("Synth Q1"), whose tempo only its pack's folder
+    states, is a phrase without Sononym when it's a loop cut to that tempo's grid; with
+    Sononym the producer's marks decide, as before. A "Lines" folder marks its loops."""
+    riff = _phrase_row("Acme Qzv 130bpm/Synth Q1/Qzv Riff C-02.wav", duration_s=16 * 60 / 130)
+    assert C._is_phrase(riff, True) and not C._is_phrase(riff)
+    off = _phrase_row("Acme Qzv 130bpm/Synth Q1/Qzv Riff C-03.wav", duration_s=7.5)
+    assert not C._is_phrase(off, True)
+    line = _phrase_row("Acme Qzv 125bpm/Bass/Bass Lines/Qzv Line A-04.wav", duration_s=4 * 240 / 125)
+    assert C._is_phrase(line) and C._is_phrase(line, True)
+
+
+def test_a_riff_on_its_folders_tempo_grid_is_never_retuned_by_pyin(monkeypatch):
+    """Without Sononym, a file cut to whole beats of a tempo its folders state that the audio
+    heard as a loop, or whose path has a loop or phrase word, is never retuned by its pYIN pitch
+    when it stays a one-shot."""
+    monkeypatch.delenv("FOURIER_NO_PITCH_CHECK", raising=False)
+    monkeypatch.setattr(C, "_detect_pitch", lambda q: 64.0)
+    rel = "Acme Qzv 140bpm/Synth Q2/Riffs/Qzv Riff G-01.wav"
+    assert C._on_grid(_phrase_row(rel, duration_s=12 * 60 / 140, n_events=1, onset_rate_hz=0.5), rel)
+    rec = [dict(path=f"/l/{rel}", tune=None, retune=None, root_src=None, name_pc=None, on_grid=True),
+           dict(path="/l/Acme Qzv/Synth Q2/Qzv Lead 1.wav", tune=None, retune=None, root_src=None, name_pc=None)]
+    assert C._fill_roots("SYNTH", [0, 1], rec) == 1
+    assert rec[0]["retune"] is None and rec[1]["retune"] == -4.0
+
+
+def test_a_note_cut_to_whole_bars_keeps_its_tuning_and_its_category(monkeypatch):
+    """Without Sononym, a single note bounced at exactly 8 beats of its pack's tempo, under a
+    one-shot folder ("Pack 124bpm/One Shots/Synths"), stays a one-shot whatever the audio
+    guessed, is no phrase, and is retuned by its pYIN pitch like any note; outside a one-shot
+    folder, a note the audio hears as one sound is retuned too."""
+    monkeypatch.delenv("FOURIER_NO_PITCH_CHECK", raising=False)
+    monkeypatch.setattr(C, "_detect_pitch", lambda q: 64.0)
+    dur = 8 * 60 / 124
+    for rel in ("Acme House 124bpm/One Shots/Synths/Qzv Synth 03.wav",
+                "Acme House 124bpm/Oneshots/Qzv Synth 03.wav",
+                "Acme House 124bpm/Hits/Synth/Qzv Synth 03.wav",
+                "Acme House 124bpm/Synth Shots/Qzv Synth 03.wav"):
+        assert not SH.on_path_grid(rel, dur), rel
+        assert not C._is_phrase(_phrase_row(rel, duration_s=dur), True), rel
+        assert not C._on_grid(_phrase_row(rel, duration_s=dur, classes=["OneShot"]), rel), rel
+    # the audio guessed a loop: the sound its folder names holds, as off the grid
+    assert SH.audio_label("Acme House 124bpm/One Shots/Synths/Qzv Synth 03.wav", dur, 1, 5.3) == "class.oneshot"
+    held = "Acme House 124bpm/Synths/Qzv Synth 01.wav"                              # no one-shot folder
+    assert SH.on_path_grid(held, dur)
+    assert not C._on_grid(_phrase_row(held, duration_s=dur, classes=["OneShot"], n_events=1,
+                                      onset_rate_hz=0.3), held)
+    rec = [dict(path=f"/l/{held}", tune=None, retune=None, root_src=None, name_pc=None)]
+    assert C._fill_roots("SYNTH", [0], rec) == 1 and rec[0]["retune"] == -4.0
+    # a "Line" folder isn't a loop folder; "Lines" and "Bass Line" are
+    assert not C.PHRASE_LOOP_DIR_RE.search("Qzv Line 9") and not C.PHRASE_LOOP_DIR_RE.search("Thin Line Qzv")
+    assert C.PHRASE_LOOP_DIR_RE.search("Lines") and C.PHRASE_LOOP_DIR_RE.search("Bass Line")
 
 
 def test_without_sononym_drum_loops_take_a_loop_its_providers_call_drums(monkeypatch):

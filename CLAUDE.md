@@ -90,7 +90,11 @@ naming, routing, loudness, ratings). `fourier why --rules` prints the routing pr
   the agreement report reads them), and without Live `NAME_TAGS` words stand in for its tags
   (`curate._name_tags`): changes there can't move a build that has Sononym and Live. Without
   Sononym, a loop guess from the audio alone yields to a sound named in the file's own name or
-  folder (`shadow.audio_label`), and a loop's DRUMLOOPS vote needs drums
+  folder (`shadow.audio_label`), except a file cut to whole beats of a tempo its path states,
+  naming no note and under no one-shot folder (`shadow.on_path_grid`: a bass line in "Pack
+  125bpm/Bass/Lines"), which stays a loop and is a phrase (`_is_phrase`); a one-shot on that
+  grid is retuned by pYIN only when nothing says loop (`_on_grid`, `_fill_roots`), and a loop's
+  DRUMLOOPS vote needs drums
   (`curate._fallback_loop_votes`, `_drum_loop_evidence`; compute_homes and why); the phrase
   rule leaves such a loop to the drum loops (`_is_phrase(r, fallback)`, `_providers_drum_loop`)
   and DRUMLOOPS' drum-tag requirement takes the same evidence (`_select_records(fallback=)`).

@@ -3294,7 +3294,10 @@ def _is_phrase(r, fallback=False):
     dur = getattr(r, "duration_s", None)
     if not dur or not (PHRASE_DUR[0] <= dur <= PHRASE_DUR[1]):
         return False
-    if _phrase_marked(rel, fn, _is_loop_row(r)) is None:
+    from ..metadata.shadow import on_path_grid
+    if _phrase_marked(rel, fn, _is_loop_row(r)) is None and not (
+            # (without Sononym: a loop cut to the grid of a tempo its folders state)
+            fallback and _is_loop_row(r) and on_path_grid(rel, dur)):
         return False
     if PHRASE_NOT_RE.search(_phrase_near_text(rel, fn)):
         return False
@@ -4218,6 +4221,21 @@ def _restore_pins(rec, pinned):
     return rec + [d for d in pinned if d["id"] not in have]
 
 
+def _on_grid(r, rel):
+    """Without Sononym, a file not classed a loop that lasts whole beats of a tempo its path
+    states (shadow.on_path_grid) and that the audio alone heard as a loop, or whose path has a
+    loop or phrase word: a riff, never retuned by pYIN (_fill_roots). A note cut to whole bars
+    keeps its tuning."""
+    from ..metadata.shadow import audio_class, on_path_grid, shape_labels
+    dur = getattr(r, "duration_s", None)
+    if not on_path_grid(rel, dur):
+        return False
+    if audio_class(dur, getattr(r, "n_events", None), getattr(r, "onset_rate_hz", None),
+                   getattr(r, "harmonicity", None)) == "class.loop":
+        return True
+    return "class.loop" in shape_labels(rel) or any(PHRASE_LOOP_DIR_RE.search(f) for f in rel.split("/")[:-1])
+
+
 def _mkrec(r, pack, rel, category, support, id2row, fallback=False):
     # the root note, tempo and their sources come from the resolver (metadata/resolve.py):
     # Sononym's base note when sure; without Sononym, a WAV's own root note (its ACID or smpl
@@ -4270,6 +4288,8 @@ def _mkrec(r, pack, rel, category, support, id2row, fallback=False):
             d["root_src"] = "chunk"
     if _is_loop_row(r):
         d["loop_row"] = True        # exempt from name overrides (_row_override); recorded for verify
+    elif fallback and _on_grid(r, rel):
+        d["on_grid"] = True         # a riff on its path's grid: never pYIN-retuned (_fill_roots)
     if fallback:                    # Fourier's own pitch focus: whether a loop folder is "musical"
         d["chroma"] = getattr(r, "chroma_concentration", None)
     _cfg = CATEGORIES.get(category, {})
@@ -7447,7 +7467,8 @@ def _fill_roots(category, idxs, rec, roots=None):
     for i in idxs:
         r = rec[i]
         if r.get("retune") is not None or r.get("pitch_conflict") or r.get("name_pc") is not None \
-                or r.get("loop_row") or not r.get("path") or _name_multi_note(os.path.basename(r["path"])):
+                or r.get("loop_row") or r.get("on_grid") or not r.get("path") \
+                or _name_multi_note(os.path.basename(r["path"])):
             continue
         heard[i] = _detect_pitch(r["path"])
     # (a file with no root of its own is read at the pitch heard here, as verify reads it)

@@ -91,6 +91,24 @@ def test_a_named_sound_beats_a_loop_guess_from_the_audio():
     assert SH.near_labels("Vendor/Jungle Breaks/Pads/WAV/Pad 01.wav") == {"pad"}
 
 
+def test_a_loop_cut_to_its_paths_tempo_stays_a_loop():
+    """A bass line or synth riff whose tempo only its pack's folder states ("Acme 125bpm/Bass/
+    Lines"): the audio's loop holds when it lasts whole beats at that tempo, four or more, and
+    its name states no note (a note bounced at exactly a bar is still a note)."""
+    groove = lambda dur: (dur, 1, 5.3)  # noqa: E731
+    line = "Acme Qzv 125bpm/Bass/Lines/Qzv Bass A-04.wav"            # 4 beats at 125: 1.92 s
+    riff = "Acme Qzv 130bpm/Synth Q1/Qzv Riff C-02.wav"             # 16 beats at 130
+    assert SH.audio_label(line, *groove(1.92)) == SH.audio_label(riff, *groove(16 * 60 / 130)) == "class.loop"
+    assert SH.on_path_grid(line, 1.92) and SH.on_path_grid(riff, 16 * 60 / 130)
+    assert not SH.on_path_grid(line, 1.95)                           # off the grid
+    assert not SH.on_path_grid(line, 1.44)                           # three beats
+    assert SH.audio_label(line, *groove(1.95)) == "class.oneshot"     # (as before)
+    assert not SH.on_path_grid("Acme Qzv/Bass/Lines/Qzv Bass A-04.wav", 1.92)   # no tempo stated
+    note = "Acme Qzv 140bpm/Bass/Multisample/Qzv Bass-E3.wav"        # a note bounced at one bar
+    assert not SH.on_path_grid(note, 240 / 140)
+    assert SH.audio_label(note, *groove(240 / 140)) == "class.oneshot"
+
+
 def test_every_path_rule_names_a_canonical_label():
     from fourier.metadata.vocab import CANONICAL
     assert {lab for lab, _, _ in SH.path_rules()} <= CANONICAL
