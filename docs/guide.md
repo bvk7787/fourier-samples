@@ -54,8 +54,10 @@ keep the Mac awake while it copies.
 
 **Dirtywave M8.** Put the M8 in disk mode, then run `fourier render m8_tracker` and `fourier
 sync m8_tracker /Volumes/M8`. It copies into `/Samples/Fourier` on the card, without the `._`
-files macOS leaves. Later syncs copy only what changed. `--delete` also removes files a newer
-version dropped. It only ever removes files Fourier put there, and anything else stops it.
+files macOS leaves. Later syncs copy only what changed. A file the M8 changed on the card
+(slice points it saved in the WAV) is kept and listed; `--overwrite-changed` replaces it.
+`--delete` also removes files a newer version dropped. It only ever removes files Fourier put
+there that are unchanged, and anything else stops it. Sync takes only a render that finished.
 
 **Anything else.** `fourier devices list` shows the profiles. `generic_sd_card` and
 `generic_folder` fit most samplers and DAWs, and `fourier devices new` writes one for yours

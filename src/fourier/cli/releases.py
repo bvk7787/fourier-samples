@@ -76,9 +76,16 @@ def render(device_id, master_dir, release, no_lock, out_dir, max_mb, check, card
     except Exception as e:
         console.print(f"[red]{e}[/red]")
         raise SystemExit(1)
-    if r.get("failed") or r.get("missing"):
-        console.print(f"[red]{r.get('failed', 0)} files failed to convert, {r.get('missing', 0)} locked "
-                      f"files missing: this image is incomplete[/red]")
+    if r.get("failed"):
+        console.print(f"[red]{r['failed']} files failed to convert (the FAILED lines above say why), "
+                      f"so the render wasn't replaced[/red]"
+                      + (":" if r.get("no_room") else ": fix what they name, then render again."))
+        if r.get("no_room"):
+            console.print(r["no_room"], style="red", markup=False, highlight=False, soft_wrap=True)
+        raise SystemExit(1)
+    if r.get("missing"):
+        console.print(f"[red]{r['missing']} locked files missing: this image is incomplete[/red] "
+                      f"(a sync leaves them on the card)")
         raise SystemExit(1)
     if new_only:
         _new_only(device_id, release, out_dir, r["out"])
@@ -86,33 +93,43 @@ def render(device_id, master_dir, release, no_lock, out_dir, max_mb, check, card
 
 def _new_only(device_id, release, out_dir, base) -> None:
     """The files `release` added to the device's lock, copied out of its render into
-    <render>-new-in-<release> (same folders), for a loader that can't sync (Transfer)."""
+    <render>-new-in-<release> (same folders), for a loader that can't sync (Transfer). Written
+    beside it and moved in when finished, like a render, so a copy that stops leaves the
+    previous one as it was."""
     import os as _os
     import shutil
     from pathlib import Path
 
     from ..packs.device_lock import load_lock
-    from ..packs.render import RENDER_MARKER
+    from ..packs.render import RENDER_MARKER, put_render_in_place, start_render_folder, write_render_marker
     lock = load_lock(device_id)
     new = sorted(v["path"] for v in (lock.files.values() if lock else ()) if v.get("release") == release)
     out = Path(out_dir.rstrip("/") + f"-new-in-{release}")
-    if out.exists():
-        if not (out / RENDER_MARKER).is_file():
-            console.print(f"{out} exists and isn't one Fourier made: left as it is.", style="red",
-                          markup=False, highlight=False, soft_wrap=True)
-            raise SystemExit(1)
-        shutil.rmtree(out)
-    dest = out / Path(base).relative_to(out_dir) if Path(base) != Path(out_dir) else out
-    dest.mkdir(parents=True, exist_ok=True)
-    (out / RENDER_MARKER).write_text(f"{device_id} {release} new files\n")
-    n = 0
-    for rel in new:
-        src = Path(base) / rel
-        if src.is_file():
-            (dest / rel).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dest / rel)
-            n += 1
-    mb = sum(_os.path.getsize(p) for p in dest.rglob("*") if p.is_file() and p.name != RENDER_MARKER) / 2**20
+    if out.exists() and not (out / RENDER_MARKER).is_file():
+        console.print(f"{out} exists and isn't one Fourier made: left as it is.", style="red",
+                      markup=False, highlight=False, soft_wrap=True)
+        raise SystemExit(1)
+    try:
+        stage = start_render_folder(out, f"{device_id} {release} new files")
+    except RuntimeError as e:
+        console.print(str(e), style="red", markup=False, highlight=False, soft_wrap=True)
+        raise SystemExit(1) from None
+    try:
+        dest = stage / Path(base).relative_to(out_dir) if Path(base) != Path(out_dir) else stage
+        dest.mkdir(parents=True, exist_ok=True)
+        n = 0
+        for rel in new:
+            src = Path(base) / rel
+            if src.is_file():
+                (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dest / rel)
+                n += 1
+        mb = sum(_os.path.getsize(p) for p in dest.rglob("*") if p.is_file() and p.name != RENDER_MARKER) / 2**20
+        write_render_marker(stage, device_id, release=release, new_only=True)
+        put_render_in_place(stage, out)
+    except BaseException:
+        shutil.rmtree(stage, ignore_errors=True)
+        raise
     console.print(f"{n:,} files {release} adds to the device ({mb:.1f} MB), in folders of their "
                   f"own: {out}. Copy them into the same folders on the device (`fourier open "
                   f"renders {device_id}-new-in-{release}` shows them).", markup=False,
@@ -126,29 +143,36 @@ def _new_only(device_id, release, out_dir, base) -> None:
 @click.option("--delete", is_flag=True, default=False,
               help="Also remove files in the card folder (<card_dir>) that the render doesn't have "
                    "(refused if it holds a file neither this render nor an earlier sync made)")
+@click.option("--overwrite-changed", is_flag=True, default=False,
+              help="Replace card files that changed since the last sync (edits or slice points the "
+                   "device saved in them) with the render's")
 @click.option("--dry-run", is_flag=True, default=False, help="Show what would be copied")
 @click.option("--force", is_flag=True, default=False,
               help="Sync into VOLUME even when it isn't a mounted card or drive (a folder you chose)")
-def sync(device_id, volume, render_dir, delete, dry_run, force):
+def sync(device_id, volume, render_dir, delete, dry_run, force, overwrite_changed=False):
     """Copy a device render onto a mounted card, such as the M8's SD card.
 
     VOLUME must be where the card is mounted (/Volumes/M8, /media/<you>/M8), or a card an
     earlier sync wrote to; --force takes any other folder. Copies into <VOLUME><card_dir>
-    (M8: /Samples/Fourier) with rsync (or Python) and without
+    (M8: /Samples/Fourier) file by file, each through a temporary file, and without
     extended attributes, so macOS writes no "._" AppleDouble twins onto the FAT/exFAT card
     (they show up in the device's browser as .wav files that fail to load). Dotfiles
     (the render marker, .DS_Store) are skipped, any "._" file under the target is removed,
     and the audio file count on the card is checked against the render.
+
+    Only a finished render is copied. A card file that changed since the sync that wrote it
+    (the device saves slice points and edits in the file) is kept, and listed, unless
+    --overwrite-changed; --delete removes only files a sync wrote that are unchanged.
 
     \b
       fourier sync m8_tracker /Volumes/M8
     """
     import os as _os
     from ..devices.loader import DeviceLoader
-    from ..packs.render import RENDER_MARKER, _card_prefix
-    from ..platforms import sync_tree
+    from ..packs.render import _card_prefix, read_render_marker, render_problem
+    from ..platforms import copy_file_whole
     def stop(msg):
-        console.print(msg, style="red", markup=False, highlight=False)
+        console.print(msg, style="red", markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1)
 
     try:
@@ -159,9 +183,20 @@ def sync(device_id, volume, render_dir, delete, dry_run, force):
         render_dir = _renders_dir(device_id)
     if not _os.path.exists(render_dir):
         stop(f"no render yet: run `fourier render {device_id}` (it writes {render_dir})")
-    if not _os.path.exists(_os.path.join(render_dir, RENDER_MARKER)):
-        stop(f"{render_dir} isn't a Fourier render (no {RENDER_MARKER}): `fourier render {device_id}` "
-             f"writes one")
+    problem = render_problem(render_dir)
+    if problem:
+        stop(f"{problem}. Nothing was copied: run `fourier render {device_id}` and sync once it "
+             f"finishes.")
+    marker = read_render_marker(render_dir) or {}
+    if marker.get("device") and marker["device"] != device_id:
+        stop(f"{render_dir} is a render for {marker['device']}. Nothing was copied: sync it with "
+             f"`fourier sync {marker['device']}`, or render {device_id} with "
+             f"`fourier render {device_id}`.")
+    if delete and marker.get("new_only"):
+        stop(f"{render_dir} holds only the files {marker.get('release') or 'a release'} adds (a "
+             f"--new-only folder), so --delete would remove every other file Fourier put on the "
+             f"card. Nothing was copied: sync it without --delete, or sync the full render with "
+             f"--delete (leave out --from for the default one).")
     if dev.load != "card-sync":
         stop(f"{dev.name} doesn't load from a card, so there's nothing to sync: {_load_how(dev)}. "
              f"The render is in {render_dir}.")
@@ -169,7 +204,8 @@ def sync(device_id, volume, render_dir, delete, dry_run, force):
         stop(f"{volume} isn't mounted")
     dest = _os.path.join(volume, _card_prefix(dev).lstrip("/"))
     from ..platforms import is_volume_root, mount_points
-    from ..safety import CARD_MARK, UnsafePath, check_card_dest, record_sync
+    from ..safety import (CARD_MARK, CARD_TMP, UnsafePath, check_card_dest, plan_sync, record_card,
+                          synced_files, synced_state)
     if not (force or is_volume_root(volume) or _os.path.exists(_os.path.join(dest, CARD_MARK))):
         mounted = ", ".join(str(m) for m in mount_points()) or "none found"
         stop(f"{volume} doesn't look like a card: it isn't a mounted volume (mounted now: {mounted}) "
@@ -179,36 +215,95 @@ def sync(device_id, volume, render_dir, delete, dry_run, force):
         dest = str(check_card_dest(dest, volume, render_dir, delete, device_id))
     except UnsafePath as e:
         stop(str(e))
-    # rsync -rt (or the same in Python without rsync): no extended attributes, so no
-    # AppleDouble files
-    if not dry_run:
-        _os.makedirs(dest, exist_ok=True)
-        # recorded before copying (with what earlier syncs put on this card): a copy that
-        # stops half way leaves every file Fourier wrote known, so --delete may prune it later
-        record_sync(device_id, render_dir, dest, volume, merge=True)
-    console.print(f"Copying {render_dir} -> {dest}{' (dry run)' if dry_run else ''} ...")
-    code, lines = sync_tree(render_dir, dest, delete=delete, dry_run=dry_run)
-    if code != 0:
-        stop(f"copy failed: {chr(10).join(lines)[-400:]}")
+    rendered = marker["files"]
+    state, pending = synced_state(device_id, dest, volume)
+    plan = plan_sync(render_dir, rendered, dest, state, pending, delete=delete,
+                     overwrite_changed=overwrite_changed, protected=marker.get("missing") or ())
+    console.print(f"Copying {render_dir} -> {dest}{' (dry run)' if dry_run else ''} ...",
+                  markup=False, highlight=False, soft_wrap=True)
     if dry_run:
-        console.print("\n".join(lines)[-2000:], markup=False, highlight=False)
+        lines = [f">f {r}" for r in plan.copy] + [f"*deleting {r}" for r in plan.delete]
+        console.print("\n".join(lines)[-2000:] or "nothing to copy", markup=False, highlight=False)
+        _sync_report(plan, dry_run=True)
         return
+    _os.makedirs(dest, exist_ok=True)
+    known = synced_files(device_id, dest, volume)
+    rstat = lambda rel: _os.stat(_os.path.join(render_dir, rel))
+    # recorded before copying (with what earlier syncs put on this card): a copy that stops
+    # half way leaves every file Fourier wrote known, and each one as it was or as rendered
+    record_card(device_id, render_dir, dest, volume, known | set(rendered), state,
+                pending={**pending,
+                         **{r: [rendered[r][0], int(rstat(r).st_mtime), rendered[r][1]] for r in plan.copy}})
+    try:
+        for rel in plan.copy:
+            copy_file_whole(_os.path.join(render_dir, rel), _os.path.join(dest, rel), CARD_TMP)
+        for rel in plan.delete:
+            _os.remove(_os.path.join(dest, rel))
+    except OSError as e:
+        stop(f"copy failed: {e}")
+    for dp, dns, _fns in _os.walk(dest, topdown=False):      # folders the delete emptied
+        rel = _os.path.relpath(dp, dest)
+        if delete and rel != "." and not any(p.startswith(".") for p in rel.split(_os.sep)) \
+                and not _os.listdir(dp) and not _os.path.isdir(_os.path.join(render_dir, rel)):
+            _os.rmdir(dp)
     junk = 0
     for dp, _, fns in _os.walk(dest):
         for fn in fns:
-            if fn.startswith("._") or fn == ".DS_Store":
+            if fn.startswith("._") or fn == ".DS_Store" or (fn.startswith(".") and fn.endswith(CARD_TMP)):
                 _os.remove(_os.path.join(dp, fn))
                 junk += 1
-    count = lambda root: sum(1 for dp, _, fns in _os.walk(root) for f in fns
-                             if f.lower().endswith((".wav", ".aif", ".aiff")) and not f.startswith("."))
+    is_audio = lambda f: f.lower().endswith((".wav", ".aif", ".aiff")) and not f.startswith(".")
+    count = lambda root: sum(1 for dp, _, fns in _os.walk(root) for f in fns if is_audio(f))
     n_src, n_dst = count(render_dir), count(dest)
+    left = sum(1 for r in plan.kept_extra + plan.locked if is_audio(_os.path.basename(r)))
     msg = f"{n_dst} audio files on the card, {n_src} in the render" + (f"; removed {junk} '._' / .DS_Store files" if junk else "")
-    if n_dst < n_src or (delete and n_dst != n_src):
+    # what the card folder now holds of Fourier's, and each file's contents as a sync left it
+    files = set(rendered) | set(plan.kept_extra) | set(plan.locked) | (set() if delete else known)
+    new_state = {k: v for k, v in state.items() if k in files and k not in plan.delete}
+    for rel in plan.copy + plan.same:
+        st = _os.stat(_os.path.join(dest, rel))
+        new_state[rel] = [st.st_size, int(st.st_mtime), plan.md5[rel]]
+    # a file this sync left alone keeps what an earlier copy that stopped expected to write:
+    # it may be on the card (the device's edit of it is kept, never a conflict next time)
+    done = set(plan.copy) | set(plan.same) | set(plan.delete)
+    left_pending = {k: v for k, v in pending.items() if k in files and k not in done}
+    record_card(device_id, render_dir, dest, volume, files - set(plan.delete), new_state,
+                pending=left_pending)
+    if n_dst < n_src or (delete and n_dst != n_src + left):
         console.print(f"[red]{msg}[/red]")
         raise SystemExit(1)
-    # after --delete the card folder holds the render and nothing else Fourier made
-    record_sync(device_id, render_dir, dest, volume, merge=not delete)
-    console.print(f"[green]{msg}[/green]. Eject the card before removing it.")
+    if not (plan.kept or plan.conflicts or plan.unknown or plan.kept_extra or plan.locked):
+        console.print(f"[green]{msg}[/green]. Eject the card before removing it.")
+        return
+    console.print(f"[green]{msg}[/green].")
+    if _sync_report(plan):
+        raise SystemExit(1)
+    console.print("Eject the card before removing it.")
+
+
+def _sync_report(plan, dry_run: bool = False) -> bool:
+    """The files a sync left as they were on the card, and why; True when the card doesn't
+    hold what the render has (a file changed in both, or one no sync recorded writing)."""
+    def say(paths, text, style):
+        if paths:
+            eg = ", ".join(paths[:5]) + (" ..." if len(paths) > 5 else "")
+            console.print(f"{len(paths)} file(s) {text}: {eg}", style=style, markup=False,
+                          highlight=False, soft_wrap=True)
+    keep = "would keep" if dry_run else "kept"
+    say(plan.kept, f"changed on the card since the last sync (the device saves edits and slice "
+                   f"points in the file), {keep} as they are", "yellow")
+    say(plan.conflicts, f"changed on the card since the last sync, and in the render too: {keep} "
+                        f"the card's. `--overwrite-changed` replaces them with the render's", "red")
+    say(plan.unknown, f"on the card differ from the render, and no sync recorded writing them (an "
+                      f"older version of Fourier, or your own): {keep}. If they're Fourier's, "
+                      f"`--overwrite-changed` replaces them with the render's", "red")
+    say(plan.kept_extra, f"the render no longer has {'would stay' if dry_run else 'stayed'} on "
+                         f"the card: they changed there since a sync wrote them, or no sync "
+                         f"recorded their contents (a card synced by an older version of Fourier). "
+                         f"Delete them from the card yourself if you don't need them", "yellow")
+    say(plan.locked, f"locked on the device but missing from this render: {keep} on the card",
+        "yellow")
+    return bool(plan.conflicts or plan.unknown)
 
 
 def _load_how(dev) -> str:

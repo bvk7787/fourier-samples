@@ -220,10 +220,11 @@ def _render(env, files=("01_KICKS/a.wav", "01_KICKS/b.wav", "02_SNARES/c.wav"), 
         import shutil
         shutil.rmtree(r)
     r.mkdir()
-    (r / ".fourier-render").write_text("m8_tracker\n")
     for f in files:
         (r / f).parent.mkdir(parents=True, exist_ok=True)
         (r / f).write_bytes(f.encode())
+    from fourier.packs.render import write_render_marker
+    write_render_marker(r, "m8_tracker")                      # a finished render
     return r
 
 
@@ -283,18 +284,191 @@ def test_a_copy_that_stops_half_way_leaves_its_files_recorded(env, no_rsync, mon
     card = vol / "Samples" / "Fourier"
     vol.mkdir()
 
-    def half(src, dst, delete=False, dry_run=False, **kw):
-        (Path(dst) / "01_KICKS").mkdir(parents=True, exist_ok=True)
-        (Path(dst) / "01_KICKS" / "a.wav").write_bytes(b"01_KICKS/a.wav")
-        return 1, ["card removed"]
+    real = plat.copy_file_whole
+
+    def half(src, dst, *a):                     # a.wav is copied, then the card goes
+        if Path(dst).name == "b.wav":
+            raise OSError("card removed")
+        real(src, dst, *a)
     with monkeypatch.context() as mp:
-        mp.setattr(plat, "sync_tree", half)
+        mp.setattr(plat, "copy_file_whole", half)
         res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r))
     assert res.exit_code == 1, res.output
     r = _render(env, files=("01_KICKS/b.wav",))               # the next version retired a.wav
     res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r), "--delete")
     assert res.exit_code == 0, res.output
     assert set(_files(card)) == {"01_KICKS/b.wav", safety.CARD_MARK}
+
+
+def _synced(env, files=("01_KICKS/a.wav", "01_KICKS/b.wav")):
+    """A render synced once to a card: (render, volume, card folder)."""
+    r = _render(env, files=files)
+    vol = env.tmp / "CARD"
+    vol.mkdir(exist_ok=True)
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r))
+    assert res.exit_code == 0, res.output
+    return r, vol, vol / "Samples" / "Fourier"
+
+
+def _rerender(r, rel, data):
+    import time
+    from fourier.packs.render import write_render_marker
+    time.sleep(1.05)                                          # a newer file, as a later render writes
+    (r / rel).write_bytes(data)
+    write_render_marker(r, "m8_tracker")
+
+
+def _device_edit(card, rel):
+    """What the device does when it saves slice points: the same WAV, a chunk longer."""
+    p = card / rel
+    p.write_bytes(p.read_bytes() + b"cue \x04\x00\x00\x00edit")
+    os.utime(p, (p.stat().st_atime, p.stat().st_mtime + 30))
+    return p.read_bytes()
+
+
+@pytest.mark.parametrize("marker", [None, "m8_tracker\n", "m8_tracker (unfinished)\n", "changed"])
+def test_sync_refuses_a_render_that_didnt_finish(env, no_rsync, marker):
+    r, vol, card = _synced(env)
+    before = _files(card)
+    (r / "01_KICKS" / "a.wav").write_bytes(b"")               # what a full disk leaves
+    if marker is None:
+        (r / ".fourier-render").unlink()
+    elif marker != "changed":
+        (r / ".fourier-render").write_text(marker)
+    for extra in ([], ["--delete"]):
+        res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r), *extra)
+        out = _flat(res.output)
+        assert res.exit_code == 1 and "fourier render m8_tracker" in out, out
+    assert _files(card) == before
+
+
+def test_sync_keeps_a_file_the_device_changed(env, no_rsync):
+    r, vol, card = _synced(env)
+    edited = _device_edit(card, "01_KICKS/a.wav")
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r))
+    out = _flat(res.output)
+    assert res.exit_code == 0 and "1 file(s) changed on the card" in out and "01_KICKS/a.wav" in out, out
+    assert (card / "01_KICKS" / "a.wav").read_bytes() == edited
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r))   # and on every later sync
+    assert res.exit_code == 0 and (card / "01_KICKS" / "a.wav").read_bytes() == edited
+
+
+def test_sync_keeps_a_file_changed_on_the_card_and_in_the_render(env, no_rsync):
+    r, vol, card = _synced(env)
+    edited = _device_edit(card, "01_KICKS/a.wav")
+    _rerender(r, "01_KICKS/a.wav", b"new audio")
+    _rerender(r, "01_KICKS/b.wav", b"new b")
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r))
+    out = _flat(res.output)
+    assert res.exit_code == 1 and "in the render too" in out and "--overwrite-changed" in out, out
+    assert (card / "01_KICKS" / "a.wav").read_bytes() == edited
+    assert (card / "01_KICKS" / "b.wav").read_bytes() == b"new b"      # unchanged on the card: copied
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r), "--overwrite-changed")
+    assert res.exit_code == 0, res.output
+    assert (card / "01_KICKS" / "a.wav").read_bytes() == b"new audio"
+
+
+def test_a_device_edit_after_a_stopped_copy_stays_kept_on_later_syncs(env, no_rsync, monkeypatch):
+    """A copy that stops right after writing a file leaves it recorded as pending. When the
+    device then changes it, every later sync keeps it as the device's edit of the render's
+    file: never a conflict that suggests --overwrite-changed."""
+    import fourier.platforms as plat
+    r, vol, card = _synced(env)
+    _rerender(r, "01_KICKS/a.wav", b"new audio")
+    real = plat.copy_file_whole
+
+    def stops_after(src, dst, *a):              # a.wav is copied, then the sync is stopped
+        real(src, dst, *a)
+        raise OSError("card removed")
+    with monkeypatch.context() as mp:
+        mp.setattr(plat, "copy_file_whole", stops_after)
+        assert _run(env, "sync", "m8_tracker", str(vol), "--from", str(r)).exit_code == 1
+    assert (card / "01_KICKS" / "a.wav").read_bytes() == b"new audio"
+    edited = _device_edit(card, "01_KICKS/a.wav")
+    for _ in range(3):
+        res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r))
+        out = _flat(res.output)
+        assert res.exit_code == 0 and "1 file(s) changed on the card" in out, out
+        assert "--overwrite-changed" not in out, out
+        assert (card / "01_KICKS" / "a.wav").read_bytes() == edited
+
+
+def test_sync_delete_refuses_a_new_only_folder_or_another_devices_render(env, no_rsync):
+    """A --new-only folder holds a release's new files only: --delete from it would remove
+    every other file on the card. A render for another device is never synced."""
+    from fourier.packs.render import write_render_marker
+    r, vol, card = _synced(env, files=("01_KICKS/a.wav", "01_KICKS/b.wav", "02_SNARES/c.wav"))
+    before = _files(card)
+    new = _render(env, files=("02_SNARES/d.wav",), name="render-new-in-v2")
+    write_render_marker(new, "m8_tracker", release="v2", new_only=True)
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(new), "--delete")
+    out = _flat(res.output)
+    assert res.exit_code == 1 and "--new-only folder" in out and "without --delete" in out, out
+    assert _files(card) == before
+    other = _render(env, name="render-dt")
+    write_render_marker(other, "digitakt_2")
+    for extra in ([], ["--delete"]):
+        res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(other), *extra)
+        out = _flat(res.output)
+        assert res.exit_code == 1 and "a render for digitakt_2" in out, out
+    assert _files(card) == before
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(new))    # adds its files
+    assert res.exit_code == 0 and set(_files(card)) == set(before) | {"02_SNARES/d.wav"}, res.output
+
+
+def test_sync_delete_removes_only_unchanged_files_a_sync_wrote(env, no_rsync):
+    r, vol, card = _synced(env, files=("01_KICKS/a.wav", "01_KICKS/b.wav", "02_SNARES/c.wav"))
+    edited = _device_edit(card, "01_KICKS/b.wav")
+    r = _render(env, files=("01_KICKS/a.wav",))               # b and c retired
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r), "--delete")
+    out = _flat(res.output)
+    assert res.exit_code == 0 and "01_KICKS/b.wav" in out and "stayed on the card" in out, out
+    assert (card / "01_KICKS" / "b.wav").read_bytes() == edited
+    assert not (card / "02_SNARES").exists()
+    assert set(_files(card)) == {"01_KICKS/a.wav", "01_KICKS/b.wav", safety.CARD_MARK}
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r), "--delete")   # still kept
+    assert res.exit_code == 0 and (card / "01_KICKS" / "b.wav").read_bytes() == edited, res.output
+
+
+def test_sync_takes_a_card_file_whose_time_alone_moved(env, no_rsync):
+    """A card's file system can store another time than the one copied (FAT keeps even
+    seconds): the same size and md5 is the file the sync wrote."""
+    r, vol, card = _synced(env)
+    p = card / "01_KICKS" / "a.wav"
+    os.utime(p, (p.stat().st_atime, p.stat().st_mtime + 1))
+    _rerender(r, "01_KICKS/a.wav", b"newer")
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r), "--delete")
+    assert res.exit_code == 0 and "changed on the card" not in res.output, res.output
+    assert p.read_bytes() == b"newer"
+
+
+def test_sync_keeps_a_differing_file_no_sync_recorded_writing(env, no_rsync):
+    """A card synced by a version that recorded names only: a file that differs from the
+    render may be the device's edit, so it stays until --overwrite-changed."""
+    r, vol, card = _synced(env)
+    rec = json.loads(safety.card_record("m8_tracker").read_text())
+    for e in rec["cards"].values():
+        e.pop("state"), e.pop("pending")
+    safety.card_record("m8_tracker").write_text(json.dumps(rec))
+    edited = _device_edit(card, "01_KICKS/a.wav")
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r), "--delete")
+    out = _flat(res.output)
+    assert res.exit_code == 1 and "no sync recorded writing them" in out, out
+    assert (card / "01_KICKS" / "a.wav").read_bytes() == edited
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r), "--overwrite-changed")
+    assert res.exit_code == 0 and (card / "01_KICKS" / "a.wav").read_bytes() == b"01_KICKS/a.wav"
+
+
+def test_a_card_copy_that_stops_leaves_the_file_whole(tmp_path, monkeypatch):
+    import fourier.platforms as plat
+    src, dst = tmp_path / "a.wav", tmp_path / "card" / "a.wav"
+    src.write_bytes(b"new" * 1000)
+    dst.parent.mkdir()
+    dst.write_bytes(b"old")
+    monkeypatch.setattr(plat.os, "replace", lambda *a: (_ for _ in ()).throw(KeyboardInterrupt()))
+    with pytest.raises(KeyboardInterrupt):
+        plat.copy_file_whole(src, dst)
+    assert dst.read_bytes() == b"old" and sorted(p.name for p in dst.parent.iterdir()) == ["a.wav"]
 
 
 @pytest.mark.parametrize("where", ["master", "library", "renders"])

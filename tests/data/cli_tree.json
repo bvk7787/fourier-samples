@@ -2192,7 +2192,7 @@
  },
  "fourier sync": {
   "group": false,
-  "help": "Copy a device render onto a mounted card, such as the M8's SD card.\n\nVOLUME must be where the card is mounted (/Volumes/M8, /media/<you>/M8), or a card an\nearlier sync wrote to; --force takes any other folder. Copies into <VOLUME><card_dir>\n(M8: /Samples/Fourier) with rsync (or Python) and without\nextended attributes, so macOS writes no \"._\" AppleDouble twins onto the FAT/exFAT card\n(they show up in the device's browser as .wav files that fail to load). Dotfiles\n(the render marker, .DS_Store) are skipped, any \"._\" file under the target is removed,\nand the audio file count on the card is checked against the render.\n\n\b\n  fourier sync m8_tracker /Volumes/M8",
+  "help": "Copy a device render onto a mounted card, such as the M8's SD card.\n\nVOLUME must be where the card is mounted (/Volumes/M8, /media/<you>/M8), or a card an\nearlier sync wrote to; --force takes any other folder. Copies into <VOLUME><card_dir>\n(M8: /Samples/Fourier) file by file, each through a temporary file, and without\nextended attributes, so macOS writes no \"._\" AppleDouble twins onto the FAT/exFAT card\n(they show up in the device's browser as .wav files that fail to load). Dotfiles\n(the render marker, .DS_Store) are skipped, any \"._\" file under the target is removed,\nand the audio file count on the card is checked against the render.\n\nOnly a finished render is copied. A card file that changed since the sync that wrote it\n(the device saves slice points and edits in the file) is kept, and listed, unless\n--overwrite-changed; --delete removes only files a sync wrote that are unchanged.\n\n\b\n  fourier sync m8_tracker /Volumes/M8",
   "hidden": false,
   "params": [
    {
@@ -2246,6 +2246,22 @@
     "nargs": 1,
     "opts": [
      "--delete"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Replace card files that changed since the last sync (edits or slice points the device saved in them) with the render's",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "overwrite_changed",
+    "nargs": 1,
+    "opts": [
+     "--overwrite-changed"
     ],
     "required": false,
     "show_default": false,

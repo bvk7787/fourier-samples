@@ -1,6 +1,9 @@
 """Tests for the device render step (fourier.packs.render)."""
 
+import os
+
 import numpy as np
+import pytest
 import soundfile as sf
 
 from fourier.devices.loader import DeviceProfile
@@ -187,19 +190,15 @@ def test_digitakt_profile_keeps_stereo():
 
 def test_card_sync_copies_clean(tmp_path, monkeypatch):
     import os
-    import shutil
-    import pytest
     from click.testing import CliRunner
     from fourier.cli import main
-    if not shutil.which("rsync"):
-        pytest.skip("rsync not installed")
     import fourier.platforms as plat
     monkeypatch.setattr(plat, "mount_points", lambda: [tmp_path / "CARD"])     # the card, mounted
     render = tmp_path / "FourierRenders" / "m8_tracker"
     (render / "01_KICKS" / "punchy").mkdir(parents=True)
     (render / "01_KICKS" / "punchy" / "a.wav").write_bytes(b"RIFFxxxxWAVE")
     (render / "01_KICKS" / "punchy" / "._a.wav").write_bytes(b"junk")
-    (render / ".fourier-render").write_text("m8_tracker")
+    R.write_render_marker(render, "m8_tracker")
     card = tmp_path / "CARD"
     (card / "Samples" / "Fourier" / "01_KICKS").mkdir(parents=True)
     (card / "Samples" / "Fourier" / "01_KICKS" / "._old.wav").write_bytes(b"junk")
@@ -214,6 +213,7 @@ def test_card_sync_copies_clean(tmp_path, monkeypatch):
     time.sleep(1.1)
     (render / "01_KICKS" / "punchy" / "a.wav").unlink()
     (render / "01_KICKS" / "punchy" / "a.wav").write_bytes(b"RIFFyyyyWAVE")
+    R.write_render_marker(render, "m8_tracker")
     r = CliRunner().invoke(main, ["--db", str(tmp_path / "lib.db"), "sync", "m8_tracker",
                                   str(card), "--from", str(render)])
     assert r.exit_code == 0, r.output
@@ -271,3 +271,132 @@ def test_resampling_keeps_faded_edges_quiet(tmp_path):
     _convert_and_copy(src, out, 48000, 16, convert_to_mono=False, dither=False)
     z, _ = sf.read(str(out))
     assert abs(z[0]) <= 0.01 * np.abs(z).max() and abs(z[-1]) <= 0.01 * np.abs(z).max() + 1e-4
+
+
+# ---------------------------------------------------------------------------
+# a render that fails or stops never replaces the last finished one
+# ---------------------------------------------------------------------------
+def _tree_bytes(root):
+    return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+
+def _failing_convert(monkeypatch, fail_on, exc=RuntimeError):
+    """A conversion that writes part of the file (as a full disk does), then raises."""
+    real = R._convert_and_copy
+
+    def convert(src, dest, **k):
+        if fail_on in str(src):
+            open(dest, "wb").close()
+            raise exc("System error.")
+        return real(src, dest, **k)
+    monkeypatch.setattr(R, "_convert_and_copy", convert)
+
+
+def test_a_failed_render_leaves_the_previous_one_as_it_was(tmp_path, monkeypatch):
+    monkeypatch.setenv("FOURIER_NO_RENDER_CACHE", "1")
+    master = _write_master(tmp_path / "master")
+    out, dev = tmp_path / "out", _fake_device()
+    R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    base = out / "SAMPLES"
+    before = _tree_bytes(base)
+    assert R.render_problem(base) is None
+    _failing_convert(monkeypatch, "BD_two")
+    logs = []
+    s = R.render_master_to_device(str(master), dev, str(out), log=logs.append)
+    assert s["failed"] == 1
+    assert _tree_bytes(base) == before                       # no 0-byte file, nothing removed
+    assert s["replaced"] is False and any("still holds the previous render" in m for m in logs)
+    assert sorted(p.name for p in out.iterdir()) == ["SAMPLES"]   # no staging folder left
+
+
+@pytest.mark.parametrize("how", ["errno", "full disk"])
+def test_a_render_out_of_room_says_the_previous_one_can_go(tmp_path, monkeypatch, how):
+    """A render needs room for the previous render and the new one: when the disk runs out,
+    the message says how much the previous one holds and that it can be deleted."""
+    import errno
+    import shutil
+    monkeypatch.setenv("FOURIER_NO_RENDER_CACHE", "1")
+    master = _write_master(tmp_path / "master")
+    out, dev = tmp_path / "out", _fake_device()
+    R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    base = out / "SAMPLES"
+    before = _tree_bytes(base)
+    if how == "errno":
+        _failing_convert(monkeypatch, "BD_two",
+                         exc=lambda _m: OSError(errno.ENOSPC, os.strerror(errno.ENOSPC)))
+    else:                       # libsndfile says only "System error.": the disk has no room left
+        _failing_convert(monkeypatch, "BD_two")
+        real = shutil.disk_usage
+        monkeypatch.setattr(R.shutil, "disk_usage",
+                            lambda p: real(p)._replace(free=0) if ".fourier-partial" in str(p) else real(p))
+    s = R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    assert s["failed"] == 1 and s["replaced"] is False
+    note = " ".join(s["no_room"].split())
+    assert "needs room for both" in note and str(base) in note and "Delete that folder" in note, note
+    assert _tree_bytes(base) == before
+
+
+def test_a_failed_render_with_room_left_says_nothing_about_room(tmp_path, monkeypatch):
+    monkeypatch.setenv("FOURIER_NO_RENDER_CACHE", "1")
+    master = _write_master(tmp_path / "master")
+    out, dev = tmp_path / "out", _fake_device()
+    R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    _failing_convert(monkeypatch, "BD_two")
+    s = R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    assert s["failed"] == 1 and "no_room" not in s
+
+
+def test_a_stopped_render_leaves_the_previous_one_as_it_was(tmp_path, monkeypatch):
+    import pytest
+    monkeypatch.setenv("FOURIER_NO_RENDER_CACHE", "1")
+    master = _write_master(tmp_path / "master")
+    out, dev = tmp_path / "out", _fake_device()
+    R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    before = _tree_bytes(out)
+    _failing_convert(monkeypatch, "BD_two", exc=KeyboardInterrupt)
+    with pytest.raises(KeyboardInterrupt):
+        R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    assert _tree_bytes(out) == before
+
+
+def test_a_render_left_unfinished_is_not_a_finished_render(tmp_path):
+    r = tmp_path / "m8_tracker"
+    (r / "01_KICKS").mkdir(parents=True)
+    (r / "01_KICKS" / "a.wav").write_bytes(b"RIFF")
+    assert "isn't a Fourier render" in R.render_problem(r)
+    (r / R.RENDER_MARKER).write_text("m8_tracker\n")         # an older render's marker
+    assert "isn't a finished render" in R.render_problem(r)
+    R.write_render_marker(r, "m8_tracker")
+    assert R.render_problem(r) is None
+    (r / "01_KICKS" / "a.wav").write_bytes(b"")               # changed afterwards
+    assert "changed after it was rendered" in R.render_problem(r)
+
+
+def test_new_only_that_stops_leaves_the_previous_copy(tmp_path, monkeypatch):
+    import shutil
+    from types import SimpleNamespace
+    import pytest
+    from fourier.cli import releases as cli_rel
+    from fourier.packs import device_lock
+    base = tmp_path / "renders" / "m8_tracker"
+    for n in ("a", "b"):
+        (base / "01_KICKS" / f"{n}.wav").parent.mkdir(parents=True, exist_ok=True)
+        (base / "01_KICKS" / f"{n}.wav").write_bytes(n.encode() * 10)
+    R.write_render_marker(base, "m8_tracker")
+    lock = SimpleNamespace(files={k: {"path": f"01_KICKS/{k}.wav", "release": "v2"} for k in "ab"})
+    monkeypatch.setattr(device_lock, "load_lock", lambda *a, **k: lock)
+    cli_rel._new_only("m8_tracker", "v2", str(base), str(base))
+    out = tmp_path / "renders" / "m8_tracker-new-in-v2"
+    assert R.render_problem(out) is None
+    before = _tree_bytes(out)
+    real = shutil.copy2
+
+    def copy2(src, dst, *a, **k):
+        if str(src).endswith("b.wav"):
+            raise KeyboardInterrupt
+        return real(src, dst, *a, **k)
+    monkeypatch.setattr(shutil, "copy2", copy2)
+    with pytest.raises(KeyboardInterrupt):
+        cli_rel._new_only("m8_tracker", "v2", str(base), str(base))
+    assert _tree_bytes(out) == before
+    assert sorted(p.name for p in out.parent.iterdir()) == ["m8_tracker", "m8_tracker-new-in-v2"]

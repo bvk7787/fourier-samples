@@ -391,16 +391,39 @@ def _load_cards(device_id: str) -> dict:
     return cards if isinstance(cards, dict) else {}     # the old one-card format isn't trusted
 
 
+def _card_entry(device_id: str | None, dest=None, volume=None) -> dict:
+    """What earlier syncs recorded for this card folder: trusted only for the same card (its
+    id) and the same card folder; {} otherwise."""
+    if not device_id or dest is None or volume is None:
+        return {}
+    cid = card_id(dest)
+    e = _load_cards(device_id).get(cid) if cid else None
+    if not isinstance(e, dict) or e.get("card_dir") != _card_dir(dest, volume):
+        return {}
+    return e
+
+
 def synced_files(device_id: str | None, dest=None, volume=None) -> set[str]:
     """The files earlier syncs copied into this card folder: trusted only for the same card
     (its id) and the same card folder."""
-    if not device_id or dest is None or volume is None:
-        return set()
-    cid = card_id(dest)
-    e = _load_cards(device_id).get(cid) if cid else None
-    if not e or e.get("card_dir") != _card_dir(dest, volume):
-        return set()
-    return set(e.get("files", []))
+    return set(_card_entry(device_id, dest, volume).get("files", []))
+
+
+def _states(d) -> dict[str, list]:
+    """{file: [size, mtime (whole seconds), md5]} from a record, leaving out malformed rows."""
+    out = {}
+    for rel, v in (d or {}).items() if isinstance(d, dict) else ():
+        if isinstance(v, list) and len(v) == 3 and isinstance(v[0], int) and isinstance(v[2], str):
+            out[rel] = v
+    return out
+
+
+def synced_state(device_id: str | None, dest=None, volume=None) -> tuple[dict, dict]:
+    """(state, pending) earlier syncs recorded for this card folder: what each file they wrote
+    was when written ([size, mtime, md5]), and what a sync about to copy expected to write (a
+    copy that stops leaves either the old file or the new one in place)."""
+    e = _card_entry(device_id, dest, volume)
+    return _states(e.get("state")), _states(e.get("pending"))
 
 
 def render_files(render_dir) -> set[str]:
@@ -409,26 +432,152 @@ def render_files(render_dir) -> set[str]:
             if p.is_file() and not any(part.startswith(".") for part in p.relative_to(render_dir).parts)}
 
 
-def record_sync(device_id: str, render_dir, dest, volume, merge: bool = True) -> None:
-    """Record the render's files as Fourier's on this card. merge keeps what earlier syncs
-    recorded (a sync without --delete leaves those files on the card); a finished --delete
-    sync passes merge=False. Called before copying too, so a copy that stops half way
-    leaves every file it wrote recorded."""
+def record_card(device_id: str, render_dir, dest, volume, files, state: dict,
+                pending: dict | None = None) -> None:
+    """Record what Fourier put in this card folder: the files it wrote (names) and, for each
+    file whose contents it knows, [size, mtime, md5] as it left it."""
     cid = card_id(dest, create=True)
-    files = render_files(render_dir) | (synced_files(device_id, dest, volume) if merge else set())
     cards = _load_cards(device_id)
     try:
         st_dev = os.stat(volume).st_dev
     except OSError:
         st_dev = None
+    files = set(files)
     cards[cid] = {"dest": str(_resolve(dest)), "card_dir": _card_dir(dest, volume),
                   "volume": str(volume), "st_dev": st_dev, "render": str(render_dir),
-                  "files": sorted(files)}
+                  "files": sorted(files),
+                  "state": {k: state[k] for k in sorted(state) if k in files},
+                  "pending": {k: v for k, v in sorted((pending or {}).items())}}
     f = card_record(device_id)
     f.parent.mkdir(parents=True, exist_ok=True)
     tmp = f.with_suffix(".tmp")
     tmp.write_text(json.dumps({"fourier_card_record": 2, "cards": cards}, indent=0))
     os.replace(tmp, f)
+
+
+def record_sync(device_id: str, render_dir, dest, volume, merge: bool = True) -> None:
+    """Record the render's files as Fourier's on this card. merge keeps what earlier syncs
+    recorded (a sync without --delete leaves those files on the card); a finished --delete
+    sync passes merge=False. The contents recorded for a file are kept."""
+    files = render_files(render_dir) | (synced_files(device_id, dest, volume) if merge else set())
+    record_card(device_id, render_dir, dest, volume, files, synced_state(device_id, dest, volume)[0])
+
+
+# ---------------------------------------------------------------------------
+# what a sync copies, keeps and removes
+# ---------------------------------------------------------------------------
+CARD_TMP = ".fourier-tmp"      # a file sync writes, then renames into place (".name.wav.fourier-tmp")
+
+
+def _md5(p) -> str:
+    import hashlib
+    h = hashlib.md5()
+    with open(p, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def card_files(dest) -> dict[str, Path]:
+    """The files in a card folder outside dot folders and files (what a sync compares)."""
+    out: dict[str, Path] = {}
+    root = Path(dest)
+    if not root.is_dir():
+        return out
+    for dp, dns, fns in os.walk(root):
+        dns[:] = sorted(d for d in dns if not d.startswith("."))
+        for f in sorted(fns):
+            if not f.startswith("."):
+                p = Path(dp) / f
+                out[p.relative_to(root).as_posix()] = p
+    return out
+
+
+class SyncPlan:
+    """What a sync does with each file. copy: the render's to write; same: already on the card
+    as rendered; kept: changed on the card since a sync wrote it, the render's unchanged;
+    conflicts: changed on the card and in the render; unknown: on the card, differing from the
+    render, with no record of a sync writing it; with delete, delete: files the render doesn't
+    have that a sync wrote and that are unchanged; kept_extra: such files that changed on the
+    card or have no record of their contents; locked: locked files the render couldn't hold."""
+
+    def __init__(self):
+        self.copy: list[str] = []
+        self.same: list[str] = []
+        self.kept: list[str] = []
+        self.conflicts: list[str] = []
+        self.unknown: list[str] = []
+        self.delete: list[str] = []
+        self.kept_extra: list[str] = []
+        self.locked: list[str] = []
+        self.md5: dict[str, str] = {}          # the render's md5 of each file it has
+
+
+def plan_sync(render_dir, rendered: dict, dest, state: dict, pending: dict, delete: bool = False,
+              overwrite_changed: bool = False, protected=()) -> SyncPlan:
+    """What syncing render_dir (rendered: its marker's {file: [size, md5]}) into the card
+    folder dest does, given what earlier syncs recorded (synced_state). A card file counts as
+    the one a sync wrote when its size and time, or its size and md5, match the record. A
+    file changed on the card since is never replaced (overwrite_changed replaces it) nor
+    deleted."""
+    plan = SyncPlan()
+    render_dir, dest = Path(render_dir), Path(dest)
+    on_card = card_files(dest)
+    # a card's file system usually ignores case: a render's "Kick.wav" is the card's "kick.wav"
+    folded = {k.casefold(): k for k in on_card}
+    matched: set[str] = set()
+    sums: dict[str, str] = {}
+
+    def card_md5(rel):
+        if rel not in sums:
+            sums[rel] = _md5(on_card[rel])
+        return sums[rel]
+
+    def written_by_sync(rel, st) -> list:
+        """The records (state and pending) this card file matches."""
+        out = []
+        for rec in (state.get(rel), pending.get(rel)):
+            if rec and st.st_size == rec[0] and (int(st.st_mtime) == rec[1] or card_md5(rel) == rec[2]):
+                out.append(rec)
+        return out
+
+    for rel in sorted(rendered):
+        size, md5 = rendered[rel][0], rendered[rel][1]
+        plan.md5[rel] = md5
+        crel = rel if rel in on_card else folded.get(rel.casefold())
+        if crel is None:
+            plan.copy.append(rel)
+            continue
+        matched.add(crel)
+        st = on_card[crel].stat()
+        if crel == rel and st.st_size == size \
+                and int(st.st_mtime) == int((render_dir / rel).stat().st_mtime):
+            plan.same.append(rel)                  # as rsync -rt would leave it
+            continue
+        ours = written_by_sync(crel, st)
+        if ours:
+            (plan.same if crel == rel and any(r[2] == md5 for r in ours) else plan.copy).append(rel)
+            continue
+        if crel == rel and st.st_size == size and card_md5(rel) == md5:
+            plan.same.append(rel)                  # the render's own bytes
+            continue
+        if overwrite_changed:
+            plan.copy.append(rel)
+        elif crel in state or crel in pending:
+            recs = [r for r in (state.get(crel), pending.get(crel)) if r]
+            (plan.kept if any(r[2] == md5 for r in recs) else plan.conflicts).append(rel)
+        else:
+            plan.unknown.append(rel)
+    if delete:
+        keep = set(protected)
+        for rel in sorted(set(on_card) - set(rendered) - matched):
+            if rel in keep:
+                plan.locked.append(rel)
+            elif written_by_sync(rel, on_card[rel].stat()):
+                plan.delete.append(rel)
+            else:
+                plan.kept_extra.append(rel)
+    return plan
 
 
 def _no_card_folder(vol) -> UnsafePath:
