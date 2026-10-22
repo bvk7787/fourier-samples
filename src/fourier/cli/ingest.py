@@ -114,6 +114,13 @@ def _sononym_sync(prune=False) -> None:
         f"{counts['unchanged']:,} unchanged, {counts['removed']} removed from Sononym"
         + (f", {counts.get('pruned', 0)} pruned" if prune else "")
     )
+    if counts.get("changed"):
+        console.print(f"  {counts['changed']:,} file(s) changed at their path: analyzed again")
+    if counts.get("read_in_full"):
+        console.print(f"  {counts['read_in_full']:,} file(s) read in full to tell them apart from "
+                      f"files that start the same way")
+    if counts.get("times_moved"):
+        console.print(f"  {times_moved_line(counts['times_moved'])}", markup=False, highlight=False)
     if counts.get("cloud_only"):
         console.print(f"[yellow]{counts['cloud_only']:,} cloud-only file(s) not hashed yet (not on "
                       f"this machine); a later scan hashes them once they're downloaded[/yellow]")
@@ -152,6 +159,15 @@ def _walk(root) -> bool:
 UNAVAILABLE: list = []
 
 
+def times_moved_line(n: int) -> str:
+    """What a scan says about rows from before whose times moved with their bytes kept
+    (importer._settle_moved_times)."""
+    return (f"{n:,} file(s) scanned before this version have new times with the same size, start "
+            f"and header (a copy or a restore that didn't keep the times): read in full, their "
+            f"analysis kept. If you edited them in place, `fourier tools analyze --force` analyzes "
+            f"the whole library again.")
+
+
 def scan_report(counts) -> list[tuple]:
     """The lines after a walk's summary: (text, style)."""
     out = []
@@ -187,6 +203,14 @@ def scan_report(counts) -> list[tuple]:
         out.append((f"  A linked folder is unavailable: {link} -> {target} (a drive that isn't "
                     f"plugged in?). Its samples are left out; a build stops until it's back, or "
                     f"builds without them with --allow-missing.", "red"))
+    if counts.get("changed"):
+        out.append((f"  {counts['changed']:,} known file(s) changed at their path (other audio "
+                    f"than the last scan read): analyzed again", "dim"))
+    if counts.get("read_in_full"):
+        out.append((f"  {counts['read_in_full']:,} file(s) read in full to tell them apart from "
+                    f"files that start the same way", "dim"))
+    if counts.get("times_moved"):
+        out.append((f"  {times_moved_line(counts['times_moved'])}", "yellow"))
     if counts.get("moved"):
         out.append((f"  {counts['moved']:,} file(s) moved or renamed in the library (the same "
                     f"content at a new path): their analysis and ratings follow them", "dim"))

@@ -61,6 +61,21 @@ naming, routing, loudness, ratings). `fourier why --rules` prints the routing pr
   the master's sources gone while still pickable, and on a pick it couldn't export
   (`cli/build.py`). A Sononym library's scan never walks (without `--walk`), so its builds
   read the database as before; the stops act only where a build would otherwise come out short.
+  A file's identity is the hash of all its bytes (`samples.file_hash`; `quick_hash` holds the
+  first 8 KB's, a first look only): a row from before schema 3 keeps its quick hash until the
+  scan reads the file in full, which it does for files whose first 8 KB another file shares
+  (`importer.settle_hashes`), so equal hashes mean equal bytes (twins, ratings, moves). A known
+  file whose size or time moved is read again and, when its bytes changed, analyzed again
+  (`importer._check_known`, `forget_analysis`); a file only touched keeps its analysis when its
+  row has the content hash. A row from before with only the quick hash, the same size, first
+  8 KB and header and a moved time: a clock shift (whole hours, seconds cut) keeps its analysis;
+  otherwise a few such files in one scan are analyzed again (an edit past 8 KB looks like a
+  touch) and more than `MANY_TIMES_MOVED` are a copy without times and keep theirs
+  (`importer._settle_moved_times`). A stored size
+  alone never drops analysis: the header (length, rate, channels) decides. settle_hashes runs
+  after every scan, Sononym's sync too; rows an older version writes into a schema-3 database
+  get their file_hash moved to quick_hash at the next open (`migrations.settle_older_rows`), and
+  a DuckDB home loses the file_hash index at every open (`migrations.every_open`).
   The walk also matches moves (`importer._match_moves`: same content at a new path, or back
   where it was), which take their analysis and ratings along (`ratings.rekey_paths`), records
   the files it can't read (`scan_errors`, doctor's "unreadable files") and reports a folder

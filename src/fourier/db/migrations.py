@@ -15,6 +15,22 @@ sample_features.sononym_bpm_folded (Sononym's tempo folded into 60-200, filled h
 sononym_meta.bpm), own_root_midi and own_root_at (Fourier's own pYIN root, filled by
 `fourier tools analyze --only own`). Every existing column keeps its values, so a build on a
 migrated database picks exactly what it picked before.
+
+Version 3 tells files apart by all their bytes: it adds samples.quick_hash (SHA256 of the first
+8 KB, what file_hash held so far, copied from it) and samples.file_mtime_ns (the time the walk
+read a file at, filled by the next scan). file_hash keeps its values (cut to the 16 hex digits
+every scan wrote; an older demo wrote all 64); from here a scan stores the hash of the whole
+file there for every file it reads in full (a new or changed file, or one whose first 8 KB
+another file shares: ingest/importer.settle_hashes). On DuckDB it drops the index on
+file_hash (see _v3_content_identity); SQLite indexes quick_hash. An older version opens a
+version-3 database as before: it reads and writes neither new column.
+
+After the migrations, every read-write open of a version-3 database (every_open) drops the
+file_hash index on DuckDB again (rolling back to older code may make it again), and settles
+rows an older version wrote into it (settle_older_rows): such a row has file_hash and no
+quick_hash. Its file_hash, the quick hash, moves to quick_hash and file_hash is cleared, so
+the next scan reads that file in full (its analysis stays unless its bytes changed). Rows this
+version writes always have both, so on a home only this version wrote the open only reads.
 """
 from __future__ import annotations
 
@@ -79,9 +95,60 @@ def _v2_sources_apart(conn) -> None:
                       "WHERE sononym_bpm_folded IS NOT NULL"))
 
 
+# (column, type) migration 3 adds to samples (the model has them too)
+V3_COLUMNS = (("quick_hash", "VARCHAR"), ("file_mtime_ns", "BIGINT"))
+
+
+def _v3_content_identity(conn) -> None:
+    """Add the quick hash and the walk's file time; the quick hash is what file_hash held. On
+    DuckDB the index on file_hash goes: DuckDB can't update an indexed column of a row another
+    table references (a sample with its analysis), and a scan now rewrites file_hash. SQLite
+    keeps it and indexes the quick hash too."""
+    have = _columns(conn, "samples")
+    if have is None:
+        return
+    for col, typ in V3_COLUMNS:
+        if col not in have:
+            conn.execute(text(f"ALTER TABLE samples ADD COLUMN {col} {typ}"))
+    if conn.dialect.name == "duckdb":
+        conn.execute(text("DROP INDEX IF EXISTS ix_samples_file_hash"))
+    else:
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_samples_quick_hash ON samples (quick_hash)"))
+    conn.execute(text("UPDATE samples SET file_hash = SUBSTR(file_hash, 1, 16) WHERE LENGTH(file_hash) > 16"))
+    conn.execute(text("UPDATE samples SET quick_hash = file_hash WHERE quick_hash IS NULL AND file_hash IS NOT NULL"))
+
+
+def settle_older_rows(conn) -> None:
+    """Rows an older version wrote into a version-3 database have file_hash (the quick hash
+    then) and no quick_hash: the quick hash moves to quick_hash, and file_hash is cleared, so
+    the next scan reads the file in full (importer.settle_hashes, _check_known) and keeps its
+    analysis unless its bytes changed. Idempotent: rows this version writes always have both."""
+    have = _columns(conn, "samples")
+    if have is None or "quick_hash" not in have:
+        return
+    older = "quick_hash IS NULL AND file_hash IS NOT NULL"
+    if conn.execute(text(f"SELECT 1 FROM samples WHERE {older} LIMIT 1")).first() is None:
+        return                            # a read takes no write lock (SQLite)
+    conn.execute(text(f"UPDATE samples SET quick_hash = SUBSTR(file_hash, 1, 16), file_hash = NULL "
+                      f"WHERE {older}"))
+
+
+def every_open(engine: Engine) -> None:
+    """What every read-write open of a version-3 database does: on DuckDB, drop the file_hash
+    index if it's there (_v3_content_identity says why; the rollback to older code may make it
+    again), then settle_older_rows."""
+    if engine.dialect.name == "duckdb":
+        with engine.begin() as conn:
+            conn.execute(text("DROP INDEX IF EXISTS ix_samples_file_hash"))
+    with engine.begin() as conn:
+        settle_older_rows(conn)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "baseline: the schema before numbered migrations"),
     Migration(2, "analysis sources apart: Sononym's folded tempo, Fourier's own root", _v2_sources_apart),
+    Migration(3, "files told apart by all their bytes: the quick hash and the walk's file time",
+              _v3_content_identity),
 )
 LATEST = MIGRATIONS[-1].version
 
@@ -128,4 +195,6 @@ def migrate(engine: Engine) -> list[int]:
             conn.execute(text("INSERT INTO schema_version (version, applied_at) VALUES (:v, :t)"),
                          {"v": m.version, "t": time.strftime("%Y-%m-%dT%H:%M:%S")})
         done.append(m.version)
+    if max(have, *done, 0) >= 3:
+        every_open(engine)
     return done

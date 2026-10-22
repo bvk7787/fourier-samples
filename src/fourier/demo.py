@@ -139,9 +139,10 @@ def add_rows(s, lib_root, files, without=()) -> None:
     for i, f in enumerate(files, 1):
         p = lib_root / f.rel
         info = sf.info(p)
-        h = hashlib.sha256(p.read_bytes()[:8192]).hexdigest()
+        b = p.read_bytes()            # (as a scan hashes it: ingest/importer._hashes)
+        q, h = hashlib.sha256(b[:8192]).hexdigest()[:16], hashlib.sha256(b).hexdigest()[:16]
         smp = Sample(id=i, path=str(p), rel_path=f.rel, filename=p.name,
-                     file_size_bytes=p.stat().st_size, file_hash=h, modified_at=0,
+                     file_size_bytes=p.stat().st_size, file_hash=h, quick_hash=q, modified_at=0,
                      duration_s=round(info.duration, 6), sample_rate=info.samplerate,
                      channels=info.channels, bit_depth=16, file_format="wav",
                      ableton_tags=(list(f.ableton_tags) or None) if "ableton" not in without else None)

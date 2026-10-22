@@ -616,15 +616,20 @@ def rekey_by_hash(session, store_path=None, log=print):
     """Ratings survive a library reorganisation. Every stored
     rating / color / auto-misfile records its source's file hash (Sample.file_hash); one
     whose source path is gone from the library moves to the one existing file with that
-    hash (the same file name first). Returns {"hashed", "moved", "orphaned"}."""
+    hash (the same file name first). A hash stored before files were hashed in full (of the
+    first 8 KB, Sample.quick_hash) moves it only to a file of the same name. Returns
+    {"hashed", "moved", "orphaned"}."""
     from sqlalchemy import select
     from ..db.models import Sample
     store = load_store(store_path)
-    by_path, by_hash = {}, defaultdict(list)
-    for p, h in session.execute(select(Sample.path, Sample.file_hash)).all():
+    by_path, by_hash, by_quick = {}, defaultdict(list), defaultdict(list)
+    for row in session.execute(select(Sample.path, Sample.file_hash, Sample.quick_hash)).all():
+        p, h, q = (*row, None)[:3]
         by_path[p] = h
         if h:
             by_hash[h].append(p)
+        if q and q != h:
+            by_quick[q].append(p)        # (a rating stored before its file was hashed in full)
     s = dict(hashed=0, moved=0, orphaned=0)
     for sect in ("ratings", "colors", "auto_misfiled"):
         D = store[sect]
@@ -636,9 +641,13 @@ def rekey_by_hash(session, store_path=None, log=print):
                     r["hash"] = by_path[src]
                     s["hashed"] += 1
                 continue
-            cands = [p for p in by_hash.get(r.get("hash"), []) if p != src and os.path.exists(p)]
+            exact = r.get("hash") in by_hash
+            cands = [p for p in by_hash.get(r.get("hash")) or by_quick.get(r.get("hash"), [])
+                     if p != src and os.path.exists(p)]
             same = [p for p in cands if os.path.basename(p).lower() == os.path.basename(src).lower()]
-            pick = same if same else cands
+            # (a hash stored before its file was hashed in full is of its first 8 KB, which
+            # another file can share: it follows only a file of the same name)
+            pick = same if same or not exact else cands
             if len(pick) == 1 and pick[0] not in D:
                 D[pick[0]] = D.pop(src)
                 s["moved"] += 1

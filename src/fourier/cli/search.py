@@ -424,8 +424,8 @@ def _path_labels(session, ids) -> dict:
 @click.option("--hide",    is_flag=True, help="Mark redundant copies as hidden (is_hidden=True)")
 @click.option("--dry-run", is_flag=True, help="Report duplicates without making changes")
 def dedup(hide, dry_run):
-    """Find samples that share the same content hash (the first 8 KB of the file): the same
-    file in more than one pack or folder. Nothing on disk changes.
+    """Find samples that share the same content hash (every byte of the file): the same file
+    in more than one pack or folder. Nothing on disk changes.
 
     \b
     In each group, the one kept is chosen by:
