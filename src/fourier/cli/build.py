@@ -266,7 +266,7 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
             console.print(_export_failure_message(short, out_dir) + f" The additive build is in {build_dir}.",
                           style="red", markup=False, highlight=False, soft_wrap=True)
             raise SystemExit(1)
-        ok = _post_build_ratings(build_dir)
+        ok = _post_build_ratings(build_dir, out_dir)
         write_changelog(build_dir, log=lambda m: console.print(m))
         if not ok:
             console.print(f"[red]verify failed: the master at {out_dir} is unchanged; the additive "
@@ -346,7 +346,7 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
                           f"({', '.join(failed)}): the master at {out_dir} is unchanged.[/red]")
             _stop_partial(build_dir, out_dir)
         console.print(f"[green]Built {len(res)} categor{'y' if len(res) == 1 else 'ies'}.[/green]")
-        ok = _post_build_ratings(build_dir)
+        ok = _post_build_ratings(build_dir, out_dir)
         write_changelog(build_dir, log=lambda m: console.print(m))
         if not ok:
             console.print(f"[red]verify failed: the master at {out_dir} is unchanged; the new build "
@@ -356,9 +356,10 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
         # harvest them and write them into the new one before it replaces the old
         if _os.path.exists(_os.path.join(out_dir, "manifest.json")):
             try:
-                from ..packs.ratings import apply_tags
+                from ..packs.ratings import apply_tags, writes_sidecars
                 harvest(out_dir, log=lambda m: console.print(m, markup=False, highlight=False))
-                apply_tags(build_dir, log=lambda m: None)
+                if writes_sidecars(build_dir, out_dir):
+                    apply_tags(build_dir, log=lambda m: None)
             except Exception as e:
                 console.print(f"[red]ratings harvest before the swap failed: {e}[/red]\n"
                               f"The new build stays in {build_dir}; the master is unchanged.")
@@ -1067,17 +1068,18 @@ def _need_master(master_dir) -> None:
         raise SystemExit(1)
 
 
-def _run_verify(master_dir, renders=(), audio=True, use_db=True, keep=None, quiet=False):
-    """Run verify; print every line (or, quiet, only WARN/FAIL and a summary).
-    Returns True when nothing FAILed."""
+def _run_verify(master_dir, renders=(), audio=True, use_db=True, keep=None, quiet=False, detail=False):
+    """Run verify; print every line (or, quiet, only WARN/FAIL and a summary); detail: each
+    warning that the library ran short of candidates on its own line. Returns True when
+    nothing FAILed."""
     from ..packs.verify import render_and_verify, verify_master
     lines = []
     say = (lambda m: lines.append(m)) if quiet else (lambda m: console.print(m, markup=False, highlight=False))
     if use_db:
         with session_scope() as session:
-            ok, res = verify_master(master_dir, session=session, audio=audio, log=say)
+            ok, res = verify_master(master_dir, session=session, audio=audio, log=say, detail=detail)
     else:
-        ok, res = verify_master(master_dir, session=None, audio=audio, log=say)
+        ok, res = verify_master(master_dir, session=None, audio=audio, log=say, detail=detail)
     if renders:
         ok2, res2 = render_and_verify(master_dir, list(renders), keep_dir=keep, log=say)
         ok, res = ok and ok2, res + res2
@@ -1103,7 +1105,9 @@ def _run_verify(master_dir, renders=(), audio=True, use_db=True, keep=None, quie
               help="Skip DB-backed checks (sample chains, twins, hygiene)")
 @click.option("--quick", is_flag=True, default=False,
               help="Only the quick invariants (budgets, ceilings, vendor cap, hygiene, names)")
-def verify(master_dir, renders, keep, no_audio, no_db, quick):
+@click.option("--detail", is_flag=True, default=False,
+              help="Each category short of candidates on its own line (one line for them all otherwise)")
+def verify(master_dir, renders, keep, no_audio, no_db, quick, detail):
     """Check the master against every curation rule (it runs after each build and before
     publish), and with --render in scratch device renders: manifest against disk, budgets,
     names, ratings, routing, sample chains, length caps, identical audio, DC and more. Exits
@@ -1120,14 +1124,15 @@ def verify(master_dir, renders, keep, no_audio, no_db, quick):
     from ..packs.ratings import live_master_dir
     master_dir = master_dir or live_master_dir() or _master_dir()
     _need_master(master_dir)
-    if not _run_verify(master_dir, renders, audio=not no_audio, use_db=not no_db, keep=keep):
+    if not _run_verify(master_dir, renders, audio=not no_audio, use_db=not no_db, keep=keep, detail=detail):
         raise SystemExit(1)
 
 
-def _post_build_ratings(master_dir):
-    """After a build: rebuild the sets (KITS/, SLICE/), re-apply stored ratings as Live tags,
-    print the scorecard, verify. Returns verify's verdict (True when nothing FAILed, or when
-    verify couldn't run)."""
+def _post_build_ratings(master_dir, live_dir=None):
+    """After a build: rebuild the sets (KITS/, SLICE/), re-apply stored ratings as Live tags
+    when Live is in use (ratings.writes_sidecars: a provider, or sidecars already in the
+    master or in live_dir, the master this build replaces), print the scorecard, verify.
+    Returns verify's verdict (True when nothing FAILed, or when verify couldn't run)."""
     try:
         from ..packs.sets import SETS_ON, build_sets
         if SETS_ON:
@@ -1138,8 +1143,9 @@ def _post_build_ratings(master_dir):
     except Exception as e:
         console.print(f"[yellow]sets skipped: {e}[/yellow]")
     try:
-        from ..packs.ratings import apply_tags
-        apply_tags(master_dir, log=lambda m: console.print(m))
+        from ..packs.ratings import apply_tags, writes_sidecars
+        if writes_sidecars(master_dir, live_dir):
+            apply_tags(master_dir, log=lambda m: console.print(m))
     except Exception as e:
         console.print(f"[yellow]ratings write-back skipped: {e}[/yellow]")
     _print_scorecard(master_dir)

@@ -187,3 +187,21 @@ def test_cli_without_config_changes_nothing(tmp_path):
     r = _cli(["config", "show"], tmp_path, {"FOURIER_CONFIG": "none"})
     assert r.returncode == 0 and "the code defaults" in r.stdout
     assert not (tmp_path / "home" / "run").exists()
+
+
+def test_config_show_lists_your_settings_and_counts_the_styles(tmp_path):
+    """By default config show lists the advanced settings your own files set; the raw values
+    a style or a knob stands for (budgets, a regex) are counted, and --all lists them."""
+    (tmp_path / "fourier.toml").write_text('preset = "breaks-acid"\nloudness = "hot"\n'
+                                           "[advanced]\nNEAR_DUP_COS = 0.97\n")
+    r = _cli(["config", "show"], tmp_path, {"COLUMNS": "200"})
+    assert r.returncode == 0, r.stderr + r.stdout
+    out = " ".join(r.stdout.split())
+    assert "loudness = hot (your fourier.toml)" in out
+    assert "NEAR_DUP_COS = 0.97 (your fourier.toml)" in out
+    assert "BUDGETS" not in out and "DRUMLOOP_STYLE_EXCLUDE" not in out and "LOOP_LIMIT_DB" not in out
+    assert "more that the style and the settings above set (--all lists them)" in out
+    r = _cli(["config", "show", "--all"], tmp_path, {"COLUMNS": "200"})
+    out = " ".join(r.stdout.split())
+    assert "curate_config.BUDGETS = {" in out and "DRUMLOOP_STYLE_EXCLUDE" in out
+    assert "LOOP_LIMIT_DB = 6.0 (your fourier.toml (loudness), the loudness knob" in out

@@ -178,11 +178,13 @@ def _knob_settings(r) -> list[tuple[str, str, str]]:
 
 
 @config_cmd.command("show", short_help="Show the preset, knobs and tunables the config sets.")
-@click.option("--all", "show_all", is_flag=True, help="Every tunable, not just the overridden ones")
+@click.option("--all", "show_all", is_flag=True,
+              help="Every tunable with its class, the style's and the settings' included")
 @click.pass_context
 def config_show(ctx, show_all):
-    """The preset, the knobs the config files set, and each tunable that differs from the
-    code's default with the layer that set it (--all: every tunable)."""
+    """The preset, the settings (knobs) the config files set, and the advanced settings
+    your own files set directly, with where each came from (--all: every tunable, the ones
+    the style and the settings stand for included)."""
     import os as _os
 
     from .. import layers
@@ -219,12 +221,20 @@ def config_show(ctx, show_all):
             say(f"  {name} = {value}    ({_source_words(where)})")
     say(_scale_line(r))
     meta = _tunable_meta()
-    keys = sorted(meta) if show_all else sorted(r.values)
-    if not keys:
-        say("tunables: every one at the code's default" + ("" if show_all else " (--all lists them)"))
-        return
+    if show_all:
+        keys = sorted(meta)
+    else:
+        # by default only what your own files set directly ([advanced], --set); the values the
+        # style and the settings above stand for are counted, and --all lists them
+        keys = sorted(k for k in r.values if _yours(r.sources.get(k, "")))
+        rest = len(r.values) - len(keys)
+        if not keys:
+            say("advanced settings: none set in your files" + (
+                f"; the style and the settings above set {rest} (--all lists them)" if rest
+                else " (--all lists every one)"))
+            return
     say("advanced settings (every one, with its class):" if show_all else
-        "advanced settings the style, the knobs or your [advanced] section change:")
+        "advanced settings your [advanced] section or --set changes:")
     defaults = layers.defaults() if show_all else {}
     for k in keys:
         cls, knob = meta.get(k, ("?", ""))
@@ -234,6 +244,15 @@ def config_show(ctx, show_all):
         tail = f"; class {cls}" if show_all else ""
         say(f"  {name} = {_short(v, 100)}    ({src}" + (f", the {knob} knob" if knob else "")
             + f"{tail})")
+    if not show_all and rest:
+        say(f"  ... and {rest} more that the style and the settings above set (--all lists them)")
+
+
+def _yours(src: str) -> bool:
+    """A value one of the user's own files sets as an advanced setting: fourier.toml's or the
+    overlay's [advanced] table, or --set (a style's, or one a setting stands for, is not)."""
+    kind = src.partition(":")[0]
+    return (src == "--set" or kind in ("config", "overlay")) and not src.endswith(")")
 
 
 def _source_words(src: str) -> str:

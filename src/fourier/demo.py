@@ -18,9 +18,10 @@ builds the master and renders it for the Digitakt 2 and the M8, all inside PATH:
 
 Nothing outside PATH is read or written: the demo sets its own home, config, library and
 output folders for the run, so ~/.fourier, ~/Music and the user's fourier.toml stay as they
-were. It needs no model and no download: the analysis the build reads is stand-in data, the
-same the CI golden build uses (tests/golden/synthetic_build.py), and CLAP is a deterministic
-stand-in that points a file and the words that describe it the same way.
+were. It needs no model and no download: the analysis the build reads is stand-in data (the
+CI's `synthetic_build.py --without sononym,ableton`: Fourier's own readings, no Sononym or
+Live rows, as a new user's library has), and CLAP is a deterministic stand-in that points a
+file and the words that describe it the same way.
 """
 from __future__ import annotations
 
@@ -319,7 +320,7 @@ def run(root=DEFAULT_DIR, say=print) -> dict:
         files = synthlib.generate(where["library"])
         say(f"     {len(files)} files in {where['library']}")
         say("2/4  Filling the demo database with stand-in analysis (no model, no download)...")
-        fill_db(where["db"], where["library"], files)
+        fill_db(where["db"], where["library"], files, without=("sononym", "ableton"))
         say("3/4  Building the master: routing, families, names, the export DSP, kits, slices,")
         say("     then verify (about a minute)...")
         _fourier(["--db", db, "build", "--all", "--no-scan", "--no-describe"], log)

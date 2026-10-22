@@ -156,8 +156,16 @@ def test_demo_builds_and_renders_inside_its_folder_only(tmp_path):
         assert sum(1 for _ in (root / "renders" / device).rglob("*.wav")) > 200
     assert (root / "home" / "library.db").exists() and (root / "demo.log").stat().st_size
     # README says verify runs "more than 100 checks": even the demo's small master gets them
-    m = re.search(r"verify: PASS -- (\d+) pass, (\d+) warn, (\d+) fail", (root / "demo.log").read_text())
+    log = (root / "demo.log").read_text()
+    m = re.search(r"verify: PASS -- (\d+) pass, (\d+) warn, (\d+) fail", log)
     assert m and sum(map(int, m.groups())) > 100, m
+    # the path an outside user has: no Sononym or Live data, so no provider lines of theirs,
+    # no Live sidecars in the master, and a small library's shortfalls in one line
+    assert "providers: path, audio" in log
+    assert "sononym labels" not in log and "ableton labels" not in log
+    assert not list((root / "master").rglob("Ableton Folder Info"))
+    assert int(m.group(2)) == sum(1 for ln in log.splitlines() if ln.startswith("WARN ")) <= 2
+    assert "usual in a small library" in " ".join(log.split())
     assert "`fourier verify` (more than 100 checks)" in " ".join((ROOT / "README.md").read_text().split())
     # nothing outside the demo folder: not the fake home (bar a library's own cache), not cwd
     ignore = lambda t: {k: v for k, v in t.items() if not k.startswith(".cache")}

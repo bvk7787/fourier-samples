@@ -412,9 +412,12 @@ def test_config_show_is_readable(tmp_path):
     flat = _flat(out)
     assert "preset: balanced (the default:" in flat           # a config naming none gets balanced
     assert "tempo = 80-170 (your fourier.toml)" in flat
-    assert "TEMPO_BANDS = [" in flat and "your fourier.toml (tempo)" in flat
+    # the internal values the tempo knob stands for are counted; --all lists them
+    assert "TEMPO_BANDS" not in flat and "(--all lists them)" in flat
     out = b.run("config", "show", "--all")
-    assert "$dict" not in out and "$tuple" not in out and "curate_config.BUDGETS = {" in _flat(out)
+    flat = _flat(out)
+    assert "$dict" not in out and "$tuple" not in out and "curate_config.BUDGETS = {" in flat
+    assert "TEMPO_BANDS = [" in flat and "your fourier.toml (tempo)" in flat
 
 
 def test_help_and_doctor_create_no_database(tmp_path):

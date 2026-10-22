@@ -19,7 +19,7 @@ an overview, the [README](../README.md).
 | | `releases` | Lists the releases on disk and which is latest (`recorded`, `import vN`) |
 | Look inside | `open` | Opens the master, a device's render, the releases or the build logs in your file browser (`--print`: the path). `open report` opens a page in your web browser to listen, see why and rate |
 | | `why` | Says where a sample landed and why, in one line (`--detail`: every rule, vote and score; `--rules`; `--unrecognized`) |
-| | `verify` | Checks every curation rule on the master (`--render DEVICE`, `--quick`) |
+| | `verify` | Checks every curation rule on the master (`--render DEVICE`, `--quick`; `--detail` lists each category short of candidates, which a small library has many of) |
 | | `diff` | Shows what changed between two builds |
 | | `search` | Searches the library by sound (words or a reference file) or by filters |
 | Settings | `config` | Your settings: `edit` (opens fourier.toml in a text editor), `show`, `explain NAME` (`--detail`: the exact rule) |
@@ -197,7 +197,8 @@ advanced:
     - '[ _-]*acme(?=[ _-]|$)'
 ```
 
-`fourier config show` lists what the overlay set. A whole new category goes in the same file:
+`fourier config show` lists what the overlay's `advanced` section set (`--all`: everything
+it set). A whole new category goes in the same file:
 see "Adding a category" in the
 [curation reference](https://github.com/bvk7787/fourier-samples/blob/main/docs/curation.md).
 
@@ -297,7 +298,9 @@ A large library's build is unchanged. `size` and the category weights still set 
 master grows toward. `files = N` is an exact size and turns library scaling off, as
 `scale = "off"` does.
 
-`fourier config show` prints what the config sets and which layer set it. `fourier config explain
+`fourier config show` prints the knobs the config sets and the advanced settings your own files
+set, each with the layer that set it; `--all` adds every other tunable, the ones a style or a knob
+stands for included. `fourier config explain
 NAME` explains one setting (`fourier config explain scale`), and `--detail` adds the exact rule
 and the advanced settings behind it. `words` takes the one-shot categories and the loop-free
 ones. DRUMLOOPS, PHRASES, PIANO, WAVES and ACOUSTIC go by tempo, sound and tags.

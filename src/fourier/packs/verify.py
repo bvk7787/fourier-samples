@@ -67,6 +67,50 @@ class Result:
     level: str
     check: str
     detail: str = ""
+    cats: tuple = ()          # the categories a check names (fold_short)
+
+
+# the warnings that say the library ran short of candidates for a category: its pool ran
+# out under the budget, or held too few of a band for its share (fold_short)
+SHORT_CHECKS = ("categories under budget (pool ran out)", "validate: budget")
+SHORT_SUFFIX = " band shares and folder minimums hold"
+
+
+def _short_cats(r: Result) -> tuple:
+    """The categories a short-of-candidates WARN names, or () for any other result."""
+    if r.level != WARN:
+        return ()
+    if r.check == SHORT_CHECKS[0]:
+        return r.cats
+    if r.check == SHORT_CHECKS[1]:
+        return (r.detail.split(":", 1)[0].strip(),)
+    if r.check.endswith(SHORT_SUFFIX):
+        return (r.check[:-len(SHORT_SUFFIX)],)
+    return ()
+
+
+def fold_short(results: list) -> list:
+    """results with the warnings that the library ran short of candidates (a small library
+    shows one for most categories) folded into one WARN that names the categories; the
+    other results as they are, in order. `fourier verify --detail` keeps each."""
+    from .curate_config import CATEGORY_ORDER
+    short = [r for r in results if _short_cats(r)]
+    if not short:
+        return results
+    cats = sorted({c for r in short for c in _short_cats(r)},
+                  key=lambda c: (list(CATEGORY_ORDER).index(c) if c in CATEGORY_ORDER else len(CATEGORY_ORDER), c))
+    named = ", ".join(cats[:6]) + (f" and {len(cats) - 6} more" if len(cats) > 6 else "")
+    one = Result(WARN, f"{len(cats)} categor{'y has' if len(cats) == 1 else 'ies have'} fewer candidates "
+                       f"than the budget or band shares ask for ({named}): usual in a small library; "
+                       f"`fourier verify --detail` lists each", cats=tuple(cats))
+    out, put = [], False
+    for r in results:
+        if not _short_cats(r):
+            out.append(r)
+        elif not put:
+            out.append(one)
+            put = True
+    return out
 
 
 class _Ctx:
@@ -268,7 +312,7 @@ def check_budgets(ctx):
     under = [(c, len(cd["entries"]), BUDGETS[c]) for c, cd in ctx.cats.items()
              if c in BUDGETS and len(cd["entries"]) < BUDGETS[c]]
     if under:
-        yield Result(WARN, "categories under budget (pool ran out)", _fmt(under, 5))
+        yield Result(WARN, SHORT_CHECKS[0], _fmt(under, 5), cats=tuple(c for c, _n, _b in under))
     big = [(c, f["family"], f["copied"]) for c, fl in ctx.fams.items() for f in fl
            if f["copied"] > MAX_PER_FAMILY]
     yield Result(FAIL if big else PASS, f"no folder over {MAX_PER_FAMILY} files", _fmt(big))
@@ -1452,8 +1496,9 @@ def _son_roots(ctx, session):
             and (v := _resolve.root(r, ctx.fallback).value) is not None}
 
 
-def verify_master(master_dir, session=None, audio=True, store_path=None, log=print):
-    """Run every master check. Returns (ok, [Result])."""
+def verify_master(master_dir, session=None, audio=True, store_path=None, log=print, detail=False):
+    """Run every master check. Returns (ok, [Result]): the warnings that the library ran short
+    of candidates folded into one (fold_short) unless detail."""
     from .validate import validate_master
     prof = None
     if session is not None:
@@ -1501,10 +1546,12 @@ def verify_master(master_dir, session=None, audio=True, store_path=None, log=pri
                *( [check_audio] if audio else [])):
         out.extend(fn(ctx))
     _ok, vres = validate_master(str(master_dir), session=session, log=lambda *a: None)
-    for level, check, detail in vres:
-        out.append(Result(level, f"validate: {check}", detail))
+    for level, check, said in vres:
+        out.append(Result(level, f"validate: {check}", said))
     if not any(r.check.startswith("validate") and r.level == FAIL for r in out):
         out.append(Result(PASS, "validate (budget, ceiling, vendor, names, dup, hygiene)"))
+    if not detail:
+        out = fold_short(out)
     for r in out:
         log(f"{r.level}  {r.check}" + (f"  -- {r.detail}" if r.detail else ""))
     return not any(r.level == FAIL for r in out), out
