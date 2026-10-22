@@ -25,6 +25,11 @@ change the CLI or the config).
 
 ### Fixed
 
+- `fourier build -j 2` or more could hang forever on Linux on a first build, and
+  stopped with "Could not set lock" on a Mac (and on Linux with Python 3.14) with a DuckDB
+  home. Workers now get the CLAP prompts and the database from the build itself.
+- Ctrl-C during the category stage of a parallel build, or a category stopped by cloud-only
+  files, stops it at once.
 - a build on a DuckDB home (the default for a new home) without Sononym stopped with
   "not enough values to unpack" once about 6,700 samples were analyzed; large Sononym or Live
   tag imports could stop the same way. The label rebuilds now read their rows before writing.

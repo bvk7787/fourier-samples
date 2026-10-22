@@ -107,12 +107,37 @@ from .rules import (  # noqa: F401  (re-exported: verify, why, tests and callers
 )
 
 
+# In a build worker (build_all_parallel): every prompt's vector, embedded by the parent before
+# the workers start, and the prompts a worker had to embed itself (none, while text_prompts()
+# names every prompt a category build embeds).
+_TEXT_VECS: dict | None = None
+_TEXT_MISSES: set = set()
+
+
 def embed_text(text):
     """Lazy proxy to the CLAP text encoder. Deferring the import keeps this module
     (and the pure primitives tests import from it) free of torch/transformers, so
-    unit tests and non-CLAP commands don't pull the heavy deps at import time."""
+    unit tests and non-CLAP commands don't pull the heavy deps at import time. A build
+    worker reads the vectors its parent embedded (_TEXT_VECS)."""
+    if _TEXT_VECS is not None:
+        vec = _TEXT_VECS.get(text)
+        if vec is not None:
+            return vec.copy()
+        _TEXT_MISSES.add(text)
     from ..analysis.clap_features import embed_text as _impl
     return _impl(text)
+
+
+def text_prompts() -> list[str]:
+    """Every CLAP text prompt a category build can embed: each category's phrases and
+    anti-prompts, the naming phrases, the FX type phrases and the piano anchors."""
+    out: list[str] = []
+    for cfg in CATEGORIES.values():
+        for key in ("phrases", "anti", "exclude_phrases", "exclude_anti", "clap_anti"):
+            out += list(cfg.get(key) or ())
+    for group in (*NAME_PHRASES.values(), *FX_BAND_PHRASES.values(), PIANO_ANCHOR, PIANO_ANTI):
+        out += list(group or ())
+    return list(dict.fromkeys(out))
 
 
 def load_index():
@@ -6651,9 +6676,13 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
 _WORKER: dict = {}
 
 
-def _worker_init(db_path, homes, support, votes, opts):
-    from ..db.session import init_db
-    init_db(db_path)
+def _worker_init(db_path, homes, support, votes, opts, texts):
+    """A build worker: the database read-only beside the parent's, the homes and the prompt
+    vectors the parent computed (so a worker never runs the CLAP text encoder)."""
+    global _TEXT_VECS
+    from ..db.session import open_in_worker
+    open_in_worker(db_path)
+    _TEXT_VECS = texts
     _WORKER.update(homes=homes, support=support, votes=votes, opts=opts)
 
 
@@ -6670,6 +6699,10 @@ def _worker_build(category, out_dir, budget=None):
                 homes=_WORKER["homes"], support=_WORKER["support"], votes=_WORKER["votes"],
                 rebuild_index=False, return_entries=True, log=lines.append,
                 budget_override=budget, **_WORKER["opts"])
+        if _TEXT_MISSES:
+            lines.append(f"{category}: {len(_TEXT_MISSES)} CLAP prompt(s) the parent didn't "
+                         f"embed were embedded in a worker (text_prompts misses them)")
+            _TEXT_MISSES.clear()
         if budget is not None:
             summary["budget"] = int(budget)
         return (category, summary, entries, None, lines)
@@ -6687,10 +6720,10 @@ def _log_worker(log, category, lines):
 
 def _stop_on_unsafe(ex, err):
     """A worker's UnsafePath (cloud-only sources that won't download) stops the whole build:
-    the categories not started yet are cancelled and the error is raised."""
+    the error is raised, and leaving the pool (process_pool) cancels the categories not
+    started and ends the running ones."""
     from ..safety import UnsafePath
     if isinstance(err, UnsafePath):
-        ex.shutdown(wait=False, cancel_futures=True)
         raise err
 
 
@@ -6713,6 +6746,20 @@ def surplus_budgets(results, budgets=None) -> dict:
     return {c: full[c] + n for c, n in add.items() if n}
 
 
+def _prompt_vectors(log=print) -> dict:
+    """{prompt: vector} for every prompt a category build embeds (text_prompts), embedded here
+    so that build workers never run the CLAP text encoder: torch's threads don't survive a
+    fork, and a worker that starts fresh would load the model once per worker."""
+    from ..analysis.clap_features import _text_cache_path
+    from ..demo import active
+    prompts = text_prompts()
+    if not active():
+        cold = sum(not _text_cache_path(p).exists() for p in prompts)
+        if cold:
+            log(f"CLAP: embedding {cold} text prompts once before the workers start...")
+    return {p: embed_text(p) for p in prompts}
+
+
 def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, progress=None, done=None,
                        empty=None):
     """Build several categories concurrently. Homes are computed once here (and a
@@ -6720,8 +6767,9 @@ def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, prog
     workers neither recompute homes nor race on the index file. Manifests are merged
     in the parent. A category too few samples could fill (TooFewSamples) is left out of
     the results and, when given the list empty, named in it."""
-    from concurrent.futures import ProcessPoolExecutor, as_completed
-    from ..db.session import session_scope
+    from concurrent.futures import as_completed
+    from ..db.session import session_scope, shared_with_workers
+    from ..platforms import process_pool
 
     with session_scope() as session:
         stale, idx_n, db_n = index_stale(session)
@@ -6734,13 +6782,13 @@ def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, prog
         emb_n = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-9)
         id2row = {int(i): r for r, i in enumerate(ids)}
         homes, support, votes = compute_homes(session, emb_n, id2row, log)
-    del emb, emb_n  # free ~0.5 GB in the parent before forking workers
+    del emb, emb_n  # free ~0.5 GB in the parent before the workers start
+    texts = _prompt_vectors(log)
 
     # a resumed build (packs/progress.py) keeps the categories it already finished
     results = [(c, *done[c]) for c in categories if done and c in done]
-    with ProcessPoolExecutor(max_workers=jobs,
-                             initializer=_worker_init,
-                             initargs=(db_path, homes, support, votes, opts)) as ex:
+    with shared_with_workers(db_path), \
+            process_pool(jobs, _worker_init, (db_path, homes, support, votes, opts, texts)) as ex:
         # biggest budgets first, so a long category doesn't start last (results are sorted below)
         order = sorted((c for c in categories if not (done and c in done)),
                        key=lambda c: (-BUDGETS.get(c, 0), c))
