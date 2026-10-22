@@ -96,6 +96,7 @@ def test_a_build_estimates_every_step_it_will_run(tmp_path, monkeypatch):
     own, key and loop-trim their share of the ones librosa hasn't read yet."""
     from datetime import datetime
 
+    from fourier.analysis.librosa_features import CLIP_RULE
     from fourier.cli import setup as S
     from fourier.db import session as D
     from fourier.db.models import Sample, SampleFeatures
@@ -112,7 +113,7 @@ def test_a_build_estimates_every_step_it_will_run(tmp_path, monkeypatch):
             for i in range(1, 11):                        # half analyzed by every step already
                 s.add(SampleFeatures(sample_id=i, mfcc_mean=[0.0], derived_computed_at=datetime.now(),
                                      clap_embedding=b"x", events_computed_at=datetime.now(),
-                                     is_clipped=0, trim_computed_at=datetime.now()))
+                                     is_clipped=0, clip_rule=CLIP_RULE, trim_computed_at=datetime.now()))
         with D.session_scope() as s:
             counted = S.pending_analysis(s)
             assert counted["librosa"] == counted["clap"] == counted["events"] == counted["quality"] == 10

@@ -334,10 +334,13 @@ class SampleFeatures(Base):
 
     # ── Quality gate ─────────────────────────────────────────────────────────────────────
 
-    # The share of the file's samples (each channel, at its own rate) in runs of 3 or more at
-    # full scale: the flat tops clipping leaves (the quality step; analysis.librosa_features
-    # .full_scale_share). NULL: not measured that way yet (the quality step measures it).
+    # The share of the file's samples (each channel, at its own rate) in the flat tops clipping
+    # leaves, wherever the file peaks (the quality step; analysis.librosa_features
+    # .flat_top_share). NULL: not measured that way yet, or the file couldn't be read.
     clip_share: Mapped[float | None] = mapped_column(Float)
+    # The quality step's rule that measured the row (librosa_features.CLIP_RULE); NULL or an
+    # older one: measured again by the next quality step. Set for a file it couldn't read too.
+    clip_rule: Mapped[int | None] = mapped_column(Integer)
     # 1 when clip_share is over 0.1%: audible digital clipping (a database measured before
     # clip_share holds the older reading, of a 22,050 Hz mono copy, until the quality step).
     is_clipped: Mapped[int | None] = mapped_column(Integer)
