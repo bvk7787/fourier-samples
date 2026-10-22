@@ -138,7 +138,8 @@ def _new_only(device_id, release, out_dir, base) -> None:
                       markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1)
     try:
-        stage = start_render_folder(out, f"{device_id} {release} new files")
+        stage = start_render_folder(out, f"{device_id} {release} new files",
+                                    lambda m: console.print(m, markup=False, highlight=False, soft_wrap=True))
     except RuntimeError as e:
         console.print(str(e), style="red", markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1) from None
@@ -197,7 +198,7 @@ def sync(device_id, volume, render_dir, delete, dry_run, force, overwrite_change
     """
     import os as _os
     from ..devices.loader import DeviceLoader
-    from ..packs.render import _card_prefix, read_render_marker, render_problem
+    from ..packs.render import _card_prefix, read_render_marker, recover_render, render_problem
     from ..platforms import copy_file_whole
     def stop(msg):
         console.print(msg, style="red", markup=False, highlight=False, soft_wrap=True)
@@ -212,6 +213,13 @@ def sync(device_id, volume, render_dir, delete, dry_run, force, overwrite_change
         stop(str(e))
     if not render_dir:
         render_dir = _renders_dir(device_id)
+    # a render stopped between its two renames: put the finished or the previous one in place
+    note = recover_render(render_dir, act=not dry_run)
+    if note and dry_run:
+        stop(f"{note.replace(' goes', ' would go')} Run the sync without --dry-run (it does "
+             f"that first), or `fourier render {device_id}`.")
+    if note:
+        console.print(note, markup=False, highlight=False, soft_wrap=True)
     if not _os.path.exists(render_dir):
         stop(f"no render yet: run `fourier render {device_id}` (it writes {render_dir})")
     problem = render_problem(render_dir)

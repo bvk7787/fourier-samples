@@ -400,3 +400,82 @@ def test_new_only_that_stops_leaves_the_previous_copy(tmp_path, monkeypatch):
         cli_rel._new_only("m8_tracker", "v2", str(base), str(base))
     assert _tree_bytes(out) == before
     assert sorted(p.name for p in out.parent.iterdir()) == ["m8_tracker", "m8_tracker-new-in-v2"]
+
+
+class _Killed(BaseException):
+    """The process ends here (nothing after it runs)."""
+
+
+@pytest.mark.parametrize("new_finished", [True, False])
+def test_a_render_stopped_between_its_renames_is_recovered_by_the_next(tmp_path, monkeypatch, new_finished):
+    """A kill between put_render_in_place's renames leaves no render at base: the next render
+    moves the finished new one in (or puts the previous one back) before it starts, so even a
+    next render that stops leaves a render in place."""
+    monkeypatch.setenv("FOURIER_NO_RENDER_CACHE", "1")
+    master = _write_master(tmp_path / "master")
+    out, dev = tmp_path / "out", _fake_device()
+    R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    base = out / "SAMPLES"
+    before = _tree_bytes(base)
+    sf.write(str(master / "KICKS" / "909-house-dark" / "BD_three.wav"), np.zeros((2000, 2)), 44100)
+    if new_finished:
+        def killed(stage, b):
+            os.rename(b, R._beside(b, "old"))
+            raise _Killed
+        with monkeypatch.context() as mp:
+            mp.setattr(R, "put_render_in_place", killed)
+            with pytest.raises(_Killed):
+                R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    else:                                                    # the new one never finished
+        os.rename(base, R._beside(base, "old"))
+        stage = R._beside(base, "partial")
+        (stage / "01_KICKS").mkdir(parents=True)
+        (stage / "01_KICKS" / "half.wav").write_bytes(b"RIFF")
+        (stage / R.RENDER_MARKER).write_text("test_dev (unfinished)\n")
+    assert not base.exists()
+    logs = []
+    _failing_convert(monkeypatch, "BD_two", exc=KeyboardInterrupt)
+    with pytest.raises(KeyboardInterrupt):
+        R.render_master_to_device(str(master), dev, str(out), log=logs.append)
+    assert R.render_problem(base) is None
+    got = _tree_bytes(base)
+    if new_finished:
+        assert len([k for k in got if k.endswith(".wav")]) == 3
+        assert any("its finished render is now at" in m for m in logs), logs
+    else:
+        assert got == before
+        assert any("the previous render is back at" in m for m in logs), logs
+    assert sorted(p.name for p in out.iterdir()) == ["SAMPLES"]
+
+
+def test_a_stop_between_the_renames_puts_the_previous_render_back(tmp_path, monkeypatch):
+    base, stage = tmp_path / "r", tmp_path / ".r.fourier-partial"
+    for d, text in ((base, "old"), (stage, "new")):
+        (d / "01_KICKS").mkdir(parents=True)
+        (d / "01_KICKS" / "a.wav").write_text(text)
+        R.write_render_marker(d, "m8_tracker")
+    real = os.rename
+
+    def rename(a, b):
+        if str(a) == str(stage):
+            raise KeyboardInterrupt
+        real(a, b)
+    monkeypatch.setattr(R.os, "rename", rename)
+    with pytest.raises(KeyboardInterrupt):
+        R.put_render_in_place(stage, base)
+    assert (base / "01_KICKS" / "a.wav").read_text() == "old"
+    assert not R._beside(base, "old").exists()
+
+
+def test_recover_render_leaves_others_alone(tmp_path):
+    base = tmp_path / "r"
+    assert R.recover_render(base) is None                    # nothing anywhere
+    old = R._beside(base, "old")
+    old.mkdir()
+    (old / "notes.txt").write_text("someone's")              # no render marker: not ours
+    assert R.recover_render(base) is None and not base.exists()
+    base.mkdir()
+    R.write_render_marker(old, "m8_tracker")
+    assert R.recover_render(base) is None                    # base is there: nothing to do
+    base.rmdir()
+    assert "goes back at" in R.recover_render(base, act=False) and not base.exists()   # says, does nothing

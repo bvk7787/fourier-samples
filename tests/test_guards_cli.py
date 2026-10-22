@@ -575,6 +575,27 @@ def test_a_copy_that_stops_half_way_leaves_its_files_recorded(env, no_rsync, mon
     assert set(_files(card)) == {"01_KICKS/b.wav", safety.CARD_MARK}
 
 
+@pytest.mark.parametrize("left", ["previous aside", "finished beside"])
+def test_sync_puts_a_render_stopped_between_its_renames_in_place(env, no_rsync, left):
+    from fourier.packs.render import _beside
+    r = _render(env, files=("01_KICKS/a.wav",))
+    if left == "previous aside":
+        os.rename(r, _beside(r, "old"))
+    else:                                       # the finished render never got moved in
+        os.rename(r, _beside(r, "partial"))
+    vol = env.tmp / "CARD"
+    vol.mkdir()
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r), "--dry-run")
+    assert res.exit_code == 1 and "without --dry-run" in _flat(res.output), res.output
+    assert not r.exists()                       # a dry run changes nothing
+    res = _run(env, "sync", "m8_tracker", str(vol), "--from", str(r))
+    assert res.exit_code == 0, res.output
+    said = _flat(res.output)
+    assert ("previous render is back at" if left == "previous aside" else "finished render is now at") in said
+    assert (vol / "Samples" / "Fourier" / "01_KICKS" / "a.wav").read_bytes() == b"01_KICKS/a.wav"
+    assert sorted(p.name for p in r.parent.iterdir() if p.name.startswith((".render", "render"))) == ["render"]
+
+
 def _synced(env, files=("01_KICKS/a.wav", "01_KICKS/b.wav")):
     """A render synced once to a card: (render, volume, card folder)."""
     r = _render(env, files=files)
