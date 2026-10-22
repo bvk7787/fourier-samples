@@ -1018,6 +1018,10 @@ def test_setup_says_the_first_build_trains_a_sound_model_and_can_turn_it_off(tmp
     on the library's own names, on this machine); --no-sound-model writes SOUND_TRAIN = false
     to [advanced], and --sound-model turns it back on."""
     import tomllib
+
+    import fourier.cli.enrich as E
+    monkeypatch.setattr(S, "_clap_step", lambda w, clap: None)      # CLAP installed
+    monkeypatch.setattr(E, "clap_extra_missing", lambda: False)
     cfg = tmp_path / "fourier.toml"
     res = _run(tmp_path, monkeypatch, "setup", "--yes", "--to", str(cfg), "--library", str(_lib(tmp_path)))
     out = _flat(res.output)
