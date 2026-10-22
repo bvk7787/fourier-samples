@@ -43,6 +43,50 @@ _MAX_DURATION_S = 30.0
 _MIN_DURATION_FOR_HPSS = 0.05
 
 
+_FILTERS: dict = {}
+_FILTERS_MAX = 2048      # 7 bases a tuning (about 50 KB), 100 tunings a rate
+
+
+def keep_cqt_filters() -> None:
+    """Keep librosa's constant-Q filter bases in this process: chroma_cqt builds them for
+    every file, though they depend only on the rate and the tuning it estimates (one of 100
+    steps). Each is built once per (rate, bins, ...) and a copy handed out (librosa scales the one it gets in place),
+    so every value is what librosa would have built. Does nothing on a librosa without the
+    function it wraps."""
+    import numpy as np
+    try:
+        from librosa.core import constantq as cq
+    except Exception:
+        return
+    name = "__vqt_filter_fft"
+    real = getattr(cq, name, None)
+    if real is None or getattr(real, "_fourier_kept", False):
+        return
+
+    def part(v):
+        if isinstance(v, np.ndarray):
+            return ("nd", v.dtype.str, v.shape, v.tobytes())
+        hash(v)
+        return v
+
+    def kept(*args, **kw):
+        try:
+            key = (tuple(part(a) for a in args), tuple(sorted((k, part(v)) for k, v in kw.items())))
+        except TypeError:                       # something unhashable: as librosa does it
+            return real(*args, **kw)
+        got = _FILTERS.get(key)
+        if got is None:
+            got = real(*args, **kw)
+            if len(_FILTERS) >= _FILTERS_MAX:
+                _FILTERS.clear()
+            _FILTERS[key] = got
+        basis, n_fft, lengths = got
+        return basis.copy(), n_fft, lengths.copy()
+
+    kept._fourier_kept = True       # type: ignore[attr-defined]
+    setattr(cq, name, kept)
+
+
 CLIP_RUN = 3            # equal samples in a row at a channel's extreme: a flat top (a natural peak is one or two)
 CLIP_SHARE = 0.001      # a file clips when more than this share of its samples sit in such runs
 CLIP_STEP = 0.002       # ...and the wave steps onto (or off) the flat top by this share of the peak at least
@@ -292,6 +336,7 @@ def compute_features(path: str | Path, sr: int = _SR) -> dict:
     # Always ≥ 1.0 by construction (max ≥ mean).
     if duration >= _MIN_DURATION_FOR_HPSS:
         try:
+            keep_cqt_filters()
             chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
             chroma_mean = chroma.mean(axis=1)   # shape (12,)
             chroma_max = float(chroma_mean.max())

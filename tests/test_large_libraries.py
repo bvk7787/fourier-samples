@@ -1,8 +1,10 @@
-"""What keeps a large library's build linear: the near-duplicate prune, the CLAP index and its
-unit rows. Each does the same arithmetic as before, so picks and audio don't move."""
+"""What keeps a large library's build and analysis linear: the near-duplicate prune, the CLAP
+index and its unit rows, the analysis steps' writes, the CQT filters and the pYIN cache. Each
+does the same arithmetic as before, so picks and audio don't move."""
 import numpy as np
 import pytest
-from sqlalchemy import text
+from click.testing import CliRunner
+from sqlalchemy import event, text
 
 from fourier.analysis import clap_features as CF
 from fourier.db import session as S
@@ -157,3 +159,119 @@ def test_unit_rows_follow_the_matrix_they_were_computed_from(db):
     files = list(CF._index_path().parent.glob(f"{CF._index_path().stem}.unit.*.npy"))
     assert len(files) == 1
 
+
+@pytest.fixture
+def feature_selects():
+    """The SELECTs on sample_features any engine runs while the test does."""
+    from sqlalchemy.engine import Engine
+    seen = []
+
+    def count(conn, cursor, statement, *a):
+        if statement.lstrip().upper().startswith("SELECT") and "sample_features" in statement:
+            seen.append(statement)
+    event.listen(Engine, "before_cursor_execute", count)
+    yield seen
+    event.remove(Engine, "before_cursor_execute", count)
+
+
+def test_analysis_steps_write_a_batch_with_one_query(db, feature_selects):
+    """A step's batch of results finds its rows with one query (one a sample before)."""
+    from fourier.cli import enrich as E
+    with S.session_scope() as s:
+        for i in range(1, 61):
+            s.add(Sample(id=i, path=f"/l/Acme/{i}.wav", filename=f"{i}.wav"))
+        for i in range(1, 31):
+            s.add(SampleFeatures(sample_id=i, n_events=1))
+    seen = feature_selects
+    seen.clear()
+    s = S.get_session()
+    E._upsert_librosa_batch(s, [(i, {"mfcc_mean": [0.5], "onset_rate_hz": 2.0}) for i in range(1, 61)])
+    E._upsert_clap_batch(s, [(i, b"\0" * 2048) for i in range(1, 61)], "stand-in")
+    E._upsert_quality_batch(s, [(i, {"clip_share": 0.0, "is_clipped": False, "dc_offset_ratio": 0.0})
+                                for i in range(1, 61)])
+    s.close()
+    assert len(seen) <= 3, len(seen)
+    with S.session_scope() as s:
+        rows = s.execute(text("SELECT count(*), count(onset_rate_hz), count(clap_embedding), "
+                              "count(n_events), count(is_clipped) FROM sample_features")).one()
+    assert tuple(rows) == (60, 60, 60, 30, 60)
+
+
+def test_the_derived_step_computes_nothing_without_sononym(db, feature_selects):
+    """Without Sononym the derived step's columns stay empty: it says so and marks every
+    sample done in a few statements (a query and a write a sample before)."""
+    from fourier.cli import main
+    with S.session_scope() as s:
+        for i in range(1, 201):
+            s.add(Sample(id=i, path=f"/l/Acme/{i}.wav", filename=f"{i}.wav", duration_s=0.5))
+        s.add(SampleFeatures(sample_id=7, n_events=1))
+    S._engine = S._SessionLocal = None
+    seen = feature_selects
+    seen.clear()
+    r = CliRunner().invoke(main, ["--db", str(db), "tools", "analyze", "--only", "derived"])
+    assert r.exit_code == 0, r.output
+    out = " ".join(r.output.split())
+    assert "none to compute without Sononym" in out and "200 samples marked done (199 new rows)" in out
+    assert len(seen) < 50, len(seen)                    # a few counts, none a sample
+    with S.session_scope() as s:
+        got = s.execute(text("SELECT count(*), count(derived_computed_at), count(sub_weight), "
+                             "count(n_events) FROM sample_features")).one()
+    assert tuple(got) == (200, 200, 0, 1)
+    r = CliRunner().invoke(main, ["--db", str(db), "tools", "analyze", "--only", "derived"])
+    assert "All samples already have derived features" in r.output
+
+
+def test_chroma_builds_its_filters_once(monkeypatch):
+    """chroma_cqt's constant-Q filters are built once per process for each tuning it
+    estimates, and copied out, so every file's chroma is what librosa computes on its own."""
+    import librosa
+    from librosa.core import constantq as cq
+
+    from fourier.analysis import librosa_features as LF
+    rng = np.random.default_rng(3)
+    y = rng.standard_normal(22050).astype("float32")
+    ys = [y, 0.5 * y, 0.25 * y]                 # three files, one tuning (librosa estimates it)
+    want = [librosa.feature.chroma_cqt(y=y, sr=22050) for y in ys]
+    real = getattr(cq, "__vqt_filter_fft")
+    built = []
+    monkeypatch.setattr(cq, "__vqt_filter_fft", lambda *a, **k: (built.append(1), real(*a, **k))[1])
+    monkeypatch.setattr(LF, "_FILTERS", {})
+    LF.keep_cqt_filters()
+    got = [librosa.feature.chroma_cqt(y=ys[0], sr=22050)]
+    first = len(built)
+    got += [librosa.feature.chroma_cqt(y=y, sr=22050) for y in ys[1:]]
+    assert all(np.array_equal(a, b) for a, b in zip(want, got))
+    assert first > 0 and len(built) == first               # the first file's filters serve the rest
+
+
+def test_pyin_readings_go_into_one_file(tmp_path, monkeypatch):
+    """pYIN readings are rows of one table in the pitch cache folder (a file a sample before,
+    100,000 of them in a large library); a reading an older version kept in its own file is
+    read and moved into the table."""
+    import json
+
+    import librosa
+    import soundfile as sf
+    monkeypatch.setenv("FOURIER_PITCH_CACHE", str(tmp_path / "pitch"))
+    monkeypatch.setattr(C, "_PITCH_DB", {}, raising=False)
+    t = np.arange(22050) / 22050
+    srcs = []
+    for i in range(4):
+        p = tmp_path / f"Acme Tone {i}.wav"
+        sf.write(p, (0.5 * np.sin(2 * np.pi * 220 * t)).astype("float32"), 22050)
+        srcs.append(str(p))
+    calls = []
+    real = librosa.pyin
+    monkeypatch.setattr(librosa, "pyin", lambda *a, **k: (calls.append(1), real(*a, **k))[1])
+    got = [C._detect_pitch(p) for p in srcs[:3]]
+    assert all(g is not None and abs(g - 57.0) < 0.3 for g in got) and len(calls) == 3
+    assert [C._detect_pitch(p) for p in srcs[:3]] == got and len(calls) == 3      # cached
+    assert [C.cached_pitch(p) for p in srcs[:3]] == got
+    files = sorted(p.name for p in (tmp_path / "pitch").rglob("*") if p.is_file())
+    assert not [f for f in files if f.endswith(".json")] and "readings.sqlite" in files
+    legacy = C._pitch_cache_file(srcs[3])                  # an older version's own file
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text(json.dumps({"midi": 61.25}))
+    assert C.cached_pitch(srcs[3]) == 61.25 and C._detect_pitch(srcs[3]) == 61.25 and len(calls) == 3
+    legacy.unlink()
+    assert C.cached_pitch(srcs[3]) == 61.25                 # moved into the table

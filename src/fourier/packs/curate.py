@@ -37,6 +37,7 @@ import json
 import os
 import re
 import shutil
+import threading
 import urllib.request
 from collections import Counter, defaultdict
 from contextlib import nullcontext
@@ -7598,43 +7599,115 @@ def _pitch_cache_dir():
                 or os.path.join(os.path.dirname(default_store()), "cache", "pitch"))
 
 
-def _pitch_cache_file(path):
-    """Where _detect_pitch keeps a source's reading (by path, size and mtime), or None when
-    the file isn't there."""
+def _pitch_key(path):
+    """The cache key of a source's pYIN reading (its path, size and mtime), or None when the
+    file isn't there."""
     import hashlib
     try:
         st = os.stat(path)
     except OSError:
         return None
-    key = hashlib.md5(f"{path}|{st.st_size}|{st.st_mtime_ns}|pyin1".encode()).hexdigest()
-    return _pitch_cache_dir() / key[:2] / f"{key}.json"
+    return hashlib.md5(f"{path}|{st.st_size}|{st.st_mtime_ns}|pyin1".encode()).hexdigest()
+
+
+def _pitch_cache_file(path):
+    """Where a reading was kept one file a source (before the readings table, _pitch_db; the
+    format older versions read and write), or None when the file isn't there."""
+    key = _pitch_key(path)
+    return None if key is None else _pitch_cache_dir() / key[:2] / f"{key}.json"
+
+
+_PITCH_DB: dict = {}
+_PITCH_LOCK = threading.Lock()
+
+
+def _pitch_db():
+    """This process's connection to the readings table (readings.sqlite in the pitch cache
+    folder: one file for every reading), or None when it can't be opened there (each reading
+    then gets its own file, as before)."""
+    import sqlite3
+    d = _pitch_cache_dir()
+    k = (os.getpid(), str(d))
+    con = _PITCH_DB.get(k)
+    if con is None:
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            con = sqlite3.connect(str(d / "readings.sqlite"), timeout=60, isolation_level=None,
+                                  check_same_thread=False)
+            con.execute("PRAGMA journal_mode=WAL")
+            con.execute("PRAGMA synchronous=NORMAL")
+            con.execute("CREATE TABLE IF NOT EXISTS pitch (key TEXT PRIMARY KEY, midi REAL)")
+        except (sqlite3.Error, OSError):
+            con = False
+        _PITCH_DB[k] = con
+    return con or None
+
+
+def _pitch_read(path):
+    """(found, MIDI pitch or None) of a source's cached pYIN reading: the readings table,
+    else a reading's own file (which then moves into the table). found is None when the file
+    isn't there."""
+    import json as _json
+    import sqlite3
+    key = _pitch_key(path)
+    if key is None:
+        return None, None
+    con = _pitch_db()
+    if con is not None:
+        try:
+            with _PITCH_LOCK:
+                row = con.execute("SELECT midi FROM pitch WHERE key = ?", (key,)).fetchone()
+            if row is not None:
+                return True, row[0]
+        except sqlite3.Error:
+            pass
+    try:
+        midi = _json.loads((_pitch_cache_dir() / key[:2] / f"{key}.json").read_text())["midi"]
+    except Exception:
+        return False, None
+    if con is not None:
+        _pitch_write(key, midi)
+    return True, midi
+
+
+def _pitch_write(key, midi) -> None:
+    """Keep a reading: a row of the readings table, else its own file."""
+    import json as _json
+    import sqlite3
+    con = _pitch_db()
+    if con is not None:
+        try:
+            with _PITCH_LOCK:
+                con.execute("INSERT OR REPLACE INTO pitch (key, midi) VALUES (?, ?)", (key, midi))
+            return
+        except sqlite3.Error:
+            pass
+    cf = _pitch_cache_dir() / key[:2] / f"{key}.json"
+    try:
+        cf.parent.mkdir(parents=True, exist_ok=True)
+        cf.write_text(_json.dumps({"midi": midi}))
+    except OSError:
+        pass
 
 
 def cached_pitch(path):
     """The pYIN pitch _detect_pitch read for a source, from its cache only (never the audio):
     None when it read no clear pitch or never ran on it (verify's pitch check)."""
-    import json as _json
-    cf = _pitch_cache_file(path)
-    try:
-        return None if cf is None else _json.loads(cf.read_text())["midi"]
-    except Exception:
-        return None
+    return _pitch_read(path)[1]
 
 
 def _detect_pitch(path):
     """MIDI pitch (float) of a tonal one-shot's steady part by pYIN, or None when it isn't
     clearly pitched (PITCH_VOICED_MIN of the frames voiced, spread under PITCH_SPREAD_MAX
-    semitones). Cached by path, size and mtime under ~/.fourier/cache/pitch."""
-    import json as _json
+    semitones). Cached by path, size and mtime under ~/.fourier/cache/pitch (_pitch_read)."""
     import soundfile as sf
     from .curate_config import PITCH_SPREAD_MAX, PITCH_VOICED_MIN
-    cf = _pitch_cache_file(path)
-    if cf is None:
+    found, midi = _pitch_read(path)
+    if found is None:
         return None
-    try:
-        return _json.loads(cf.read_text())["midi"]
-    except Exception:
-        pass
+    if found:
+        return midi
+    key = _pitch_key(path)
     midi = None
     try:
         import librosa
@@ -7657,11 +7730,8 @@ def _detect_pitch(path):
                     midi = round(float(np.median(mid)), 2)
     except Exception:
         midi = None
-    try:
-        cf.parent.mkdir(parents=True, exist_ok=True)
-        cf.write_text(_json.dumps({"midi": midi}))
-    except OSError:
-        pass
+    if key is not None:
+        _pitch_write(key, midi)
     return midi
 
 
