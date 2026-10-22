@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import sys
 import time
 from typing import Any
 
@@ -17,7 +19,8 @@ from .paths import home_path
 # Rough defaults for a cold-cache full rebuild: seconds per file per worker for
 # each category, and the rest of a --all build beyond its longest category or its share of
 # the work (homes, sets, ratings, verify). The processed-audio cache barely changes a
-# build's time. Analysis: seconds per sample per worker.
+# build's time. Analysis: seconds per sample per worker (CLAP: per sample, it runs one at a
+# time), for CLAP on a graphics chip (Apple Silicon, an NVIDIA GPU).
 DEFAULTS: dict[str, Any] = {
     "build_s_per_file": {
         "ACOUSTIC": 0.064,
@@ -55,8 +58,13 @@ DEFAULTS: dict[str, Any] = {
     # what an analysis spends however few samples it has: starting its workers, compiling
     # the audio code, loading the CLAP model
     "analyze_fixed_s": 45.0,
+    # CLAP where PyTorch has only the CPU (an Intel Mac, Linux without an NVIDIA GPU):
+    # measured 0.2 to 0.3 CPU seconds a file with one thread, and more threads don't make a
+    # single file much faster
+    "clap_cpu_s_per_sample": 0.3,
 }
 DEFAULTS_SOURCE = "rough defaults"
+CPU_SOURCE = "rough defaults for CLAP on the CPU"
 KEEP = 5
 
 
@@ -96,12 +104,18 @@ def record_build(results, jobs: int, wall_s: float) -> None:
     _save(doc)
 
 
+def parallel(step: str, workers: int) -> int:
+    """How many samples a step reads at once with this many workers: no more than the
+    computer has CPUs, and one for CLAP (its threads share one model)."""
+    return 1 if step == "clap" else max(1, min(workers, os.cpu_count() or workers))
+
+
 def record_analyze(step: str, seconds: float, samples: int, workers: int) -> None:
     if samples <= 0:
         return
     doc = load()
     doc.setdefault("analyze", {})[step] = dict(at=time.strftime("%Y-%m-%dT%H:%M:%S"),
-                                              s_per_sample=seconds * max(workers, 1) / samples,
+                                              s_per_sample=seconds * parallel(step, workers) / samples,
                                               samples=samples, workers=workers)
     _save(doc)
 
@@ -146,24 +160,66 @@ def estimate_build(budgets: dict, jobs: int, samples: int | None = None) -> tupl
 
 
 ANALYZE_STEPS = tuple(DEFAULTS["analyze_s_per_sample"])     # what a first analysis runs
-# the share of a library the own step reads (tonal one-shots: metadata/resolve.py
-# ROOT_CANDIDATE_SQL), for an estimate before there is a database to count them in
-OWN_SHARE = 0.3
+# the share of a library the steps that read only some samples take, for an estimate before
+# the samples are analyzed far enough to count them: the own step's tonal one-shots
+# (metadata/resolve.py ROOT_CANDIDATE_SQL), the key step's tonal samples (KEY_CANDIDATE_SQL)
+# and loop-trim's loops
+SHARES = {"own": 0.3, "key": 0.3, "loop-trim": 0.3}
+OWN_SHARE = SHARES["own"]
 
 
-def estimate_analyze(pending: dict, workers: int) -> tuple[float, str]:
+def first_analysis(new: int) -> dict:
+    """{step: samples} a first analysis of `new` samples reads."""
+    return {s: round(new * SHARES.get(s, 1.0)) for s in ANALYZE_STEPS}
+
+
+def clap_on_cpu() -> bool:
+    """Whether CLAP runs on the CPU here: PyTorch can't use a graphics chip (Apple Silicon's,
+    or an NVIDIA GPU with PyTorch's CUDA build). Read without importing PyTorch, unless it's
+    already loaded."""
+    torch = sys.modules.get("torch")
+    if torch is not None:
+        try:
+            return not (torch.backends.mps.is_available() or torch.cuda.is_available())
+        except Exception:                      # noqa: BLE001 (a partial or stand-in torch)
+            pass
+    if sys.platform == "darwin":
+        import platform
+        return platform.machine() != "arm64"
+    if shutil.which("nvidia-smi") is None:
+        return True
+    import importlib.metadata
+    try:
+        return "+cpu" in importlib.metadata.version("torch")
+    except importlib.metadata.PackageNotFoundError:
+        return False                           # setup installs the CUDA build here
+
+
+def default_rates() -> tuple[dict, str]:
+    """(seconds per sample per step, basis): the rough defaults, CLAP's for this computer."""
+    rates = dict(DEFAULTS["analyze_s_per_sample"])
+    if clap_on_cpu():
+        rates["clap"] = DEFAULTS["clap_cpu_s_per_sample"]
+        return rates, CPU_SOURCE
+    return rates, DEFAULTS_SOURCE
+
+
+def estimate_analyze(pending: dict, workers: int | dict) -> tuple[float, str]:
     """(seconds, basis) to analyze the samples each step still has to do ({step: count}),
-    with the start-up any analysis spends (analyze_fixed_s)."""
+    with the start-up any analysis spends (analyze_fixed_s). workers: each step's workers
+    ({step: n}, as the steps run them), or one number for all."""
     measured = load().get("analyze") or {}
+    defaults, source = default_rates()
     total = DEFAULTS["analyze_fixed_s"] if any(pending.values()) else 0.0
     own = 0
     for step, n in pending.items():
         rate = (measured.get(step) or {}).get("s_per_sample")
         own += rate is not None
-        rate = rate if rate is not None else DEFAULTS["analyze_s_per_sample"].get(step, 0.05)
-        total += n * rate / (1 if step == "clap" else max(1, workers))
+        rate = rate if rate is not None else defaults.get(step, 0.05)
+        w = workers.get(step, 1) if isinstance(workers, dict) else workers
+        total += n * rate / parallel(step, w)
     basis = "this machine's last runs" if own == len(pending) and pending else \
-        ("this machine's runs and " if own else "") + DEFAULTS_SOURCE
+        ("this machine's runs and " if own else "") + source
     return total, basis
 
 

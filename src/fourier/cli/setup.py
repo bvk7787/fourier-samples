@@ -1431,13 +1431,21 @@ def _llm_step(w: _Wizard, llm, config: Path | None) -> None:
                   highlight=False)
 
 
-def setup_estimate(n_files: int, session=None) -> tuple[float, int]:
-    """(seconds, new samples) for a first `fourier build` of a library of n_files:
-    analyzing what the database doesn't have yet, then the build."""
+def setup_jobs() -> int:
+    """The -j setup starts the first build with: every CPU but one."""
+    return max(1, (os.cpu_count() or 2) - 1)
+
+
+def setup_estimate(n_files: int, session=None, jobs: int | None = None) -> tuple[float, int]:
+    """(seconds, new samples) for a first `fourier build -j jobs` (default: its default -j)
+    of a library of n_files: analyzing what the database doesn't have yet, then the build."""
     from sqlalchemy import text
 
     from ..packs.curate_config import BUDGETS, CATEGORIES_OFF
-    from ..timings import ANALYZE_STEPS, OWN_SHARE, estimate_analyze, estimate_build
+    from ..timings import estimate_analyze, estimate_build, first_analysis
+    from .build import DEFAULT_JOBS
+    from .enrich import step_workers
+    jobs = jobs or DEFAULT_JOBS
     have = (session.execute(text("SELECT COUNT(*) FROM samples")).scalar() or 0) if session else 0
     if have:                    # this config's library: another's samples in the database don't count
         from ..metadata.rows import outside_library
@@ -1445,11 +1453,9 @@ def setup_estimate(n_files: int, session=None) -> tuple[float, int]:
     n_files = max(0, n_files - len(_unreadable_files()))   # never samples: nothing to analyze
     analysed = analysed_count(session)
     new = max(0, max(n_files, have) - analysed)
-    # every analysis step a first build runs, and the start-up they spend
-    # (the own step reads only the tonal one-shots: OWN_SHARE of them)
-    secs, _ = estimate_analyze({s: (round(new * OWN_SHARE) if s == "own" else new) for s in ANALYZE_STEPS},
-                               workers=4)
-    jobs = max(1, (os.cpu_count() or 2) - 1)
+    # every analysis step a first build runs, with the workers each runs with, and the
+    # start-up they spend (own, key and loop-trim read only their share of the samples)
+    secs, _ = estimate_analyze(first_analysis(new), step_workers(jobs))
     budgets = {c: b for c, b in BUDGETS.items() if c not in CATEGORIES_OFF}
     n = max(n_files, analysed)
     if n:
@@ -1535,9 +1541,9 @@ def _check_step(ctx, w: _Wizard, build, target: Path | None = None) -> None:
         files = 0
     if db_exists():
         with session_scope() as s:
-            secs, new = setup_estimate(files, s)
+            secs, new = setup_estimate(files, s, setup_jobs())
     else:
-        secs, new = setup_estimate(files)
+        secs, new = setup_estimate(files, jobs=setup_jobs())
     big = secs > BIG_BUILD_S
     console.print(f"Ready to build. The first `fourier build` scans the library, analyzes "
                   f"{new:,} new samples and builds: {human(secs)} on this machine. Later builds "
@@ -1552,7 +1558,7 @@ def _check_step(ctx, w: _Wizard, build, target: Path | None = None) -> None:
     db = root.params.get("db")
     if db:
         args += ["--db", db]
-    args += ["build", "--all", "-j", str(max(1, (os.cpu_count() or 2) - 1))]
+    args += ["build", "--all", "-j", str(setup_jobs())]     # the -j setup_estimate assumed
     console.print(f"$ fourier {' '.join(args[3:])}", markup=False, highlight=False)
     raise SystemExit(_run(args))
 
@@ -1715,30 +1721,69 @@ ANALYSIS_COLUMNS = (("derived", "derived_computed_at"), ("librosa", "mfcc_mean")
                     ("clap", "clap_embedding"))
 
 
-def pending_analysis(session=None) -> dict:
-    """{step: samples it hasn't analyzed yet}, for the steps a column shows."""
+def _counts(s, loop_trim: bool = False) -> dict:
     from sqlalchemy import text
 
+    from ..metadata.resolve import KEY_CANDIDATE_SQL
+    from .enrich import EVENTS_MAX_S
+    # the steps every sample (or every one up to a length) goes through, by the column each fills
+    every = (("events", "events_computed_at", f"s.duration_s IS NULL OR s.duration_s <= {EVENTS_MAX_S}"),
+             ("quality", "is_clipped", "1 = 1"))
+    total = s.execute(text("SELECT COUNT(*) FROM samples")).scalar() or 0
+    one = lambda sql: s.execute(text(sql)).scalar() or 0
+    out = {}
+    for step, col in ANALYSIS_COLUMNS:
+        try:
+            n = one(f"SELECT COUNT(*) FROM sample_features WHERE {col} IS NOT NULL")
+        except Exception:
+            n = 0
+        out[step] = max(0, total - n)
+    joined = "FROM samples s LEFT JOIN sample_features f ON f.sample_id = s.id WHERE "
+    for step, col, where in every:
+        out[step] = one(f"SELECT COUNT(*) {joined}({where}) AND f.{col} IS NULL")
+    from .enrich import own_pending           # a share of the library: its own count
+    out["own"] = own_pending(s)
+    out["key"] = one(f"SELECT COUNT(*) {joined}{KEY_CANDIDATE_SQL} AND f.key_confidence IS NULL")
+    if loop_trim:       # every sample without a trim reading: only a loop gets one
+        out["loop-trim"] = one(f"SELECT COUNT(*) {joined}f.trim_computed_at IS NULL")
+    return out
+
+
+def _counted(loop_trim: bool, session=None) -> dict:
     from ..db.session import session_scope
-    def count(s):
-        total = s.execute(text("SELECT COUNT(*) FROM samples")).scalar() or 0
-        out = {}
-        for step, col in ANALYSIS_COLUMNS:
-            try:
-                n = s.execute(text(f"SELECT COUNT(*) FROM sample_features WHERE {col} IS NOT NULL")).scalar() or 0
-            except Exception:
-                n = 0
-            out[step] = max(0, total - n)
-        from .enrich import own_pending           # a share of the library: its own count
-        out["own"] = own_pending(s)
-        return out
     if session is not None:
-        return count(session)
+        return _counts(session, loop_trim)
     try:
         with session_scope() as s:
-            return count(s)
+            return _counts(s, loop_trim)
     except Exception:
         return {}
+
+
+def pending_analysis(session=None) -> dict:
+    """{step: samples it hasn't analyzed yet}, for each step that can count them (loop-trim
+    can't: which samples are loops is its own call)."""
+    return _counted(False, session)
+
+
+def analysis_counts(session=None) -> dict:
+    """pending_analysis, and for loop-trim every sample without a trim reading, loop or not:
+    two counts apart say how many samples a run of each step read (its rate)."""
+    return _counted(True, session)
+
+
+def pending_estimate(session=None) -> dict:
+    """{step: samples} an analysis still has to read, for an estimate: what each step counts,
+    plus, for the steps that read only part of the library (own, key, loop-trim), their share
+    of the samples librosa hasn't read yet (they can't be counted before it has)."""
+    from ..timings import SHARES
+    out = dict(pending_analysis(session))
+    if not out:
+        return out
+    unread = out.get("librosa", 0)
+    for step, share in SHARES.items():
+        out[step] = out.get(step, 0) + round(unread * share)
+    return out
 
 
 def check_analysis(session) -> list[tuple]:
@@ -1757,10 +1802,12 @@ def check_analysis(session) -> list[tuple]:
             f"{total - pending[step]:,} of {total:,}"
             + ("" if pending[step] == 0 else ": `fourier build` analyzes the rest first"))
            for step, _col in ANALYSIS_COLUMNS]
-    left = {k: v for k, v in pending.items() if v}
+    left = {k: v for k, v in pending_estimate(session).items() if v}
     if left:
-        secs, basis = estimate_analyze(left, workers=4)
-        out.append((OK, "analysis time left", f"{human(secs)} with 4 workers, from {basis}"))
+        from .enrich import step_workers
+        secs, basis = estimate_analyze(left, step_workers())
+        out.append((OK, "analysis time left", f"{human(secs)}, from {basis} (a file a step "
+                                              f"couldn't read counts until it can be read)"))
     return out
 
 
@@ -1778,8 +1825,6 @@ def check_build_time(session=None) -> list[tuple]:
     fill when it holds fewer samples, at this machine's last rates (else rough defaults).
     Before any analysis, the first build's time from the library's file count (what setup
     says)."""
-    import os as _os
-
     from ..packs.curate_config import BUDGETS, CATEGORIES_OFF
     from ..places import PlacesError, library_roots
     from ..settings import ConfigError
@@ -1793,16 +1838,19 @@ def check_build_time(session=None) -> list[tuple]:
         if not files:
             return []
         secs, new = setup_estimate(files, session)
+        from ..timings import default_rates
         return [(OK, "build time", f"{human(secs)} for the first `fourier build`, which "
-                                   f"analyzes {new:,} new samples first (from rough reference rates)"),
+                                   f"analyzes {new:,} new samples first (from {default_rates()[1]})"),
                 master_size_row(files, analyzed=False)]
-    jobs = max(1, (_os.cpu_count() or 2) - 1)
+    from .build import DEFAULT_JOBS
+    jobs = DEFAULT_JOBS
     budgets = {c: b for c, b in BUDGETS.items() if c not in CATEGORIES_OFF}
     can = _master_files(budgets, n)
     secs, basis = estimate_build(can, jobs, samples=n)
     size = ("" if can == budgets else
             f" (up to {round(sum(can.values())):,} files from {n:,} analyzed samples)")
-    return [(OK, "build time", f"{human(secs)} for fourier build -j {jobs}{size}, from {basis}"),
+    run = "fourier build" + (f" -j {jobs}" if jobs > 1 else "")
+    return [(OK, "build time", f"{human(secs)} for {run}{size}, from {basis}"),
             master_size_row(n)]
 
 

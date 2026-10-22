@@ -54,3 +54,69 @@ def test_fast_index_follows_the_npz(tmp_path, monkeypatch):
     np.savez_compressed(tmp_path / "clap_index.npz", ids=ids[:2], embeddings=emb[:2])   # rebuilt
     os.utime(tmp_path / "clap_index.npz")
     assert len(CF.load_index_fast()[0]) == 2
+
+
+def test_a_builds_prompts_are_encoded_in_batches_first(tmp_path, monkeypatch):
+    """A first build encodes its few hundred prompts in batches, with progress, before any
+    category reads one; the categories then read them from the cache, and the next build
+    has nothing to encode."""
+    monkeypatch.setenv("FOURIER_CLAP_TEXT_CACHE", str(tmp_path))
+    monkeypatch.delenv("FOURIER_CONFIG", raising=False)
+    monkeypatch.delenv("FOURIER_HOME", raising=False)
+    CF._embed_text_cached.cache_clear()
+    batches = []
+
+    def stand_in(texts):                                  # the model, encoding a batch
+        batches.append(list(texts))
+        return [np.full(512, (hash(t) % 97) / 97, np.float32) for t in texts]
+    monkeypatch.setattr(CF, "_embed_text_batch", stand_in)
+    said = []
+    prompts = C.text_prompts()
+    assert len(prompts) > 100
+    assert C.prepare_prompts(log=said.append) == len(prompts)
+    assert len(batches) == -(-len(prompts) // CF.TEXT_BATCH)
+    assert all(1 <= len(b) <= CF.TEXT_BATCH for b in batches)
+    assert sorted(t for b in batches for t in b) == sorted(prompts)
+    assert said[0].startswith(f"CLAP text prompts: encoding {len(prompts)}")
+    assert f"{len(prompts)} of {len(prompts)} prompts" in " ".join(said)
+    assert CF.TEXT_PROGRESS["total"] == 0                 # the spinner's line is cleared
+    monkeypatch.setattr(CF, "_embed_text_batch", lambda texts: 1 / 0)    # no model from here on
+    CF._embed_text_cached.cache_clear()
+    v = C.embed_text(prompts[0])
+    assert v.dtype == np.float32 and v.shape == (512,)
+    assert C.prepare_prompts(log=said.append) == 0
+
+
+def test_prompts_encoded_where_the_cache_cant_be_written_are_kept(tmp_path, monkeypatch):
+    """A home the text cache can't be written to: the batch's vectors stay in memory, so the
+    build doesn't encode every prompt a second time, one at a time."""
+    monkeypatch.setenv("FOURIER_CLAP_TEXT_CACHE", str(tmp_path / "cache"))
+    monkeypatch.delenv("FOURIER_CONFIG", raising=False)
+    monkeypatch.delenv("FOURIER_HOME", raising=False)
+    monkeypatch.setattr(CF, "_UNSAVED", {})
+    monkeypatch.setattr(CF, "_save_text", lambda p, vec: False)          # read-only or full
+    CF._embed_text_cached.cache_clear()
+    monkeypatch.setattr(CF, "_embed_text_batch",
+                        lambda texts: [np.full(512, 0.5, np.float32) for _ in texts])
+    prompts = C.text_prompts()[:40]
+    assert CF.embed_texts(prompts) == 40
+    monkeypatch.setattr(CF, "_embed_text_batch", lambda texts: 1 / 0)    # no model from here on
+    v = C.embed_text(prompts[0])
+    assert v.shape == (512,) and float(v[0]) == 0.5
+    assert CF.embed_texts(prompts) == 0
+    CF._embed_text_cached.cache_clear()
+
+
+def test_a_stand_in_text_encoder_has_no_prompts_to_prepare(tmp_path, monkeypatch):
+    monkeypatch.setenv("FOURIER_CLAP_TEXT_CACHE", str(tmp_path))
+    monkeypatch.setattr(C, "embed_text", lambda t: np.ones(512, dtype="float32"))
+    monkeypatch.setattr(CF, "_embed_text_batch", lambda texts: 1 / 0)
+    assert C.prepare_prompts(log=lambda m: None) == 0 and not any(tmp_path.iterdir())
+
+
+def test_the_build_spinner_shows_the_prompts_being_encoded(monkeypatch):
+    from fourier.cli import quiet as Q
+    assert Q._text_progress() is None
+    monkeypatch.setitem(CF.TEXT_PROGRESS, "total", 600)
+    monkeypatch.setitem(CF.TEXT_PROGRESS, "done", 64)
+    assert Q._text_progress() == {"done": 64, "total": 600}

@@ -1151,12 +1151,15 @@ def _event_profile_job(item):
     return sample_id, prof, prof is None and _gone(path)
 
 
+EVENTS_MAX_S = 60.0       # the events step reads samples up to this long
+
+
 @steps.command("events")
 @click.option("--workers", default=None, type=int,
               help="Worker processes (default: one per CPU, at most 6)")
 @click.option("--force", is_flag=True, help="Re-profile samples already done")
 @click.option("--limit", default=0, type=int, help="Cap at N samples (0 = all)")
-@click.option("--max-dur", "max_dur", default=60.0, type=float, show_default=True,
+@click.option("--max-dur", "max_dur", default=EVENTS_MAX_S, type=float, show_default=True,
               help="Skip files longer than this (seconds); long files are never one-shots")
 def enrich_events(workers, force, limit, max_dur):
     """
@@ -1599,17 +1602,28 @@ ANALYZE_STEPS = ("derived", "librosa", "clap", "events", "quality", "bpm-fix", "
                  "key", "sound")
 
 
+def step_workers(jobs=None) -> dict:
+    """{step: the workers it runs with} in a build given -j jobs (run_analysis): one per CPU
+    up to the step's cap, raised up to the cap by a larger -j (_workers); the CLAP step on
+    its own default."""
+    out = {step: _workers(None, cap, jobs) for step, cap in WORKER_CAPS.items()}
+    clap = next(p for p in steps.commands["clap"].params if p.name == "workers")
+    out["clap"] = int(clap.default or 1)  # type: ignore[arg-type]
+    return out
+
+
 def run_analysis(ctx, only=(), workers=None, force=False, download=False, jobs=None) -> None:
     """Every analysis step in order (or only these), each on the samples it hasn't done yet
     (all of them with force), recording each step's rate for the estimates. workers
     (--workers) goes to every step that takes it, the CLAP step too; else each step runs
-    on one worker per CPU up to its cap, raised up to the cap by a build's -j (jobs,
-    _workers), and the CLAP step on its own default."""
+    as step_workers(jobs) says: one worker per CPU up to its cap, raised up to the cap by a
+    build's -j, and the CLAP step on its own default."""
     import time
 
     from ..timings import record_analyze
-    from .setup import pending_analysis
+    from .setup import analysis_counts
     ctx.meta[DOWNLOAD_KEY] = download
+    planned = step_workers(jobs)          # what the estimates assume too
     for step in ANALYZE_STEPS:
         if only and step not in only:
             continue
@@ -1619,17 +1633,16 @@ def run_analysis(ctx, only=(), workers=None, force=False, download=False, jobs=N
             if workers:
                 kw["workers"] = workers
             elif step in WORKER_CAPS:
-                kw["workers"] = _workers(None, WORKER_CAPS[step], jobs)
+                kw["workers"] = planned[step]
         if step == "clap":
             kw["build_index_flag"] = True
         console.print(f"[bold]{step}[/bold]")
-        before, t0 = pending_analysis().get(step), time.perf_counter()
+        before, t0 = analysis_counts().get(step), time.perf_counter()
         ctx.invoke(cmd, **kw)
-        after = pending_analysis().get(step)
+        after = analysis_counts().get(step)
         if before is not None and after is not None and not force:
-            used = kw.get("workers") or next((p.default for p in cmd.params if p.name == "workers"), 1) \
-                or _workers(None, WORKER_CAPS.get(step, 1))
-            record_analyze(step, time.perf_counter() - t0, before - after, used or 1)  # type: ignore[arg-type]
+            used = kw.get("workers") or planned.get(step, 1)
+            record_analyze(step, time.perf_counter() - t0, before - after, used)
 
 
 @tools.command("analyze", short_help="Analyze the library's audio (incremental).")

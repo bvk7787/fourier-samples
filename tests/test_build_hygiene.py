@@ -91,6 +91,7 @@ def test_a_parallel_build_prints_each_categorys_lines_and_failed_exports(monkeyp
     monkeypatch.setattr(C, "merge_manifest", lambda *a: None)
     monkeypatch.setattr(C, "POOL_SURPLUS", False)
     monkeypatch.setattr(C, "_prompt_vectors", lambda *a, **k: {})   # no CLAP model in tests
+    monkeypatch.setattr(C, "prepare_prompts", lambda log=print: 0)
 
     def built(session, category, out_dir, log=print, **k):
         log(f"{category}: 4 extra notes of multisample sets left out (at most 2 a set a folder)")

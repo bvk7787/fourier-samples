@@ -25,6 +25,12 @@ change the CLI or the config).
 
 ### Fixed
 
+- first-build estimates on a computer where PyTorch has only the CPU (an Intel Mac, Linux
+  without an NVIDIA GPU) use a CPU rate for CLAP, several times the old one.
+- estimates count every analysis step (events, quality, loop-trim and key were missing) with the
+  workers each step runs, and setup estimates the build it starts.
+- A first build encodes its CLAP text prompts in batches, about 5x faster, with a progress line
+  in place of minutes of silence.
 - Ctrl-C during the analysis stops within seconds and keeps the samples already analyzed; a
   worker that runs out of memory ends the step with one line saying what to run instead.
 - A library drive unplugged during the analysis no longer leaves files marked analyzed

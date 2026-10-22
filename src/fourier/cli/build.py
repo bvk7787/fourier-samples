@@ -19,6 +19,7 @@ from .config import _tunable_meta
 # ---------------------------------------------------------------------------
 # the stages a build prints a header for (ctx.meta), and new samples worth an up-front estimate
 STAGES_KEY = "fourier.build_stages"
+DEFAULT_JOBS = 1                       # `fourier build`'s -j, which the estimates assume
 QUIET_KEY = "fourier.build_quiet"     # a quiet build's capture (cli/quiet.py), started at Build
 ESTIMATE_FROM = 200
 
@@ -41,7 +42,7 @@ ESTIMATE_FROM = 200
               help="Rebuild the CLAP index from the DB first if it is stale")
 @click.option("--base", default=None,
               help="Build ADDITIVELY as a superset of this published version (e.g. v2): copy it verbatim, add only new samples, never move/remove existing paths")
-@click.option("--jobs", "-j", default=1, show_default=True, type=int,
+@click.option("--jobs", "-j", default=DEFAULT_JOBS, show_default=True, type=int,
               help="Parallel category workers for --all (process pool; per-category output is identical "
                    "to serial); the analysis runs one worker per CPU, more with a larger -j (up to each "
                    "step's cap)")
@@ -709,9 +710,9 @@ def _scan_and_analyze(ctx, out_dir=None, allow_missing=False, jobs=None) -> None
     lot is new. Without the CLAP model it stops before scanning: a build needs it. Each step
     runs on one worker per CPU, raised by a larger -j (jobs), at most its own cap
     (enrich._workers, WORKER_CAPS); the CLAP step on its own default."""
-    from .enrich import _workers, clap_extra_missing, run_analysis
+    from .enrich import clap_extra_missing, run_analysis
     from .ingest import run_scan
-    from .setup import pending_analysis
+    from .setup import pending_estimate
     if clap_extra_missing():
         console.print("The CLAP model a build needs isn't installed: run `fourier setup` (or "
                       "build from the database as it is with --no-scan).",
@@ -729,13 +730,14 @@ def _scan_and_analyze(ctx, out_dir=None, allow_missing=False, jobs=None) -> None
                       style="red", markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1)
     _stage("Analyze what's new")
-    pending = {k: v for k, v in pending_analysis().items() if v}
+    pending = {k: v for k, v in pending_estimate().items() if v}
     # Fourier's own roots (pYIN) cover the tonal one-shots, not every new sample: counted apart
     own = pending.get("own", 0)
-    new = max((v for k, v in pending.items() if k != "own"), default=0)
+    new = max((pending.get(k, 0) for k in ("derived", "librosa", "clap")), default=0)
     if new >= ESTIMATE_FROM or own >= ESTIMATE_FROM:
         from ..timings import estimate_analyze, human
-        secs, basis = estimate_analyze(pending, workers=_workers(None, 4, jobs))
+        from .enrich import step_workers
+        secs, basis = estimate_analyze(pending, step_workers(jobs))
         roots = f"Fourier's own roots (pYIN) for {own:,} tonal one-shot{'s' if own != 1 else ''}"
         if new:
             console.print(f"{new:,} new samples to analyze, {human(secs)} (from {basis})"
