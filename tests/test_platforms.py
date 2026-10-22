@@ -58,6 +58,41 @@ def test_sync_tree_matches_rsync(tmp_path):
     assert _listing(tmp_path / "dTrue") == _listing(tmp_path / "dFalse")
 
 
+@pytest.mark.parametrize("use", [False, pytest.param(True, marks=pytest.mark.skipif(
+    shutil.which("rsync") is None, reason="needs rsync"))])
+def test_sync_tree_replaces_a_hardlinked_file(tmp_path, use):
+    """A file in dst that is a hardlink (a master's files are links into the audio cache)
+    is replaced by a new file: the other link keeps its bytes."""
+    src, dst = tmp_path / "v1", tmp_path / "master"
+    _tree(src, {"KICKS/deep/BD.wav": "release"})
+    _tree(dst, {"manifest.json": "{}"})
+    cache = tmp_path / "cache.wav"
+    cache.write_text("cached audio")
+    (dst / "KICKS/deep").mkdir(parents=True)
+    os.link(cache, dst / "KICKS/deep/BD.wav")
+    code, _ = P.sync_tree(src, dst, delete=True, skip_dotfiles=False, use_rsync=use)
+    assert code == 0
+    assert (dst / "KICKS/deep/BD.wav").read_text() == "release"
+    assert cache.read_text() == "cached audio"
+    assert _listing(dst) == ["KICKS/deep/BD.wav"]
+
+
+def test_sync_tree_stopped_mid_copy_leaves_the_old_file(tmp_path, monkeypatch):
+    src, dst = tmp_path / "v1", tmp_path / "master"
+    _tree(src, {"a/1.wav": "new bytes"})
+    _tree(dst, {"a/1.wav": "old"})
+
+    def half(a, b, *k, **kw):
+        with open(b, "w") as f:
+            f.write("ne")
+        raise KeyboardInterrupt
+    monkeypatch.setattr(P.shutil, "copyfile", half)
+    with pytest.raises(KeyboardInterrupt):
+        P.sync_tree(src, dst, skip_dotfiles=False, use_rsync=False)
+    assert (dst / "a/1.wav").read_text() == "old"
+    assert [p.name for p in (dst / "a").iterdir()] == ["1.wav"]      # no temporary file left
+
+
 def test_copy_tree_without_rsync(tmp_path):
     src, dst = tmp_path / "master", tmp_path / "v1.partial"
     _tree(src, {"KICKS/deep/BD.wav": "a", "_REVIEW/queue.wav": "q", "manifest.json": "{}"})
