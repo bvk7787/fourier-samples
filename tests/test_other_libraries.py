@@ -84,6 +84,27 @@ def test_clap_fallback_homes_only_a_clear_match(monkeypatch):
     assert C._clap_home(kick, anchors, oneshot=False, loop=False) is None       # no shape, no home
 
 
+def test_clap_fallback_keeps_a_pitched_note_out_of_the_noise_drums(monkeypatch):
+    """A sample with one clear pitch (pYIN's root) that CLAP hears as a hat, cymbal, clap or
+    snare (a short bright FM note) isn't homed there, nor in CLAP's second guess, and the
+    sound model doesn't home it there either; a pitched kick or tom still is."""
+    from fourier.packs import curate as C
+    rng = np.random.default_rng(1)
+    cats = [c for c, cfg in C.CATEGORIES.items() if cfg["kind"] in ("oneshot", "loop")]
+    anchors = {c: (lambda v: v / np.linalg.norm(v))(rng.standard_normal(16)) for c in cats}
+    monkeypatch.setattr(C, "_clap_anti", lambda cat: None)
+    for cat in ("HATS", "CYMBALS", "CLAPS", "SNARES"):
+        assert C._clap_home(anchors[cat], anchors, oneshot=True, loop=False) == cat
+        assert C._clap_home(anchors[cat], anchors, oneshot=True, loop=False, pitched=True) is None
+        assert C._sound_home((cat, 0.99, 0.0), True, False) == cat
+        assert C._sound_home((cat, 0.99, 0.0), True, False, pitched=True) is None
+    for cat in ("KICKS", "TOMS"):
+        assert C._clap_home(anchors[cat], anchors, oneshot=True, loop=False, pitched=True) == cat
+        assert C._sound_home((cat, 0.99, 0.0), True, False, pitched=True) == cat
+    from fourier.metadata.rows import HOME_FIELDS
+    assert "own_root_midi" in HOME_FIELDS                  # the routing rows carry pYIN's root
+
+
 # --- vendors -------------------------------------------------------------------------------
 def test_layouts_are_detected():
     assert V.detect(["Acme/Pack A/Kick 01.wav", "Northwind/Loops/Groove.wav", "Vendor C/x/y.wav"])["layout"] == V.PACKS

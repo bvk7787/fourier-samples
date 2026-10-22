@@ -126,7 +126,7 @@ def field_source(f: str, act: Active | None = None) -> str | None:
 HOME_FIELDS = ("id", "rel_path", "path", "filename", "categories", "classes", "ableton_tags",
                "harmonicity", "chroma_concentration", "n_events", "duration_s", "file_hash",
                "bpm", "tempo_bpm", "onset_rate_hz", "canonical",
-               "acid_bpm", "acid_beats")     # routing: compute_homes, fourier why
+               "acid_bpm", "acid_beats", "own_root_midi")     # routing: compute_homes, fourier why
 CANDIDATE_FIELDS = (
     "id", "rel_path", "path", "filename", "file_hash", "file_format", "duration_s", "ableton_tags",
     "sample_rate", "brightness", "noisiness", "harmonicity", "crest_factor", "base_note",
