@@ -492,3 +492,25 @@ def test_the_instrument_path_runs_the_copy_prune(category, monkeypatch):
     C._select_records(rows, CATEGORIES[category], E, id2row, category=category, floor=6)
     assert (C.INSTRUMENT_COPY_COS, 0) in calls
     assert all(thr != C.NEAR_DUP_COS for thr, _ in calls)
+
+
+def test_a_long_sustained_note_is_cut_to_the_instrument_cap(monkeypatch):
+    """A single piano note ringing past PIANO's length cap (30 s) stays a candidate and the
+    export cuts it to the cap with a fade; a long file of many onsets (a run of notes) is left
+    out, as before. Onsets count over the seconds the analysis read."""
+    monkeypatch.setattr(C, "embed_text", lambda t: np.ones(4, dtype="float32"))     # no CLAP model
+    note = dict(classes=["OneShot"], categories=[], canonical=["class.oneshot", "keys"],
+                ableton_tags=["Piano"], chroma_concentration=3.0, harmonicity=0.9)
+    rows = [_row(id=1, filename="Qzv Piano C2.wav", rel_path="Acme/Qzv Piano C2.wav",
+                 path="/l/Acme/Qzv Piano C2.wav", duration_s=48.0, n_events=1, onset_rate_hz=1 / 30, **note),
+            _row(id=2, filename="Qzv Piano Run.wav", rel_path="Acme/Qzv Piano Run.wav",
+                 path="/l/Acme/Qzv Piano Run.wav", duration_s=48.0, n_events=1, onset_rate_hz=0.5, **note)]
+    why = {}
+    E = np.eye(4, dtype="float32")
+    C._select_records(rows, CATEGORIES["PIANO"], E, {1: 0, 2: 1}, category="PIANO", why=why)
+    assert 1 not in why.get("too_long", {}) and 1 not in why.get("many_onsets", {}), why
+    assert 2 in {**why.get("too_long", {}), **why.get("many_onsets", {})}, why
+    sr = 8000
+    y = np.sin(np.arange(sr * 40) * 0.05) * 0.5
+    out = C._process_audio(y, sr, "instrument", False, False, "peak", dur_cap=30.0)
+    assert len(out) <= 30 * sr and abs(out[-1]) < 1e-3

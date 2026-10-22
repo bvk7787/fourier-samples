@@ -4559,6 +4559,10 @@ def _readmit_gated(rec, held, floor, category, support, id2row, seen_hash, seen_
             gate[r.id] = gate[r.id][:2] + [1]
 
 
+# the seconds of a file the librosa analysis reads (its onset rate is theirs)
+from ..analysis.librosa_features import _MAX_DURATION_S as ANALYSIS_SECONDS  # noqa: E402
+
+
 # a release take this far under its folder's notes (mean RMS) is a key's or damper's noise
 RELEASE_QUIET_DB = _tunable("RELEASE_QUIET_DB", 20.0)
 
@@ -4973,7 +4977,8 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                 and not _phrase_named(rel)))
             # single-note guard: a single note (short or long-sustained) has ~1
             # onset; phrases/arps/loops have many. Drops phrases, keeps notes.
-            onc = (r.onset_rate_hz or 0.0) * (dur or 0.0)
+            # (the analysis reads a file's first ANALYSIS_SECONDS: its onset rate is theirs)
+            onc = (r.onset_rate_hz or 0.0) * min(dur or 0.0, ANALYSIS_SECONDS)
             if cfg.get("max_onsets") is not None and onc > cfg["max_onsets"] and not (
                     _kl and (getattr(r, "n_events", None) or 1) <= 1):
                 stats["many_onsets"] = stats.get("many_onsets", 0) + 1
@@ -4990,7 +4995,11 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                 stats["not_one_pitch"] = stats.get("not_one_pitch", 0) + 1
                 _out(r, "not_one_pitch")
                 continue
-            if cfg.get("dur_max") and dur and dur > cfg["dur_max"]:
+            # past the length cap: a single sustained note is cut to it at export (with a
+            # fade, _process_audio's dur_cap), anything else is left out
+            if cfg.get("dur_max") and dur and dur > cfg["dur_max"] and not (
+                    (getattr(r, "n_events", None) or 1) <= 1
+                    and (cfg.get("max_onsets") is None or onc <= cfg["max_onsets"])):
                 stats["too_long"] = stats.get("too_long", 0) + 1
                 _out(r, "too_long", cfg["dur_max"])
                 continue
@@ -6075,14 +6084,15 @@ def _process_audio(y, sr, kind, trim_lead, trim_tail, norm_mode, lead_floor_db=N
     exact = kind == "waves"
     if retune and not exact:
         y = _repitch(y, sr, retune)          # root to C (RETUNE_CATS)
-        if dur_cap and len(y) > int(dur_cap * sr):
-            # retuning down lengthens a file (tape-style): hold the category's length cap
-            # with a fade, so a pad that fit before still fits (DUR_CAP)
-            y = y[:int(dur_cap * sr)].copy()
-            nf = min(len(y) // 10, int(0.25 * sr))
-            if nf > 1:
-                ramp = np.linspace(1.0, 0.0, nf)
-                y[-nf:] = y[-nf:] * (ramp if y.ndim == 1 else ramp[:, None])
+    if dur_cap and not exact and len(y) > int(dur_cap * sr):
+        # retuning down lengthens a file (tape-style), and a sustained instrument note may
+        # ring past its category's cap: hold the cap with a fade, so a pad that fit before
+        # still fits (DUR_CAP) and a long piano note keeps its first dur_max seconds
+        y = y[:int(dur_cap * sr)].copy()
+        nf = min(len(y) // 10, int(0.25 * sr))
+        if nf > 1:
+            ramp = np.linspace(1.0, 0.0, nf)
+            y[-nf:] = y[-nf:] * (ramp if y.ndim == 1 else ramp[:, None])
     if not exact:
         # judged on the DC-free signal: a channel-to-channel DC difference reads as stereo
         # width, so a file whose only "width" was DC would keep two channels and come out
@@ -6768,7 +6778,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     _fb = _fallback(session)                    # without Sononym: names read with bare notes
 
     def export_one(src, dest, pinned=False, retune=None, root_src=None, prev_name=None, root_midi=None,
-                   bpm=None, renote=None):
+                   bpm=None, renote=None, cap=None):
         b = os.path.basename(src); stem, ext = os.path.splitext(b)
         _was = _note_word(stem, bare=_fb) if (_fb and root_src is not None and retune is not None) else None
         if renote is not None:
@@ -6811,7 +6821,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                             norm=norm_mode, lead=cfg.get("trim_lead_db"), mono=category in MONO_CATS,
                             retune=retune, pinned=pinned, quiet=QUIET_RMS_DB,
                             ceil=ONESHOT_RMS_CEIL_DB.get(category),
-                            dur_cap=DUR_CAP.get(category) if retune else None,
+                            dur_cap=cap or (DUR_CAP.get(category) if retune else None),
                             **({"fold": FOLD_VERSION} if _wide else {}))
         got = audiocache.lookup(ck, out)
         if got == "hit":
@@ -6829,7 +6839,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
             y = _process_audio(np.asarray(data, dtype="float64"), sr, cfg["kind"],
                                trim_lead, trim_tail, norm_mode, lead_floor_db=cfg.get("trim_lead_db"),
                                mono=category in MONO_CATS, retune=retune,
-                               dur_cap=DUR_CAP.get(category) if retune else None)
+                               dur_cap=cap or (DUR_CAP.get(category) if retune else None))
             if norm_mode == "peak" and cfg["kind"] != "waves" and not pinned and _rms_db(y) < QUIET_RMS_DB:
                 audiocache.store(ck, None)
                 return None                  # mostly silence: not worth a slot
@@ -6890,7 +6900,10 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                                   root_midi=rec[i].get("root_midi") if rec[i].get("root_midi") is not None
                                   else rec[i].get("tune"),
                                   bpm=rec[i].get("bpm") if cfg["kind"] == "loop" else None,
-                                  renote=rec[i].get("renote"))
+                                  renote=rec[i].get("renote"),
+                                  # a sustained note past the instrument's length cap: cut to it
+                                  cap=cfg["dur_max"] if cfg["kind"] == "instrument" and cfg.get("dur_max")
+                                  and (rec[i].get("dur") or 0) > cfg["dur_max"] else None)
                 if outp is None:
                     n_quiet += 1
                     _quiet_ids.add(rec[i]["id"])
