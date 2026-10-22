@@ -351,6 +351,36 @@ def test_rekey_by_hash_follows_moved_file(tmp_path):
     assert R[str(new)]["verdict"] == "keep"
 
 
+def test_a_rated_file_whose_audio_was_replaced_is_named_once(tmp_path):
+    """A kick rated Keep, then replaced by other audio at the same path: the rating stays (the
+    path is what was rated) and the build says so once, naming the file to listen to again."""
+    from fourier.packs.ratings import rekey_by_hash, save_store
+    kick, pad = tmp_path / "Acme" / "Kick 01.wav", tmp_path / "Acme" / "Pad 01.wav"
+    for p in (kick, pad):
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"x")
+    store = str(tmp_path / "ratings.json")
+    save_store({"version": 1, "ratings": {str(kick): {"verdict": "keep", "category": "KICKS"},
+                                          str(pad): {"verdict": "drop", "category": "PADS",
+                                                     "hash": "q2"}},
+                "colors": {}, "auto_misfiled": {}}, store)
+    said = []
+    # first sight: hashes recorded (the pad's stored hash was its first 8 KB: the same audio)
+    s = rekey_by_hash(_Sess([(str(kick), "h1", "q1"), (str(pad), "h2", "q2")]), store, log=said.append)
+    assert s["hashed"] == 2 and not s.get("changed") and not any("other audio" in x for x in said)
+    said.clear()
+    s = rekey_by_hash(_Sess([(str(kick), "h9", "q9"), (str(pad), "h2", "q2")]), store, log=said.append)
+    text = "\n".join(said)
+    assert "1 rated file(s) changed since you rated them" in text, text
+    assert s["changed"] == 1 and s["hashed"] == 0, s
+    assert f"{kick} (keep)" in text and str(pad) not in text, text
+    R = load_store(store)["ratings"]
+    assert R[str(kick)]["verdict"] == "keep" and R[str(kick)]["hash"] == "h9"
+    said.clear()
+    s = rekey_by_hash(_Sess([(str(kick), "h9", "q9"), (str(pad), "h2", "q2")]), store, log=said.append)
+    assert s["changed"] == 0 and said == []                          # said once
+
+
 def test_rekey_leaves_ambiguous_hash(tmp_path):
     from fourier.packs.ratings import rekey_by_hash, save_store
     a, b = tmp_path / "a" / "k1.wav", tmp_path / "b" / "k2.wav"

@@ -20,6 +20,7 @@ from pathlib import Path
 
 KEEP_LOGS = 10                    # build logs kept in <home>/logs
 TAIL = 25                         # a stopped build shows this many of the log's last lines
+RATED_CHANGED = "rated file(s) changed since you rated them"   # packs/ratings.rekey_by_hash
 WARN_SHOWN = 5
 _ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
@@ -172,6 +173,11 @@ class Quiet:
         unrec = next((ln for ln in log if " no rule recognized (top folders" in ln), None)
         if unrec:
             out.append(unrec.split(" (top folders")[0] + ": `fourier why --unrecognized` lists them.")
+        # rated files whose audio changed since they were rated: said once, so said here too
+        at = next((i for i, ln in enumerate(log) if ln.startswith("ratings: ") and RATED_CHANGED in ln), None)
+        if at is not None:
+            out.append(log[at][len("ratings: "):])
+            out += [ln for ln in log[at + 1:at + 12] if ln.startswith("  ")][:11]
         ver = next((ln for ln in reversed(log) if ln.startswith("verify: ")), None)
         warns = [ln for ln in log if ln.startswith("WARN ")]
         if ver:
