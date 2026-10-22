@@ -37,6 +37,8 @@ def _resolve_config(ctx, config_path, sets):
             if config_path or sets or layers.find_config() is not None:
                 r = layers.resolve(config_path, sets)
                 ctx.obj["resolved"] = r
+                for w in r.warnings:
+                    console.print(w, style="yellow", markup=False, highlight=False, soft_wrap=True)
                 if r.values:
                     if ctx.invoked_subcommand == "config":
                         # config only reads: its modules still see the values (config explain
@@ -179,16 +181,46 @@ def stopped_by_user() -> None:
                   markup=False, highlight=False, soft_wrap=True)
 
 
-def unhandled(ctx, e: Exception) -> None:
-    """One plain line for an error no command handled, the traceback kept in a file for a
-    bug report."""
+def user_errors() -> tuple:
+    """The errors that mean a setting or a file of the user's is wrong (a config, a device
+    profile, a provider or preparer named there): each says what and where, so it ends in its
+    own message, with no bug report."""
+    from ..devices.loader import DeviceProfileError
+    from ..metadata.providers import ProviderError
+    from ..places import PlacesError
+    from ..preparers import PreparerError
+    from ..settings import ConfigError
+    from ..taxonomy import TaxonomyError
+    return (ConfigError, DeviceProfileError, PlacesError, ProviderError, PreparerError,
+            TaxonomyError)
+
+
+def _command(ctx, e: BaseException) -> str:
+    """`fourier <command>` that was running when e was raised."""
     import traceback
-    from datetime import datetime
     cmd = " ".join(["fourier", *([ctx.invoked_subcommand] if ctx.invoked_subcommand else [])])
     for frame, _line in traceback.walk_tb(e.__traceback__):     # the command that was running
         c = frame.f_locals.get("ctx")
         if isinstance(c, click.Context) and c.info_name:
             cmd = " ".join(["fourier", *c.command_path.split()[1:]])
+    return cmd
+
+
+def said(ctx, e: Exception) -> None:
+    """One plain line for a user error (user_errors), and how to open a config it names."""
+    msg = " ".join(str(e).split()) or type(e).__name__
+    console.print(f"{_command(ctx, e)} stopped: {msg}", style="red", markup=False,
+                  highlight=False, soft_wrap=True)
+    if ".toml" in msg:
+        console.print("`fourier config edit` opens it to fix.", markup=False, highlight=False)
+
+
+def unhandled(ctx, e: Exception) -> None:
+    """One plain line for an error no command handled, the traceback kept in a file for a
+    bug report."""
+    import traceback
+    from datetime import datetime
+    cmd = _command(ctx, e)
     if isinstance(e, FileNotFoundError) and e.filename:
         what = f"{e.filename} doesn't exist"
     else:
@@ -228,6 +260,9 @@ class SectionedGroup(click.Group):
             import os as _os
             if ctx.params.get("verbose") or _os.environ.get("FOURIER_TRACEBACK"):
                 raise
+            if isinstance(e, user_errors()):
+                said(ctx, e)
+                raise SystemExit(2) from None
             unhandled(ctx, e)
             raise SystemExit(1) from None
 

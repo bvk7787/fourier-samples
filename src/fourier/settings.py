@@ -125,9 +125,19 @@ def reset() -> None:
 _seen: dict[str, set] = {}   # module -> the tunable names it defined (for check_keys)
 
 
+# tunables whose values are counts of files: whole numbers, 0 or more
+COUNTS = ("curate_config.BUDGETS",)
+
+
 def _coerce(key: str, value, default):
     if default is None:
         return value
+    if key in COUNTS and isinstance(value, dict):
+        bad = {k: v for k, v in value.items()
+               if isinstance(v, bool) or not isinstance(v, int) or v < 0}
+        if bad:
+            k, v = next(iter(bad.items()))
+            raise ConfigError(f"{key.split('.')[-1]}: {k} = {v!r}: a number of files, 0 or more")
     if isinstance(default, bool):
         ok = isinstance(value, bool)
     elif isinstance(default, (int, float)):
@@ -144,7 +154,29 @@ def _coerce(key: str, value, default):
     if not ok:
         raise ConfigError(f"{key}: expected a {type(default).__name__} like its default, "
                           f"got a {type(value).__name__}")
+    if isinstance(default, dict) and default:
+        # each value of the kind of the default's value for that key; a key the default
+        # lacks, of the kind all the default's values share (when they share one)
+        kinds = {_kind(v) for v in default.values()}
+        for k, v in value.items():
+            d = default[k] if k in default else (next(iter(default.values())) if len(kinds) == 1 else None)
+            if d is not None and _kind(v) != _kind(d):
+                raise ConfigError(f"{key}: {k} = {v!r}: expected a {_kind(d)} like its default")
     return value
+
+
+def _kind(v) -> str:
+    """A value's kind for the check above: numbers are one kind (an int and a float both
+    pass), as are a list, a tuple and a set."""
+    if isinstance(v, bool):
+        return "true or false"
+    if isinstance(v, (int, float)):
+        return "number"
+    if isinstance(v, (list, tuple, set, frozenset)):
+        return "list"
+    if isinstance(v, re.Pattern):
+        return "regex"
+    return type(v).__name__
 
 
 def for_module(module: str):

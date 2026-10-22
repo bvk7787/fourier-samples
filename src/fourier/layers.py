@@ -84,6 +84,7 @@ class Resolved:
     config: str | None = None                      # the fourier.toml, if any
     preset: str | None = None                      # the preset in use, if any
     preset_default: bool = False                   # True: the config named none (DEFAULT_PRESET)
+    warnings: list = field(default_factory=list)   # what loads but is ignored (unknown_keys)
 
     @property
     def hash(self) -> str:
@@ -245,6 +246,23 @@ def _read(path: Path):
 def plain_error(err, text: str) -> str:
     """A TOML or YAML error in words someone who's never seen either can act on: the line it
     is about, as it reads, and the usual fix."""
+    if isinstance(err, yaml.MarkedYAMLError) and (err.problem_mark or err.context_mark):
+        # YAML's own text quotes the parsed copy ("<unicode string>") over several lines: the
+        # line the trouble starts on (an opening bracket's), and the problem in a few words
+        ctx = err.context or ""
+        mark = err.context_mark if ("flow" in ctx and err.context_mark) else err.problem_mark
+        mark = mark or err.context_mark
+        n = mark.line + 1 if mark is not None else 0
+        lines = text.splitlines()
+        shown = lines[n - 1].strip() if 0 < n <= len(lines) else ""
+        problem = err.problem or ""
+        what = ("a list [ ] or table { } that isn't closed" if "flow" in ctx else
+                "a line indented differently from the lines around it" if "block" in ctx
+                or "<block" in problem else
+                'a value that needs quotes, like name: "value"' if "could not find expected ':'"
+                in problem or "mapping values are not allowed" in problem else
+                " ".join(f"{ctx} {problem}".split()))
+        return f"line {n}" + (f" ({shown})" if shown else "") + f": {what}"
     msg = str(err)
     m = re.search(r"line (\d+)", msg)
     if not m:
@@ -280,6 +298,43 @@ def _preset_path(ref: str, base: Path | None) -> Path:
     raise ConfigError(f"preset {ref!r}: not a file and not in {PRESETS_DIR}")
 
 
+# the keys a fourier.toml holds besides the knobs (fourier/knobs.py): what layers, places,
+# providers and preparers read from it; and the ones a preset or an overlay holds
+CONFIG_KEYS = ("preset", "overlay", "library", "devices", "output", "sononym_db", "providers",
+               "preparers", "advanced", "add_categories")
+PRESET_KEYS = ("extends", "description", "advanced", "add_categories")
+
+
+def unknown_keys(doc: dict, where: str, preset: bool = False) -> list[str]:
+    """One line for each key of a fourier.toml (or, preset=True, a preset or overlay) that no
+    part of Fourier reads, with the known key it is closest to: a typo there would otherwise
+    be ignored without a word (an unknown [advanced] key is an error: qualify)."""
+    import difflib
+
+    from .knobs import KNOBS
+    known = sorted({*(PRESET_KEYS if preset else CONFIG_KEYS), *KNOBS})
+    out = []
+    for key in doc:
+        if key in known:
+            continue
+        close = difflib.get_close_matches(str(key).lower(), known, n=1, cutoff=0.6)
+        out.append(f"{where}: {key!r} isn't a setting Fourier reads, so it's ignored"
+                   + (f" (did you mean {close[0]}?)" if close else
+                      " (`fourier config explain` lists the settings)"))
+    return out
+
+
+def _ref(value, what: str, where) -> str | None:
+    """A preset or overlay reference as written: a name or a path (text)."""
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str):
+        example = '"my-library.yaml"' if what == "overlay" else '"balanced"'
+        raise ConfigError(f"{where}: {what} = {value!r}: give a name or a path in quotes, like "
+                          f"{what} = {example}")
+    return value
+
+
 def _preset_chain(ref: str, base: Path | None) -> list[tuple[Path, dict]]:
     """[(path, doc)] from the root preset down to ref."""
     chain, seen = [], set()
@@ -289,8 +344,14 @@ def _preset_chain(ref: str, base: Path | None) -> list[tuple[Path, dict]]:
             raise ConfigError(f"preset {ref!r}: an extends loop")
         seen.add(p)
         doc = _read(p)
+        if not isinstance(doc, dict):
+            raise ConfigError(f"{p}: a preset or overlay holds name: value lines (a YAML "
+                              f"mapping); this file holds a {type(doc).__name__}")
         chain.append((p, doc))
-        ref, base = doc.get("extends"), p
+        nxt = _ref(doc.get("extends"), "extends", p)
+        if nxt is None:
+            break
+        ref, base = nxt, p
     return list(reversed(chain))
 
 
@@ -318,6 +379,10 @@ def resolve(config: str | None = None, sets: tuple = (), known: dict | None = No
     presets_in_use: set = set()     # the names in the preset chain (an added category's `presets`)
 
     def apply(table: dict | None, label: str):
+        if table is not None and not isinstance(table, dict):
+            where = r.config if label.startswith("config:") else label
+            raise ConfigError(f"{where}: advanced = {table!r}: it's a table of NAME = value lines "
+                              f"([advanced] in fourier.toml, advanced: in a preset)")
         for key, value in (table or {}).items():
             k = qualify(key, known)
             r.values[k] = from_plain(k, value, known[k])
@@ -359,17 +424,21 @@ def resolve(config: str | None = None, sets: tuple = (), known: dict | None = No
     path = find_config(config)
     doc = _read(path) if path else {}
     r.config = str(path) if path else None
-    preset = doc.get("preset")
+    if path:
+        r.warnings += unknown_keys(doc, str(path))
+    preset = _ref(doc.get("preset"), "preset", path)
     if path and not preset:
         preset, r.preset_default = DEFAULT_PRESET, True
     r.preset = preset or None
-    for ref, label in ((preset, "preset"), (doc.get("overlay"), "overlay")):
+    for ref, label in ((preset, "preset"), (_ref(doc.get("overlay"), "overlay", path), "overlay")):
         if ref:
             chain = _preset_chain(ref, path)
             if label == "preset":
                 presets_in_use = {p.stem for p, _ in chain}
             for p, pdoc in chain:
                 r.files.append(str(p))
+                if label == "overlay" or not str(p).startswith(str(PRESETS_DIR.resolve())):
+                    r.warnings += unknown_keys(pdoc, str(p), preset=True)
                 layer(pdoc, f"{label}:{p.stem}")
     if path:
         r.files.append(str(path))
