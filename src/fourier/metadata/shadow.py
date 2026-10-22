@@ -261,6 +261,23 @@ GRID_MIN_BEATS = 4
 
 
 _SHOTS_DIR = re.compile(r"(?<![a-z])shots?(?![a-z])", re.I)
+# a file's own name that calls it one sound ("Synth Stab 03", "Brass Hit 2", "Pad Chord C",
+# "Bass Note 4"): a held note bounced at whole bars stays a one-shot, whatever tremolo or a
+# filter sweep made the audio hear. Only the singular word counts: a name with a plural
+# ("Chord Stabs Am", "House Hits", "Notes", "Chords") names a phrase of them, and a loop
+# word in the name ("Stab Loop") doesn't count either.
+_ONESHOT_NAME = re.compile(r"(?<![a-z])(?:stab|hit|shot|one ?shot|note|chord)(?![a-z])", re.I)
+_ONESHOTS_NAME = re.compile(r"(?<![a-z])(?:stabs|hits|shots|notes|chords)(?![a-z])", re.I)
+
+
+def oneshot_named(rel_path: str) -> bool:
+    """The file's own name calls it one sound (_ONESHOT_NAME) and has no plural of one
+    (_ONESHOTS_NAME) and no loop or phrase word."""
+    from ..packs.curate_config import PHRASE_LOOP_DIR_RE
+    stem = re.sub(r"[_-]+", " ", os.path.splitext(os.path.basename(rel_path or ""))[0])
+    stem = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", stem)
+    return (bool(_ONESHOT_NAME.search(stem)) and not _ONESHOTS_NAME.search(stem)
+            and not PHRASE_LOOP_DIR_RE.search(stem))
 
 
 def oneshot_folder(rel_path: str) -> bool:
@@ -275,13 +292,14 @@ def on_path_grid(rel_path: str, duration_s) -> bool:
     """The file lasts a whole number of beats, GRID_MIN_BEATS or more (within GRID_TOL_S), at
     a tempo its path states ("Pack 125bpm/Synth Q1/Riff A-01.wav", 1.920 s), its name states
     no note and names no drum hit, and no folder or word of its path calls it a one-shot
-    (oneshot_folder, shape_labels): a loop cut to its pack's grid. A note bounced at exactly
-    a bar names its note ("Bass E3") or sits in a one-shot folder ("Pack 124bpm/One Shots/
-    Synths"), so it stays a note."""
+    (oneshot_folder, shape_labels, oneshot_named): a loop cut to its pack's grid. A note
+    bounced at exactly a bar names its note ("Bass E3"), calls itself one sound ("Synth Stab
+    03") or sits in a one-shot folder ("Pack 124bpm/One Shots/Synths"), so it stays a note."""
     bpm = path_bpm(rel_path)
     if not bpm or not duration_s:
         return False
-    if oneshot_folder(rel_path) or "class.oneshot" in shape_labels(rel_path) or drum_hit_named(rel_path):
+    if oneshot_folder(rel_path) or "class.oneshot" in shape_labels(rel_path) or drum_hit_named(rel_path) \
+            or oneshot_named(rel_path):
         return False
     beats = duration_s * bpm / 60.0
     if round(beats) < GRID_MIN_BEATS or abs(beats - round(beats)) * 60.0 / bpm > GRID_TOL_S:
@@ -294,8 +312,9 @@ def on_path_grid(rel_path: str, duration_s) -> bool:
 # Bump when a built-in provider's rules change in code (path.yaml's text and the audio
 # constants are in the versions too), so the labels are rebuilt.
 _PATH_RULES = 3
-_AUDIO_RULES = 8         # 7: no "bpm" descriptor (it was librosa's tempo where Sononym's was reliable);
-                         # 8: a loop on its path's tempo grid stays a loop (on_path_grid)
+_AUDIO_RULES = 9         # 7: no "bpm" descriptor (it was librosa's tempo where Sononym's was reliable);
+                         # 8: a loop on its path's tempo grid stays a loop (on_path_grid);
+                         # 9: ...unless its name calls it one sound (oneshot_named)
 
 
 def rules_version(provider: str) -> float:

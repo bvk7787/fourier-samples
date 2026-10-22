@@ -109,6 +109,24 @@ def test_a_loop_cut_to_its_paths_tempo_stays_a_loop():
     assert SH.audio_label(note, *groove(240 / 140)) == "class.oneshot"
 
 
+def test_a_note_named_as_one_sound_stays_a_one_shot_on_the_grid():
+    """A held note bounced at whole bars of its pack's tempo in a sound folder, whose name
+    calls it one sound ("Stab", "Hit", "Chord", "Note"), stays a one-shot even when tremolo
+    or a filter made the audio hear a loop; a loop word in the name ("Stab Loop") and a plural
+    ("Chords", "Chord Stabs": a phrase of them) keep the loop."""
+    dur = 8 * 60 / 124
+    groove = (dur, 3, 2.5)
+    for name in ("Qzv Synth Stab 03", "Qzv_Synth_Hit_2", "QzvZorblChord C", "Qzv Bass Note 4", "Qzv Synth One Shot 7"):
+        rel = f"Acme Qzv 124bpm/Synths/{name}.wav"
+        assert not SH.on_path_grid(rel, dur), rel
+        assert "class.oneshot" in SH.shape_labels(rel) or SH.audio_label(rel, *groove) == "class.oneshot", rel
+    for name in ("Qzv Synth 03", "Qzv Stab Loop 03", "Qzv Zorbl Chords", "Qzv Notes Riff 1",
+                 "Qzv House Stabs 01", "Qzv Chord Stabs Am"):
+        rel = f"Acme Qzv 124bpm/Synths/{name}.wav"
+        assert SH.on_path_grid(rel, dur), rel
+        assert "class.oneshot" not in SH.shape_labels(rel) and SH.audio_label(rel, *groove) == "class.loop", rel
+
+
 def test_every_path_rule_names_a_canonical_label():
     from fourier.metadata.vocab import CANONICAL
     assert {lab for lab, _, _ in SH.path_rules()} <= CANONICAL
