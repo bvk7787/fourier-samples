@@ -59,6 +59,73 @@ def test_a_copys_keeper_stays_through_its_folders_new_pick(monkeypatch):
     assert clusters[0]["_pick"] == [0, 2] and stats["copy"] == 1
 
 
+def _copy_rounds(monkeypatch, rounds):
+    """_copies_within answers each call with the next of these lists of pairs, then none; of
+    one recording's copies the lowest index stays."""
+    left = list(rounds)
+    monkeypatch.setattr(C, "_copies_within", lambda srcs, V, **kw: left.pop(0) if left else [])
+    monkeypatch.setattr(C, "_copy_keepers", lambda g, rec: {min(g)})
+    return [dict(id=10 + i, row=i, path=p(f"Acme/Qzv Rim/Qzv Rim {i}.wav"), qual=1.0) for i in range(4)]
+
+
+def test_a_copys_keeper_left_as_a_copy_in_a_later_round_hands_it_on(monkeypatch):
+    """Round 1 leaves Rim 2 out as a copy of Rim 1; the folder picks Rim 0, and round 2 leaves
+    Rim 1 out as a copy of Rim 0: Rim 2's keeper is Rim 0, the copy that stays (verify fails a
+    copy whose keeper isn't in the master)."""
+    rec = _copy_rounds(monkeypatch, [[(0, 1)], [(0, 1)]])        # (indices into the picks)
+    clusters = [dict(idxs=[0, 1, 2, 3], _pick=[1, 2])]
+    stats, why = {}, {}
+    C._drop_copies(clusters, [2], rec, np.ones((4, 2), dtype="float32"), {"kind": "oneshot"},
+                   lambda idxs, want: list(idxs)[:want], stats, why, log=lambda m: None)
+    assert clusters[0]["_pick"] == [0, 3]
+    assert why == {"copy": {12: 10, 11: 10}} and stats["copy"] == 2
+
+
+def test_a_copys_keeper_left_as_a_copy_by_the_second_call_hands_it_on(monkeypatch):
+    """The build prunes copies again after one note per C refilled a folder: a keeper of the
+    first call left out by the second hands its copies on."""
+    rec = _copy_rounds(monkeypatch, [[(0, 1)], [], [(0, 1)]])
+    clusters = [dict(idxs=[1, 2, 3], _pick=[1, 2])]
+    stats, why = {}, {}
+    pick = lambda idxs, want: list(idxs)[:want]  # noqa: E731
+    C._drop_copies(clusters, [2], rec, np.ones((4, 2), dtype="float32"), {"kind": "oneshot"}, pick, stats,
+                   why, log=lambda m: None)
+    assert clusters[0]["_pick"] == [1, 3] and why == {"copy": {12: 11}}
+    clusters[0]["idxs"], clusters[0]["_pick"] = [0, 1, 3], [0, 1]   # a refill brings Rim 0
+    C._drop_copies(clusters, [2], rec, np.ones((4, 2), dtype="float32"), {"kind": "oneshot"}, pick, stats,
+                   why, log=lambda m: None)
+    assert clusters[0]["_pick"] == [0, 3]
+    assert why == {"copy": {12: 10, 11: 10}} and stats["copy"] == 2
+
+
+def test_keepers_left_by_the_other_step_hand_their_files_on():
+    """A copy of a note that one note per C left out leaves as that note did (for the note that
+    stayed, on the same C), and a note left for a pick the copy prune later left out points at
+    the copy that stayed; a chain that ends outside the picks stays as it was."""
+    names = ["Qzv Pad C3 b", "Qzv Pad C3", "Qzv Pad A2", "Qzv Bell 1", "Qzv Bell 1 b", "Qzv Bell 1 c",
+             "Qzv Sub E1", "Qzv Sub E1 b"]
+    rec = [dict(id=20 + i, path=p(f"Acme/Ms/{n}.wav")) for i, n in enumerate(names)]
+    why = {"copy": {20: 21, 24: 23, 27: 26},
+           "one_note_per_c": {21: ["Qzv Pad A2.wav", "C3"], 25: ["Qzv Bell 1 b.wav", "C4"],
+                              26: ["Qzv Pad A2.wav", "E1"]}}
+    note_ids = {21: 22, 25: 24, 26: 29}            # (29: no such pick)
+    stats = {"copy": 3}
+    C._settle_keepers(why, note_ids, rec, picked={22, 23}, stats=stats)
+    assert why["copy"] == {24: 23, 27: 26}
+    assert why["one_note_per_c"] == {21: ["Qzv Pad A2.wav", "C3"], 20: ["Qzv Pad A2.wav", "C3"],
+                                     25: ["Qzv Bell 1.wav", "C4"], 26: ["Qzv Pad A2.wav", "E1"]}
+    assert stats["copy"] == 2
+
+
+def test_a_note_left_for_a_note_a_later_call_left_out_points_at_the_one_that_stayed():
+    """One note per C runs again after the copy prune refills: a note an earlier call kept and
+    a later call left out hands the notes left for it on."""
+    rec = [dict(id=30 + i, path=p(f"Acme/Ms/Qzv Key {n}.wav")) for i, n in enumerate(["A2", "C3", "D#3"])]
+    why = {"one_note_per_c": {30: ["Qzv Key C3.wav", "C3"], 31: ["Qzv Key D#3.wav", "C3"]}}
+    C._settle_keepers(why, {30: 31, 31: 32}, rec, picked={32}, stats={})
+    assert why["one_note_per_c"] == {30: ["Qzv Key D#3.wav", "C3"], 31: ["Qzv Key D#3.wav", "C3"]}
+
+
 # --- edition ------------------------------------------------------------------------------------
 
 def test_editions_of_one_recording():

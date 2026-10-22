@@ -2180,10 +2180,68 @@ def _drop_copies(clusters, allocs, rec, emb_n, cfg, pick, stats, why=None, log=p
     if gone:
         stats["copy"] = stats.get("copy", 0) + len(gone)
         if why is not None:
-            why.setdefault("copy", {}).update(gone)
+            # (a keeper a later round or call left out as a copy in turn: its copies point at
+            # the copy that stayed)
+            _chain_ends(why.setdefault("copy", {}), gone)
         log(f"{len(gone)} pick(s) repeating another's recording (another edition or a shorter cut) "
             f"left out (CATEGORY_COPY_COS, COPY_XCORR)")
     return n_cloud
+
+
+def _chain_ends(left, new):
+    """Merge new {left out: keeper} pairs into left and point every entry at the end of its
+    chain: a keeper that a later round or call left out in turn hands its entries on to its
+    own keeper ("3 -> 2" then "2 -> 1" is "3 -> 1"). Returns left."""
+    left.update(new)
+    for sid in list(left):
+        k, seen = left[sid], {sid}
+        while k in left and k not in seen:
+            seen.add(k)
+            k = left[k]
+        left[sid] = k
+    return left
+
+
+def _settle_keepers(why, note_ids, rec, picked, stats):
+    """Point each file the copy prune or one note per C left out at the pick it left for,
+    after both have run their rounds (_drop_copies twice, _one_note_per_c_picked between): a
+    keeper the other step left out in turn hands its files on. A copy of a note that left for
+    another note of its set leaves as that note did (one_note_per_c: the same recording plays
+    the same C), and a note that left for a pick later left as a copy points at the copy that
+    stayed. note_ids: one_note_per_c's {sample id: the kept note's id}; picked: the sample ids
+    the category holds. An entry whose chain ends outside the picks stays as it was."""
+    copy, notes = why.get("copy") or {}, why.get("one_note_per_c") or {}
+    if not note_ids:
+        return
+    by_id = {r["id"]: r for r in rec}
+    nxt = {**{s: (k, None) for s, k in copy.items()},
+           **{s: (k, (notes.get(s) or [None, None])[1]) for s, k in note_ids.items() if s in notes}}
+
+    def end(k):
+        seen, c = set(), None
+        while k not in picked and k in nxt and k not in seen:
+            seen.add(k)
+            k, step_c = nxt[k]
+            c = c if c is not None else step_c
+        return k, c
+    moved = {}
+    for sid, k0 in list(copy.items()):
+        k, c = end(k0)
+        if k in picked and k != k0:
+            if c is None:
+                copy[sid] = k
+            else:
+                moved[sid] = [os.path.basename(by_id[k]["path"] or ""), c]
+    for sid, k0 in note_ids.items():
+        k, _c = end(k0)
+        if sid in notes and k in picked and k != k0:
+            notes[sid] = [os.path.basename(by_id[k]["path"] or ""), notes[sid][1]]
+    for sid, det in moved.items():
+        del copy[sid]
+        notes[sid] = det
+    if moved:
+        why["one_note_per_c"] = notes
+        stats["copy"] = stats.get("copy", 0) - len(moved)
 
 
 def _recordings_apart(a, b):
@@ -3157,11 +3215,11 @@ def _one_per_retune_target(groups, rec, why=None, roots=None):
     return [g2 for g2 in ([i for i in g if i not in lost] for g in groups) if g2], len(lost)
 
 
-def _one_note_per_c_picked(clusters, allocs, rec, pick, why=None, roots=None):
+def _one_note_per_c_picked(clusters, allocs, rec, pick, why=None, roots=None, ids=None):
     """One note per set and C (_one_per_retune_target) among a category's picks: a note leaves
     only for a note its folders keep, and a folder that lost one picks again without it
     (pick(idxs, want)), its new picks checked in turn; the kept notes stay picked. Returns how
-    many left."""
+    many left. `ids`, a dict, gets {sample id: the kept note's id} (_settle_keepers)."""
     every: dict = {}
     for _ in range(50):
         lost = _retune_conflicts([c["_pick"] for c in clusters if c["_pick"]], rec, roots)
@@ -3185,6 +3243,8 @@ def _one_note_per_c_picked(clusters, allocs, rec, pick, why=None, roots=None):
             k = every[k]
         final[i] = k
     _why_one_note(final, rec, why)
+    if ids is not None:
+        ids.update({rec[i]["id"]: rec[k]["id"] for i, k in final.items()})
     return len(final)
 
 
@@ -6385,12 +6445,14 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         c["_pick"] = medoid_pick(c["idxs"], want)
     _n_cloud = _drop_copies(clusters, _allocs, rec, emb_n, cfg, medoid_pick, stats, _why,
                             log=lambda m: log(f"{category}: {m}"))
+    _note_ids: dict = {}
     if category in SIBLING_CAP_CATS and category in RETUNE_CATS:
         # one note per set and C among the picks, so a note leaves only for one that ships; the
         # folders that picked again are checked for copies in turn, and their new picks for notes
         for _ in range(5):
             _n_rt = _one_note_per_c_picked(clusters, _allocs, rec, medoid_pick,
-                                           why=_why.setdefault("one_note_per_c", {}), roots=_nroots)
+                                           why=_why.setdefault("one_note_per_c", {}), roots=_nroots,
+                                           ids=_note_ids)
             if not _n_rt:
                 break
             log(f"{category}: {_n_rt} notes of multisample sets left out (retuned onto a C the set already plays)")
@@ -6399,6 +6461,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                                      log=lambda m: log(f"{category}: {m}"))
             if {i for c in clusters for i in c["_pick"]} == _before:
                 break
+        # (each left-out file points at the pick its keepers' chain ends on)
+        _settle_keepers(_why, _note_ids, rec, {rec[i]["id"] for c in clusters for i in c["_pick"]}, stats)
     if _prev_srcs:
         _kept = sum(1 for c in clusters for i in c["_pick"] if rec[i]["incumbent"])
         _avail = sum(1 for r in rec if r["incumbent"])
@@ -6926,6 +6990,9 @@ def _dedupe_across(out_dir, results, log=None):
     notes = _cross_one_note(results, {(c, s) for c, ss in drop.items() for s in ss}, pins)
     for c, gone in notes.items():
         drop.setdefault(c, set()).update(gone)
+    # (a keeper a later step dropped in turn hands its files on to the one that stays)
+    follow, dropped = _drop_chains(dups, copies, notes)
+    dups, copies, notes = _settle_drops(follow, dropped)
     if dups:
         _why_dups(out_dir, dups)
     if copies:
@@ -6938,6 +7005,8 @@ def _dedupe_across(out_dir, results, log=None):
         if log:
             log(f"{sum(map(len, notes.values()))} note(s) of multisample sets left out: another "
                 f"category plays their set on the same C (one note per C across categories)")
+    if drop:
+        _why_keepers(out_dir, results, drop, follow)
     n = 0
     for category, summary, entries in results:
         gone = drop.get(category)
@@ -6969,14 +7038,112 @@ def _dedupe_across(out_dir, results, log=None):
 
 
 
+def _drop_chains(dups, copies, notes):
+    """(follow, {(category, source): step}) for the files the cross-category dedupe dropped.
+    follow(category, source) -> (how, category kept in, source kept, the C), else None: the end
+    of the file's chain, as a keeper one step names can leave in a later step (a source two
+    categories picked stays in one, which then drops it as a copy, or a copy's keeper leaves as
+    a note). how: "note" if a step was a note, else "copy" if a step was a copy, else "dup";
+    the C is the first note step's."""
+    step = {}
+    for c, gone in dups.items():
+        step.update({(c, s): ("dup", win, s, None) for s, win in gone.items()})
+    for c, gone in copies.items():
+        step.update({(c, s): ("copy", kc, ks, None) for s, (kc, ks) in gone.items()})
+    for c, gone in notes.items():
+        step.update({(c, s): ("note", kc, ks, cn) for s, (kc, ks, cn) in gone.items()})
+    rank = {"dup": 0, "copy": 1, "note": 2}
+
+    def follow(c, s):
+        if (c, s) not in step:
+            return None
+        how, cn, seen = "dup", None, set()
+        while (c, s) in step and (c, s) not in seen:
+            seen.add((c, s))
+            h, c, s, n = step[(c, s)]
+            how = max(how, h, key=rank.__getitem__)
+            cn = cn if cn is not None else n
+        return None if (c, s) in step else (how, c, s, cn)
+    return follow, step
+
+
+def _settle_drops(follow, dropped):
+    """(dups, copies, notes) as _dedupe_across logs them, each drop pointed at the end of its
+    chain (_drop_chains)."""
+    dups: dict = {}
+    copies: dict = {}
+    notes: dict = {}
+    for c, s in dropped:
+        end = follow(c, s)
+        if end is None:
+            continue
+        how, kc, ks, cn = end
+        if how == "dup":
+            dups.setdefault(c, {})[s] = kc
+        elif how == "copy":
+            copies.setdefault(c, {})[s] = (kc, ks)
+        else:
+            notes.setdefault(c, {})[s] = (kc, ks, cn)
+    return dups, copies, notes
+
+
+def _why_keepers(out_dir, results, drop, follow):
+    """A category's own copy and one-note-per-C entries whose keeper the cross-category dedupe
+    then dropped from it point at the file that stays: a copy of a source another category
+    keeps, or of a copy kept elsewhere, becomes a cross_copy of that file; a copy or a note whose
+    keeper left as a note becomes a cross_note of the note that stays (the same recording
+    plays the same C). verify requires every keeper in the master (check_copies,
+    check_one_note_kept)."""
+    srcs = {s for ss in drop.values() for s in ss}
+    ends = {(c, s): follow(c, s) for c, ss in drop.items() for s in ss}
+    srcs |= {e[2] for e in ends.values() if e}
+    sid = _sample_ids(srcs)
+    if not sid:
+        return
+    src_of = {i: s for s, i in sid.items()}
+    left = {c: {os.path.basename(e["src"]) for e in es or [] if e["src"] not in drop.get(c, ())}
+            for c, _s, es in results}
+    for c, gone in drop.items():
+        doc = why_log.read(out_dir, c)
+        if doc is None:
+            continue
+        out, counts = doc.setdefault("out", {}), doc.setdefault("counts", {})
+        by_name = {os.path.basename(s): s for s in gone}
+        moves = []
+        for k, kp in list((out.get("copy") or {}).items()):
+            ks = src_of.get(int(kp)) if isinstance(kp, int) or str(kp).isdigit() else None
+            if ks in gone and (end := ends.get((c, ks))):
+                moves.append(("copy", k, end, None))
+        for k, det in list((out.get("one_note_per_c") or {}).items()):
+            kn = det[0] if isinstance(det, list) and det else None
+            if kn and kn not in left.get(c, ()) and kn in by_name and (end := ends.get((c, by_name[kn]))):
+                moves.append(("one_note_per_c", k, end, det[1] if len(det) > 1 else None))
+        for reason, k, (how, kc, ks, cn), own_c in moves:
+            if how == "note" or reason == "one_note_per_c":
+                to, val = "cross_note", [kc, os.path.basename(ks), own_c if own_c is not None else cn]
+            elif ks in sid:
+                to, val = "cross_copy", sid[ks]
+            else:
+                continue
+            del out[reason][k]
+            out.setdefault(to, {})[k] = val
+            counts[reason] = max(0, int(counts.get(reason, 0)) - 1)
+            counts[to] = int(counts.get(to, 0)) + 1
+        if moves:
+            why_log.write(out_dir, c, doc)
+
+
 def _why_copies(out_dir, copies, vecs):
     """Add each copy _cross_copies dropped to its category's why log: reason "cross_copy", the
     kept copy's sample id."""
+    sid = _sample_ids({x for gone in copies.values() for s, k in gone.items() for x in (s, k[1])
+                       if x not in vecs})
+    ids_of = {**sid, **{s: v[0] for s, v in vecs.items()}}
     for c, gone in copies.items():
         doc = why_log.read(out_dir, c)
         if doc is None:
             continue
-        ids = {str(vecs[s][0]): vecs[k[1]][0] for s, k in gone.items() if s in vecs and k[1] in vecs}
+        ids = {str(ids_of[s]): ids_of[k[1]] for s, k in gone.items() if s in ids_of and k[1] in ids_of}
         if not ids:
             continue
         _why_drop(out_dir, c, doc, "cross_copy", ids)

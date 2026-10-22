@@ -158,3 +158,81 @@ def test_verify_fails_a_note_left_for_one_another_category_doesnt_hold(tmp_path)
     res = list(check_one_note_kept(ctx))
     got = next(r for r in res if r.check.startswith("a note left out for another note"))
     assert got.level == FAIL and "PADS's Qzv Strings D#2.wav" in got.detail
+
+
+# --- a keeper the dedupe drops hands its files on -------------------------------------------------
+
+def _dedupe(tmp_path, monkeypatch, res, docs, ids, copies=None):
+    """Run the cross-category dedupe on res with these why logs and {source: sample id}; copies:
+    what _cross_copies returns, else nothing is a copy."""
+    for cat, _s, es in res:
+        for e in es:
+            d = tmp_path / cat / e["out"].split("/")[0]
+            d.mkdir(parents=True, exist_ok=True)
+            (d / e["out"].split("/")[1]).write_bytes(b"x")
+        (tmp_path / cat / "_manifest.json").write_text(json.dumps([{"family": "x", "copied": len(es), "n": 1}]))
+    for cat, doc in docs.items():
+        why_log.write(tmp_path, cat, doc)
+    monkeypatch.setattr(C, "_sample_ids", lambda srcs: {s: i for s, i in ids.items() if s in srcs})
+    monkeypatch.setattr(C, "_entry_roots", lambda paths: ({}, {}))
+    monkeypatch.setattr(C, "_previous_families", lambda c: {})
+    monkeypatch.setattr(C, "_cross_copies", lambda results, skip=(), pins=None: (copies or {}, {}))
+    C._dedupe_across(tmp_path, res)
+    return {cat: why_log.read(tmp_path, cat) for cat in docs}
+
+
+def _verify(tmp_path, res, docs, ids):
+    from fourier.packs.verify import check_copies
+    ctx = _master(tmp_path / "m", [(c, e) for c, _s, es in res for e in es])
+    for cat in docs:                      # (a category the dedupe emptied stays in the master)
+        ctx.cats.setdefault(cat, {"entries": []})
+    for cat, doc in docs.items():
+        why_log.write(ctx.root, cat, doc)
+    ctx.id_path = {i: s for s, i in ids.items()}
+    got = list(check_copies(ctx)) + list(check_one_note_kept(ctx))
+    return {r.check.split(" (")[0]: r.level for r in got}
+
+
+def test_a_keeper_that_leaves_as_a_note_across_categories_hands_its_files_on(tmp_path, monkeypatch):
+    # SUB kept F#1 over a copy of it (11) and over another note of its set on C2 (12); then F#1
+    # leaves SUB because SYNTH plays the set on C2 too: both now point at SYNTH's note
+    sub, syn = _e("Qzv Strings F#1.wav"), _e("Qzv Strings D#2.wav")
+    ids = {sub["src"]: 7, syn["src"]: 8, f"{LIB}/Acme/Qzv Strings/Qzv Strings F#1 B.wav": 11}
+    res = [("SUB", {"files": 1}, [sub]), ("SYNTH", {"files": 1}, [syn])]
+    docs = {"SUB": {"category": "SUB", "files": 1, "counts": {"copy": 1, "one_note_per_c": 1},
+                    "out": {"copy": {"11": 7}, "one_note_per_c": {"12": ["Qzv Strings F#1.wav", "C2"]}}},
+            "SYNTH": {"category": "SYNTH", "files": 1, "out": {}, "counts": {}}}
+    got = _dedupe(tmp_path / "a", monkeypatch, res, docs, ids)
+    out = got["SUB"]["out"]
+    assert not out.get("copy") and not out.get("one_note_per_c")
+    assert out["cross_note"] == {"7": ["SYNTH", "Qzv Strings D#2.wav", "C2"],
+                                 "11": ["SYNTH", "Qzv Strings D#2.wav", "C2"],
+                                 "12": ["SYNTH", "Qzv Strings D#2.wav", "C2"]}
+    assert got["SUB"]["counts"] == {"copy": 0, "one_note_per_c": 0, "cross_note": 3}
+    assert set(_verify(tmp_path, res, got, ids).values()) == {PASS}
+
+
+def test_a_keeper_another_category_keeps_hands_its_copies_on_to_the_end_of_the_chain(tmp_path, monkeypatch):
+    # PADS and SYNTH both picked X; X stays in one of them, which then drops it as a copy of
+    # STABS' Y: SYNTH's copy of X (21), and X itself, point at Y
+    x, y = f"{LIB}/Acme/Qzv Pad 01.wav", f"{LIB}/Acme/Qzv Chord 01.wav"
+    ids = {x: 20, y: 30, f"{LIB}/Acme/Qzv Pad 01 B.wav": 21}
+
+    def picks():
+        return [("PADS", {"files": 1}, [{"family": "x", "out": "x/a.wav", "src": x}]),
+                ("STABS", {"files": 1}, [{"family": "x", "out": "x/b.wav", "src": y}]),
+                ("SYNTH", {"files": 1}, [{"family": "x", "out": "x/c.wav", "src": x}])]
+    res = picks()
+    win = C._dup_winner(x, ["PADS", "SYNTH"])
+    lose = ({"PADS", "SYNTH"} - {win}).pop()
+    docs = {c: {"category": c, "files": 1, "out": {}, "counts": {}} for c in ("PADS", "STABS", "SYNTH")}
+    docs[lose] = {"category": lose, "files": 1, "counts": {"copy": 1}, "out": {"copy": {"21": 20}}}
+    got = _dedupe(tmp_path / "a", monkeypatch, res, docs, ids, copies={win: {x: ("STABS", y)}})
+    assert got[lose]["out"]["cross_copy"] == {"20": 30, "21": 30}
+    assert not got[lose]["out"].get("copy") and not got[lose]["out"].get("dup_source")
+    assert got[win]["out"]["cross_copy"] == {"20": 30}
+    assert set(_verify(tmp_path, res, got, ids).values()) == {PASS}
+    # with no later step the copy points at X where the other category keeps it
+    docs[lose] = {"category": lose, "files": 1, "counts": {"copy": 1}, "out": {"copy": {"21": 20}}}
+    got = _dedupe(tmp_path / "b", monkeypatch, picks(), docs, ids)
+    assert got[lose]["out"]["cross_copy"] == {"21": 20} and got[lose]["out"]["dup_source"] == {"20": win}
