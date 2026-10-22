@@ -874,8 +874,11 @@ def _unrecognized_note(master_dir=None) -> list[str]:
     except Exception:
         return []
     placed = _clap_placed(master_dir)
-    rows = [r for r in rows if r.id not in placed and r.id not in twins]
-    return unrecognized_lines(rows) + (["`fourier why --unrecognized` lists them."] if rows else [])
+    if all(r.id in placed or r.id in twins for r in rows):
+        return []
+    # the same count and words as `fourier why --unrecognized` (unrecognized_lines)
+    return unrecognized_lines(rows, placed=placed, twins=twins) + [
+        "`fourier why --unrecognized` lists them."]
 
 
 def _master_twins(session, rows, master_dir) -> dict:
@@ -919,13 +922,19 @@ def unrecognized_lines(rows, limit=0, placed=None, twins=None) -> list[str]:
     rels = {r.id: r.rel_path or library_rel(r.path or "") for r in rows}
     if not rels:
         return []
-    tops = ", ".join(f"{f} ({n:,})" for f, n in top_folders(list(rels.values())))
     n_placed = sum(1 for i in rels if i in placed and i not in twins)
     n_twins = sum(1 for i in rels if i in twins)
-    out = [f"{len(rels):,} sample{'' if len(rels) == 1 else 's'} no rule recognized (top folders: {tops})"
-           + (f"; the sound model or the CLAP fallback placed {n_placed:,} of them by sound" if n_placed else "")
-           + (f"; {n_twins:,} {'is a byte-identical copy' if n_twins == 1 else 'are byte-identical copies'} "
-              f"of files the master holds" if n_twins else "") + "."]
+    rest = [x for i, x in rels.items() if i not in placed and i not in twins]
+    tops = ", ".join(f"{f} ({n:,})" for f, n in top_folders(rest))
+    what = f"{len(rels):,} sample{'' if len(rels) == 1 else 's'} no rule recognized"
+    if n_placed or n_twins:
+        what += ": " + ", ".join(
+            ([f"the sound model or the CLAP fallback placed {n_placed:,} by sound"] if n_placed else [])
+            + ([f"{n_twins:,} {'is a byte-identical copy' if n_twins == 1 else 'are byte-identical copies'} "
+                f"of files the master holds"] if n_twins else [])) \
+            + f", and {len(rest):,} {'is' if len(rest) == 1 else 'are'} in no category"
+    # (a build's quiet summary takes this line up to " (top folders": quiet.Quiet.summary)
+    out = [what + (f" (top folders: {tops})" if rest else "") + "."]
     for sid, x in sorted(rels.items(), key=lambda t: t[1])[:limit]:
         out.append(f"  {x}" + (f"  (a byte-identical copy of a file the master holds in {twins[sid]})"
                                if sid in twins else

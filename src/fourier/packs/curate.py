@@ -1219,8 +1219,10 @@ def compute_homes(session, emb_n, id2row, log=print):
     log(f"Homes: {n_chord_stabs:,} chord- or stab-named one-shots routed to STABS")
     log(f"Homes: {n_named_drums:,} drum- or scratch-named one-shots routed by their name")
     if fallback and n_unrec:
-        log(f"Homes: {n_unrec:,} samples no name rule recognized; the CLAP fallback placed "
-            f"{n_clap:,} of them by sound (`fourier why --unrecognized` lists them)")
+        # (more than `fourier why --unrecognized` counts: a sample whose name says a sound no
+        # category takes in its shape, a bass loop, is recognized there)
+        log(f"Homes: {n_unrec:,} samples no category took by their names; the CLAP fallback "
+            f"placed {n_clap:,} of them by sound (`fourier why --unrecognized` lists the rest)")
     if n_sound or n_sound_over:
         log(f"Homes: the sound model placed {n_sound:,} samples no name rule recognized, and "
             f"{n_sound_over:,} only a pack's name or a weak word described")
@@ -1476,8 +1478,10 @@ def unrecognized(session) -> list:
     """Without Sononym: the samples no name rule recognized, as compute_homes meets them: no
     category from their path's words (the path provider), Live's tags or the words standing
     in for them, and none of the rules that place a file by its name (a phrase, a wave, an
-    acoustic instrument, an organ or keys, an impulse response or preview). The CLAP fallback
-    may still place them by sound. With Sononym, none (it classifies every sample)."""
+    acoustic instrument, an organ or keys, an impulse response or preview), and no label from
+    their path's words either: a sample whose name says what it is (a bass loop) is recognized,
+    and when no category takes it, placed_nowhere names it. The CLAP fallback may still place
+    them by sound. With Sononym, none (it classifies every sample)."""
     if not _fallback(session):
         return []
     from .curate_config import ABLETON_TAGS_BY_CATEGORY
@@ -1500,8 +1504,9 @@ def unrecognized(session) -> list:
                 or _orch_path(r.rel_path) is not None or _is_organ_named(fn) or KEYBOARD_NAME_RE.search(fn)
                 or _keys_labeled(r)):
             continue
-        son = _fallback_loop_votes(_classifier_votes(part, _canonical_of(r)), r, ab)
-        if son or any(tag2cats.get(t) for t in ab):
+        canon = _canonical_of(r)
+        son = _fallback_loop_votes(_classifier_votes(part, canon), r, ab)
+        if son or any(tag2cats.get(t) for t in ab) or any(not c.startswith("class.") for c in canon):
             continue
         out.append(r)
     return out

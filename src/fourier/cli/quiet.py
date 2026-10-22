@@ -174,9 +174,10 @@ class Quiet:
                 out.append("  plus " + " and ".join(f"{s} ({n:,} files)" for s, n in sets.items())
                            + ", drawn from the categories")
         out += [ln for ln in log if re.search(r"categor(y|ies) left empty", ln)]
-        unrec = next((ln for ln in log if " no rule recognized (top folders" in ln), None)
+        unrec = next((ln for ln in log if re.match(r"[\d,]+ samples? no rule recognized\b", ln)
+                      and " (top folders: " in ln), None)
         if unrec:
-            out.append(unrec.split(" (top folders")[0] + ": `fourier why --unrecognized` lists them.")
+            out.append(unrec.split(" (top folders")[0] + ". `fourier why --unrecognized` lists them.")
         # rated files whose audio changed since they were rated: said once, so said here too
         at = next((i for i, ln in enumerate(log) if ln.startswith("ratings: ") and RATED_CHANGED in ln), None)
         if at is not None:
