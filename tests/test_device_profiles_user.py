@@ -111,6 +111,39 @@ def test_new_fields_are_checked(section, key, value, match):
         DeviceProfile.from_dict(raw)
 
 
+@pytest.mark.parametrize("paths, match", [
+    ({"card_dir": "/Samples", "max_path_length": 4},
+     r'paths.max_path_length 4: a whole number of characters from 33 to 4,096, or null for no '
+     r'limit \(/Samples and a "/" take 9 of them'),
+    ({"max_path_length": 99_999_999}, "paths.max_path_length 99999999: .* from 25 to 4,096"),
+    ({"max_name_length": 300}, "paths.max_name_length 300: a whole number of characters from 8 to 255"),
+    ({"files_per_folder": 0}, "paths.files_per_folder 0: a whole number of files, 1 or more"),
+])
+def test_a_limit_out_of_range_names_the_key_and_the_range(paths, match):
+    raw = {"id": "x", "status": "unverified",
+           "paths": {k: {"value": v, "status": "unverified"} for k, v in paths.items()}}
+    with pytest.raises(DeviceProfileError, match=match):
+        DeviceProfile.from_dict(raw)
+
+
+def test_a_mistake_in_a_profile_of_your_own_names_its_file_and_the_keys_it_takes(tmp_path, monkeypatch):
+    mine = tmp_path / "mine"
+    _write(mine, "box.yaml", id="zz_box")
+    p = mine / "box.yaml"
+    p.write_text(p.read_text().replace("load: copy", "lod: copy")
+                 + "  dithr: {value: true, status: unverified}\n")
+    with pytest.raises(DeviceProfileError) as e:
+        DeviceLoader(user_dirs=[mine]).load("zz_box")
+    assert str(e.value).startswith(f"{p}: unknown key 'lod' (did you mean load?); the keys here: ")
+    p.write_text(p.read_text().replace("lod: copy", "load: copy"))
+    with pytest.raises(DeviceProfileError, match=r"audio: unknown key 'dithr' \(did you mean "
+                                                 r"dither\?\); the keys here: bit_depth, "):
+        DeviceLoader(user_dirs=[mine]).load("zz_box")
+    monkeypatch.setenv("FOURIER_DEVICES", str(mine))
+    out = " ".join(CliRunner().invoke(main, ["devices", "list"]).output.split())
+    assert f"zz_box won't load: {p}: audio: unknown key 'dithr' (did you mean dither?)" in out, out
+
+
 def test_an_unusual_sample_rate_loads_with_a_warning(tmp_path, monkeypatch):
     """A rate inside 8000 to 192000 Hz that devices rarely use (a typo: 12345) loads, and
     `devices show`, doctor and render say it's unusual; the usual ones say nothing."""

@@ -56,7 +56,7 @@ def devices_list():
     for did in device_ids:
         p = profiles.get(did)
         if p is None:
-            rows.append([did, "", f"[red]Error: {errors[did]}[/red]"])
+            rows.append([did, "", "[red]won't load (below)[/red]"])
             continue
         rows.append([did, p.name, _format(p), p.load,
                      f"{p.storage_mb / 1000:g} GB" if p.storage_mb else "-",
@@ -104,6 +104,9 @@ def devices_list():
     table = table_of(cols, caps)
 
     console.print(table)
+    for did, err in errors.items():                 # whole: the file, the key and what it takes
+        console.print(f"{did} won't load: {err}", style="red", markup=False, highlight=False,
+                      soft_wrap=True)
     for path, why in loader.problems():
         console.print(f"skipped {path}: {why}", style="yellow", markup=False, highlight=False)
     if not wide:

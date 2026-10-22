@@ -109,7 +109,7 @@ def test_a_value_without_a_source_is_refused():
     raw["audio"]["sample_rate"]["cite"] = "nowhere"
     with pytest.raises(DeviceProfileError, match="no citation"):
         DeviceProfile.from_dict(raw)
-    with pytest.raises(DeviceProfileError, match="unknown keys"):
+    with pytest.raises(DeviceProfileError, match="unknown key .constraints."):
         DeviceProfile.from_dict({"id": "x", "constraints": {}})
 
 

@@ -150,12 +150,12 @@ def limit_problem(p, order) -> str | None:
             return (f"its path limit of {p.max_path_length} leaves {max(total, 0)} characters for "
                     f"folder and file names (after {prefix or 'the card root'} and the category "
                     f"folders, up to {longest_category(order) - 1} characters); the names need "
-                    f"{min_room()}. Set paths.max_path_length to at least {need} (or 0: no limit) "
+                    f"{min_room()}. Set paths.max_path_length to at least {need} (or null: no limit) "
                     f"in {where}, or take {p.device_id} out of devices = [...] in fourier.toml")
     if p.max_name_length and p.max_name_length - NAME_ROOM < STEM_MIN:
         return (f"its name limit of {p.max_name_length} leaves {p.max_name_length - NAME_ROOM} "
                 f"characters for a name (after \".wav\" and a \"_2\"); the names need {STEM_MIN}. "
-                f"Set paths.max_name_length to at least {STEM_MIN + NAME_ROOM} (or 0: no limit) in "
+                f"Set paths.max_name_length to at least {STEM_MIN + NAME_ROOM} (or null: no limit) in "
                 f"{where}, or take {p.device_id} out of devices = [...] in fourier.toml")
     return None
 
