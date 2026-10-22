@@ -25,6 +25,10 @@ change the CLI or the config).
 
 ### Fixed
 
+- A build stopped while it put the new master in place is finished by the next `fourier
+  build`, which no longer tells you to move Fourier's own files out of the master;
+  `manifest.json` is now replaced last. Render and publish wait for it. When finishing fails,
+  the message names the error to fix first.
 - `fourier render` and `fourier publish` refuse a folder that is, holds or sits in the master,
   its `.next` or `.prev`, the Fourier home or a release; inside a library only the configured
   renders or publish folder is allowed.

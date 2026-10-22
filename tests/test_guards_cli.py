@@ -197,6 +197,280 @@ def test_swap_in_never_deletes_a_user_file(env):
     assert Path(str(m) + ".prev").exists() and not nxt.exists()
 
 
+def _old_and_new(env):
+    """A master (k1) and a verified build in .next that drops k1 and adds k2."""
+    m = _master(env.master, files=(("KICKS", "fam", "k1.wav"), ("KICKS", "fam", "k0.wav")))
+    nxt = _master(Path(str(m) + ".next"), files=(("KICKS", "fam", "k0.wav"), ("KICKS", "fam", "k2.wav")))
+    man = json.loads((nxt / "manifest.json").read_text())
+    man["generated"] = "2000-01-03T00:00:00Z"
+    (nxt / "manifest.json").write_text(json.dumps(man))
+    return m, nxt, _files(m), _files(nxt)
+
+
+def _stop_at(monkeypatch, name):
+    """Stop the swap (as Ctrl-C does) when it's about to put `name` in place."""
+    real = os.replace
+
+    def replace(src, dst, *a, **k):
+        if str(dst).endswith(name):
+            raise KeyboardInterrupt
+        return real(src, dst, *a, **k)
+    monkeypatch.setattr(os, "replace", replace)
+
+
+def test_a_swap_that_stops_is_finished_by_the_next_build(env, monkeypatch):
+    from fourier.cli.build import _check_build_target, _swap_in
+    m, nxt, old, new = _old_and_new(env)
+    with monkeypatch.context() as mp:
+        _stop_at(mp, "k2.wav")
+        with pytest.raises(KeyboardInterrupt):
+            _swap_in(str(nxt), str(m))
+    assert _check_build_target(str(m)) == str(m)              # finished, never "didn't make"
+    assert _files(m) == new and not nxt.exists()
+    assert _files(Path(str(m) + ".prev")) == old
+
+
+def test_a_swap_an_earlier_version_left_half_way_is_finished(env):
+    """An earlier version replaced manifest.json first and left no record."""
+    from fourier.cli.build import _check_build_target
+    m, nxt, old, new = _old_and_new(env)
+    import shutil
+    shutil.copytree(m, Path(str(m) + ".prev"))
+    os.remove(m / "manifest.json")
+    os.link(nxt / "manifest.json", m / "manifest.json")      # the new manifest, the old files
+    assert _check_build_target(str(m)) == str(m)
+    assert _files(m) == new and not nxt.exists()
+
+
+def test_a_swap_that_cant_be_finished_names_the_way_back(env, monkeypatch):
+    from fourier.cli.build import _swap_in
+    m, nxt, old, new = _old_and_new(env)
+    with monkeypatch.context() as mp:
+        _stop_at(mp, "k2.wav")
+        with pytest.raises(KeyboardInterrupt):
+            _swap_in(str(nxt), str(m))
+    (nxt / "KICKS" / "fam" / "k2.wav").unlink()              # the new build lost a file
+    before = _files(m)
+    res = _run(env, "build", "KICKS", "--out", str(m))
+    out = _flat(res.output)
+    assert res.exit_code == 1 and "can't be finished" in out and ".prev" in out, out
+    assert "didn't make" not in out and _files(m) == before
+
+
+@pytest.mark.parametrize("prev_left", ["empty", "part", "whole"])
+def test_a_swap_that_stopped_while_copying_to_prev_never_points_at_prev(env, monkeypatch, prev_left):
+    """Stopped while the master was being copied to .prev, the master is unchanged and .prev
+    may be unfinished. When .next has since lost a file, the advice never says to restore
+    .prev: the master is unchanged, the swap is dropped (an unfinished .prev with it) and the
+    build goes ahead."""
+    import shutil
+    from fourier.cli.build import SWAP_MARK, _swap_in
+    m, nxt, old, new = _old_and_new(env)
+    prev = Path(str(m) + ".prev")
+    real = shutil.copytree
+
+    def stops(src, dst, *a, **k):
+        if Path(src) != m:                                  # copytree's own calls for subfolders
+            return real(src, dst, *a, **k)
+        if prev_left == "whole":
+            real(src, dst, *a, **k)                         # the copy finished, the mark not yet moved
+        else:
+            os.makedirs(dst)
+            if prev_left == "part":
+                (Path(dst) / "KICKS").mkdir()
+                shutil.copy2(Path(src) / "KICKS" / "fam" / "k1.wav", Path(dst) / "KICKS" / "k1.wav")
+        raise KeyboardInterrupt
+    with monkeypatch.context() as mp:
+        mp.setattr(shutil, "copytree", stops)
+        with pytest.raises(KeyboardInterrupt):
+            _swap_in(str(nxt), str(m))
+    assert _files(m) == old and json.loads((nxt / SWAP_MARK).read_text())["stage"] == "snapshot"
+    (nxt / "KICKS" / "fam" / "k2.wav").unlink()              # the new build lost a file
+    res = _run(env, "build", "KICKS", "--out", str(m), "--no-scan")
+    out = _flat(res.output)
+    assert f"{m} is unchanged" in out and f"rename {prev}" not in out and "go back" not in out, out
+    assert _files(m) == old                                   # the swap never touched it
+    assert not (nxt / SWAP_MARK).exists()                     # dropped: nothing pending
+    assert prev.exists() == (prev_left == "whole"), out
+    if prev_left == "whole":
+        assert _files(prev) == old
+
+
+@pytest.mark.parametrize("left_out", [("loops.csv", "phrases.csv"), ("CHANGELOG.md",)])
+@pytest.mark.parametrize("stage", ["snapshot", "sync"])
+def test_a_swap_whose_build_doesnt_write_a_file_the_master_has_is_finished(env, monkeypatch, stage, left_out):
+    """A build may leave out files the master has from an earlier build (sets = "off" writes
+    no loops.csv or phrases.csv; a home with no archived build writes no CHANGELOG.md). A
+    swap of it that stopped is finished: only a file the build held when its swap began
+    counts as lost."""
+    import shutil
+    from fourier.cli.build import _swap_in, pending_swap
+    m, nxt, old, new = _old_and_new(env)
+    for f in left_out:
+        (m / f).write_text("old " + f)
+    real = shutil.copytree
+
+    def stops(src, dst, *a, **k):
+        if Path(src) != m:
+            return real(src, dst, *a, **k)
+        os.makedirs(dst)
+        raise KeyboardInterrupt
+    with monkeypatch.context() as mp:
+        if stage == "sync":
+            _stop_at(mp, "k2.wav")                           # Ctrl-C while the master is updated
+        else:
+            mp.setattr(shutil, "copytree", stops)            # ... while it's copied to .prev
+        with pytest.raises(KeyboardInterrupt):
+            _swap_in(str(nxt), str(m))
+    assert pending_swap(str(m)) == stage
+    res = _run(env, "build", "KICKS", "--out", str(m), "--no-scan")
+    out = _flat(res.output)
+    assert "finishing that first" in out and "can't be finished" not in out, out
+    assert _files(m) == new and not nxt.exists()
+
+
+def test_a_file_the_build_held_when_its_swap_began_counts_when_lost(env, monkeypatch):
+    from fourier.cli.build import _swap_in
+    m, nxt, old, new = _old_and_new(env)
+    (nxt / "loops.csv").write_text("new loops")
+    with monkeypatch.context() as mp:
+        _stop_at(mp, "k2.wav")
+        with pytest.raises(KeyboardInterrupt):
+            _swap_in(str(nxt), str(m))
+    (nxt / "loops.csv").unlink()
+    res = _run(env, "build", "KICKS", "--out", str(m), "--no-scan")
+    out = _flat(res.output)
+    assert res.exit_code == 1 and "can't be finished" in out and "loops.csv" in out, out
+
+
+@pytest.mark.parametrize("mark", ["snapshot", "sync"])
+def test_a_stop_while_a_swap_mark_is_written_says_what_happened(env, monkeypatch, mark):
+    """Stopped before a stage's mark is on disk, the message names the stage before it: no
+    mark yet means nothing for the next build to finish, and the master is untouched until the
+    sync mark is written."""
+    from fourier.cli.build import SWAP_MARK, _swap_in
+    from fourier.cli import build as B
+    m, nxt, old, new = _old_and_new(env)
+    real = os.replace
+
+    def replace(src, dst, *a, **k):
+        if str(dst).endswith(SWAP_MARK) and (mark == "snapshot" or (nxt / SWAP_MARK).exists()):
+            raise KeyboardInterrupt
+        return real(src, dst, *a, **k)
+    said = []
+    monkeypatch.setattr(B.console, "print", lambda *a, **k: said.append(" ".join(map(str, a))))
+    with monkeypatch.context() as mp:
+        mp.setattr(os, "replace", replace)
+        with pytest.raises(KeyboardInterrupt):
+            _swap_in(str(nxt), str(m))
+    out = _flat(" ".join(said))
+    assert _files(m) == old and "only partly in place" not in out, out
+    assert ("finishes putting it in place" in out) == (mark == "sync"), out
+
+
+def test_a_folder_of_the_users_at_prev_stops_the_swap_before_it_starts(env):
+    """A .prev that isn't a Fourier build stops the swap before its mark is written, so the
+    next build has no swap to finish and never removes that folder."""
+    from fourier.cli.build import SWAP_MARK, _check_build_target, _swap_in
+    m, nxt, old, new = _old_and_new(env)
+    prev = Path(str(m) + ".prev")
+    (prev / "mine").mkdir(parents=True)
+    (prev / "mine" / "notes.txt").write_text("mine")
+    with pytest.raises(SystemExit):
+        _swap_in(str(nxt), str(m))
+    assert not (nxt / SWAP_MARK).exists()
+    _check_build_target(str(m))
+    assert (prev / "mine" / "notes.txt").read_text() == "mine" and _files(m) == old
+
+
+def test_an_earlier_versions_half_swap_never_removes_files_written_beside_the_manifest(env):
+    """An earlier version's removal of .next can stop after removing a category's
+    _manifest.json or CHANGELOG.md and none of the listed audio. Finishing the swap from that
+    .next would remove them from the master, so it isn't taken for a half swap."""
+    import shutil
+    from fourier.cli.build import _check_build_target, pending_swap
+    m, nxt, old, new = _old_and_new(env)
+    for f in ("KICKS/_manifest.json", "CHANGELOG.md", "loops.csv", "phrases.csv"):
+        (nxt / f).write_text(f)
+    shutil.copytree(m, Path(str(m) + ".prev"))
+    shutil.rmtree(m)
+    shutil.copytree(nxt, m)                                   # the old version's sync finished
+    for gone in ("KICKS/_manifest.json", "CHANGELOG.md", "loops.csv", "phrases.csv"):
+        (nxt / gone).unlink()                                 # then its rmtree(.next) stopped
+        assert pending_swap(str(m)) is None, gone
+        before = _files(m)
+        _check_build_target(str(m))
+        assert _files(m) == before
+        (nxt / gone).write_text(gone)
+    assert pending_swap(str(m)) == "sync"                     # whole again: finished as before
+
+
+def test_a_finish_that_keeps_failing_names_the_error_to_fix(env, monkeypatch):
+    """A permission error while the master is put in place says to fix it: building again
+    without that fails the same way, so the advice never stops at "the next build finishes it"."""
+    from fourier.cli.build import _swap_in
+    m, nxt, old, new = _old_and_new(env)
+    real = os.replace
+
+    def denied(src, dst, *a, **k):
+        if str(dst).endswith("k2.wav"):
+            raise PermissionError(13, "Permission denied", str(dst))
+        return real(src, dst, *a, **k)
+    monkeypatch.setattr(os, "replace", denied)
+    for first in (True, False):
+        if first:
+            with pytest.raises(SystemExit):
+                _swap_in(str(nxt), str(m))
+            continue
+        res = _run(env, "build", "KICKS", "--out", str(m), "--no-scan")
+        out = _flat(res.output)
+        assert res.exit_code == 1 and "Permission denied" in out and "Fix that first" in out, out
+        assert "The next `fourier build` finishes" not in out, out
+    monkeypatch.setattr(os, "replace", real)                   # fixed: the next build finishes it
+    from fourier.cli.build import _check_build_target
+    _check_build_target(str(m))
+    assert _files(m) == new and not nxt.exists()
+
+
+def test_a_whole_build_left_in_next_after_its_swap_is_never_synced_again(env):
+    """.next whose manifest the master already has, but missing files (its removal stopped):
+    nothing is removed from the master."""
+    from fourier.cli.build import _check_build_target
+    m, nxt, old, new = _old_and_new(env)
+    import shutil
+    shutil.rmtree(m)
+    shutil.copytree(nxt, m)
+    (nxt / "KICKS" / "fam" / "k2.wav").unlink()
+    _check_build_target(str(m))
+    assert _files(m) == new
+
+
+def test_a_swap_that_stopped_while_removing_next_only_removes_it(env, monkeypatch):
+    from fourier.cli.build import _check_build_target, _swap_in
+    import shutil
+    m, nxt, old, new = _old_and_new(env)
+    with monkeypatch.context() as mp:
+        mp.setattr(shutil, "rmtree", lambda *a, **k: (_ for _ in ()).throw(KeyboardInterrupt()))
+        with pytest.raises(KeyboardInterrupt):
+            _swap_in(str(nxt), str(m))
+    assert nxt.exists() and _files(m) == new
+    _check_build_target(str(m))
+    assert not nxt.exists() and _files(m) == new
+
+
+def test_render_waits_for_a_swap_that_stopped(env, monkeypatch):
+    from fourier.cli.build import _swap_in
+    m, nxt, old, new = _old_and_new(env)
+    with monkeypatch.context() as mp:
+        _stop_at(mp, "k2.wav")
+        with pytest.raises(KeyboardInterrupt):
+            _swap_in(str(nxt), str(m))
+    for args in (["render", "m8_tracker", "--out", str(env.tmp / "R")], ["publish", "--no-verify"]):
+        res = _run(env, *args)
+        assert res.exit_code == 1 and "finishes that first" in _flat(res.output), res.output
+    assert not (env.tmp / "R").exists() and not (env.pub / "releases").exists()
+
+
 def test_next_and_prev_must_be_fourier_builds(env, tmp_path):
     from fourier.cli.build import _check_own
     d = tmp_path / "M.prev"
