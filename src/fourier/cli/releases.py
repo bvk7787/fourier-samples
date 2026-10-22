@@ -79,7 +79,8 @@ def render(device_id, master_dir, release, no_lock, out_dir, max_mb, check, card
     except UnsafePath as e:
         console.print(str(e), style="red", markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1) from None
-    from ._app import stop_note
+    from ._app import hold_home, stop_note
+    hold_home()
     stop_note(f"The previous render in {out_dir} is as it was: `fourier render {device_id}"
               + (f" --release {release}" if release else "") + "` renders again.")
     try:
@@ -200,6 +201,9 @@ def sync(device_id, volume, render_dir, delete, dry_run, force, overwrite_change
         console.print(msg, style="red", markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1)
 
+    if not dry_run:
+        from ._app import hold_home
+        hold_home()
     try:
         dev = DeviceLoader().load(device_id)
     except Exception as e:
@@ -569,6 +573,9 @@ def publish(src, root, notes, as_version, force, as_release, dry_run, base, no_v
     except UnsafePath as err:
         console.print(str(err), style="red", markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1) from None
+    if not dry_run:
+        from ._app import hold_home
+        hold_home()
     _stop_on_pending_swap(src)
     reldir = _os.path.join(root, "releases")
     if not dry_run:                 # a dry run writes nothing, folders included

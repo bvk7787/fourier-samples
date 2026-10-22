@@ -118,6 +118,25 @@ def read_only_config(ctx=None) -> None:
     root.obj["resolved_written"] = None
 
 
+def hold_home(ctx=None) -> None:
+    """For a command that writes the home or what it feeds (build, scan, analyze, render,
+    sync, publish): hold the home's lock until the command ends (fourier/homelock.py), or stop
+    at once, naming the run that holds it. Read-only commands and dry runs never call it."""
+    from .. import homelock
+    ctx = ctx or click.get_current_context(silent=True)
+    command = "fourier"
+    if ctx is not None:
+        command = " ".join(["fourier", *ctx.command_path.split()[1:]])
+    try:
+        homelock.hold(command)
+    except homelock.HomeBusy as e:
+        console.print(f"{command} stopped: {e}", style="red", markup=False, highlight=False,
+                      soft_wrap=True)
+        raise SystemExit(1) from None
+    if ctx is not None:
+        ctx.find_root().call_on_close(homelock.release)
+
+
 # ---------------------------------------------------------------------------
 # Root group
 # ---------------------------------------------------------------------------
