@@ -753,7 +753,9 @@ never across tempo folders or below a band's minimum. Then:
 
 - **Round robins**: twins of one note and velocity that differ only by their round robin
   ("_C2_v3_rr1", "_C2_v3_rr2", or a bare number right after a velocity in a name that states a
-  note, "_C2_v3_1" / "_C2_v3_2"; `identity.rr_key`) are one sound on a sampler that plays one:
+  note, "_C2_v3_1" / "_C2_v3_2"; or takes an SFZ file in their folder or the one above plays
+  as one key's round robins, by lorand/hirand or seq_position; `identity.rr_key`) are one sound
+  on a sampler that plays one:
   across the category's folders one stays (a Keep's, else the previous build's, else the
   lowest round robin; `_one_per_round_robin`).
 - **Sibling cap** (SUB, SYNTH, PADS, STABS, VOX, BLIPS, PIANO, ACOUSTIC, FX, and the drum
