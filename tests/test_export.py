@@ -146,3 +146,120 @@ def test_canonical_stem_pairs_brackets():
     out = canonical_stem(long, 46)
     assert len(out) <= 46 and out.count("[") == out.count("]")
     assert canonical_stem(out, 46) == out                     # idempotent
+
+
+# ---------------------------------------------------------------------------
+# more than two channels: folded to stereo (or mono) for the master and every device
+# ---------------------------------------------------------------------------
+def test_fold_to_stereo_weights_by_channel_count():
+    from fourier.devices.exporter import _fold_weights, fold_to_stereo
+    g = 0.7071067811865476
+    assert _fold_weights(4) == [(1.0, 0.0), (0.0, 1.0), (g, 0.0), (0.0, g)]           # quad
+    assert _fold_weights(6) == [(1.0, 0.0), (0.0, 1.0), (g, g), (g, g), (g, 0.0), (0.0, g)]  # 5.1
+    assert _fold_weights(8)[6:] == [(g, 0.0), (0.0, g)]                             # 7.1's sides
+    assert [w for w, _ in _fold_weights(10)][8:] == [g, 0.0]                        # past 8: pairs
+    for n in (4, 6, 8):
+        x = np.zeros((n, 100))
+        x[0], x[1] = 0.5, -0.25                     # left and right
+        x[2:] = 0.1
+        y = fold_to_stereo(x)
+        assert y.shape == (2, 100)
+        assert float(np.abs(y).max()) <= 0.5 + 1e-12                    # never past the source's peak
+        assert y[0, 0] > 0.5 * 0.9 and y[1, 0] > -0.25                  # the front pair leads
+        t = fold_to_stereo(x.T.copy(), channels_first=False)
+        assert t.shape == (100, 2) and np.allclose(t, y.T)
+    st = np.ones((2, 10))
+    assert fold_to_stereo(st) is st and fold_to_stereo(np.ones(10)).ndim == 1
+
+
+def test_fold_to_stereo_caps_integer_input_before_it_casts():
+    from fourier.devices.exporter import fold_to_stereo
+    x = np.full((4, 3), 30000, dtype=np.int16)          # the fold's sum is past int16's range
+    y = fold_to_stereo(x)
+    assert y.dtype == np.int16 and y.shape == (2, 3)
+    assert (y > 0).all() and int(np.abs(y).max()) <= 30000          # capped, never wrapped
+    assert int(y.max()) == 30000                                     # scaled to the source's peak
+
+
+def _wide_master(tmp_path, sf, counts=(4, 6, 8)):
+    master = tmp_path / "master"
+    for n in counts:
+        p = master / "KICKS" / "wide" / f"Kick {n}ch.wav"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        t = np.arange(22050) / 44100
+        y = np.stack([0.3 * np.sin(2 * np.pi * (60 + 20 * k) * t) * np.exp(-6 * t) for k in range(n)], 1)
+        sf.write(str(p), y, 44100, subtype="PCM_24")
+    return master
+
+
+def test_a_render_folds_more_than_two_channels(tmp_path, monkeypatch):
+    import soundfile as sf
+    from fourier.devices.loader import DeviceLoader
+    from fourier.packs import render as R
+    from fourier.packs.verify import verify_render
+    monkeypatch.setenv("FOURIER_NO_RENDER_CACHE", "1")
+    master = _wide_master(tmp_path, sf)
+    for did, want in (("m8_tracker", 2), ("digitakt_2", 2)):
+        dev = DeviceLoader().load(did)
+        out = tmp_path / did
+        R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+        got = sorted(sf.info(str(p)).channels for p in out.rglob("*.wav"))
+        assert got == [want] * 3, (did, got)
+        ok, res = verify_render(master, out, dev, log=lambda m: None)
+        assert all(r.level != "FAIL" for r in res if "device format" in r.check), res
+    dev = DeviceLoader().load("m8_tracker")
+    dev.channels = "mono"
+    R.render_master_to_device(str(master), dev, str(tmp_path / "mono"), log=lambda m: None)
+    assert {sf.info(str(p)).channels for p in (tmp_path / "mono").rglob("*.wav")} == {1}
+
+
+def test_verify_render_fails_a_file_with_more_than_two_channels(tmp_path, monkeypatch):
+    import soundfile as sf
+    from fourier.devices.loader import DeviceLoader
+    from fourier.packs import render as R
+    from fourier.packs.verify import verify_render
+    monkeypatch.setenv("FOURIER_NO_RENDER_CACHE", "1")
+    master = _wide_master(tmp_path, sf, counts=(4,))
+    dev = DeviceLoader().load("m8_tracker")
+    out = tmp_path / "out"
+    R.render_master_to_device(str(master), dev, str(out), log=lambda m: None)
+    (p,) = list(out.rglob("*.wav"))
+    sf.write(str(p), np.zeros((100, 4)), dev.sample_rate, subtype="PCM_16")      # as an older render
+    _ok, res = verify_render(master, out, dev, log=lambda m: None)
+    assert any(r.level == "FAIL" and "device format" in r.check for r in res)
+
+
+def test_the_master_export_folds_more_than_two_channels(tmp_path, monkeypatch):
+    import pytest
+    sf = pytest.importorskip("soundfile")
+    pytest.importorskip("sklearn")
+    from fourier.packs import curate
+    monkeypatch.setenv("FOURIER_AUDIO_CACHE", str(tmp_path / "acache"))
+    n, dim = 6, 16
+    rng = np.random.default_rng(3)
+    emb = rng.standard_normal((n, dim)).astype("float32")
+    rec = []
+    for i, ch in enumerate((4, 6, 8, 4, 6, 8)):
+        p = tmp_path / "SampleLibrary" / f"Acme{i}" / "Pack" / f"Kick {i:02d}.wav"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        t = np.arange(8820) / 44100
+        y = np.stack([0.5 * np.sin(2 * np.pi * (50 + 10 * k) * t) * np.exp(-20 * t) for k in range(ch)], 1)
+        sf.write(str(p), y, 44100, subtype="PCM_24")
+        rec.append(dict(id=i, row=i, path=str(p), pack=f"Acme{i}", clip=0, br=0.5, atk=10.0,
+                        dec=300.0, sub=0.1, noi=0.3, har=0.7, cr=4.0, tune=None, bpm=None,
+                        bpm_src=None, bpm_fold=None, sup=1, qual=1.0, fav=0, ab=[], vendor=f"Acme{i}"))
+    monkeypatch.setattr(curate, "index_stale", lambda s: (False, n, n))
+    monkeypatch.setattr(curate, "load_index", lambda: (np.arange(n), emb))
+    monkeypatch.setattr(curate, "_fetch_rows", lambda *a, **k: [])
+    monkeypatch.setattr(curate, "_select_records", lambda *a, **k: (list(rec), set(), dict(twins=0)))
+    monkeypatch.setattr(curate, "embed_text",
+                        lambda t: np.random.default_rng(abs(hash(t)) % 2**32).standard_normal(dim)
+                        .astype("float32"))
+    for loudness in (True, False):                 # processed, and copied as they are
+        out = tmp_path / f"master-{loudness}"
+        _summary, entries = curate.build_taxonomy(None, "KICKS", str(out), homes={}, support={},
+                                                  votes={}, describe=False, loudness=loudness,
+                                                  return_entries=True, log=lambda m: None)
+        files = list(out.rglob("*.wav"))
+        assert files and all(sf.info(str(p)).channels <= 2 for p in files), \
+            (loudness, [sf.info(str(p)).channels for p in files])

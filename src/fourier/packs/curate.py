@@ -52,7 +52,7 @@ from .curate_config import taxonomy_view as _tax   # config/taxonomy.yaml + an o
 from ..places import in_library, library_rel
 from ..metadata.rows import CANDIDATE_FIELDS, HOME_FIELDS, fetch, like_any, sample_select
 from ..metadata import resolve as _resolve      # which source each value the build uses came from
-from ..devices.exporter import canonical_stem
+from ..devices.exporter import FOLD_VERSION, canonical_stem, fold_to_stereo
 from ..settings import for_module as _for_module
 from . import manifests
 from .curate_config import NAMES, STEM_MAX, FAMILY_NAME_MAX  # noqa: F401
@@ -6633,8 +6633,21 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         taken = {p.name.lower() for p in dest.iterdir()} if dest.exists() else set()
         out = dest / _choose_outname(stem, taken, prev_name, namer=_namer(bpm), alt=_was)
 
+        try:
+            _wide = sf.info(src).channels > 2      # folded to stereo (exporter.fold_to_stereo)
+        except Exception:
+            _wide = False
+
         def _verbatim():
-            if ext.lower() == ".wav" or not transcode:
+            if _wide:
+                data, sr = sf.read(src, always_2d=True)
+                try:
+                    sub = sf.info(src).subtype
+                except Exception:
+                    sub = None
+                sf.write(str(out), fold_to_stereo(data, channels_first=False), sr,
+                         subtype=sub if sub in ("PCM_16", "PCM_24", "PCM_32") else "PCM_24")
+            elif ext.lower() == ".wav" or not transcode:
                 shutil.copy2(src, out)
             else:
                 data, sr = sf.read(src)
@@ -6648,7 +6661,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                             norm=norm_mode, lead=cfg.get("trim_lead_db"), mono=category in MONO_CATS,
                             retune=retune, pinned=pinned, quiet=QUIET_RMS_DB,
                             ceil=ONESHOT_RMS_CEIL_DB.get(category),
-                            dur_cap=DUR_CAP.get(category) if retune else None)
+                            dur_cap=DUR_CAP.get(category) if retune else None,
+                            **({"fold": FOLD_VERSION} if _wide else {}))
         got = audiocache.lookup(ck, out)
         if got == "hit":
             _cache_hits[0] += 1
@@ -6657,6 +6671,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
             return None
         try:
             data, sr = sf.read(src, always_2d=False)
+            data = fold_to_stereo(data, channels_first=False)    # more than two channels
             try:
                 sub = sf.SoundFile(src).subtype
             except Exception:

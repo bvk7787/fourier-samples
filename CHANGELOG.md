@@ -25,6 +25,9 @@ change the CLI or the config).
 
 ### Fixed
 
+- Sources with more than two channels are folded to stereo in the master and every render
+  (WAV/FLAC channel order; center and LFE to both sides, nothing dropped), so the M8 and the
+  Digitakt 2 can play them; render verify fails a file with more channels than the device takes.
 - first-build estimates on a computer where PyTorch has only the CPU (an Intel Mac, Linux
   without an NVIDIA GPU) use a CPU rate for CLAP, several times the old one.
 - estimates count every analysis step (events, quality, loop-trim and key were missing) with the

@@ -1535,7 +1535,8 @@ def verify_render(master_dir, render_out, device, log=print):
             continue
         info = sf.info(str(dst))
         fmts[(info.samplerate, info.subtype, info.channels)] += 1
-        if info.samplerate != c.sample_rate or info.subtype != subtype or (mono and info.channels != 1):
+        if info.samplerate != c.sample_rate or info.subtype != subtype \
+                or info.channels > (1 if mono else 2):
             fmt_bad.append(f.master)
         if max_s and f.category not in CYCLE_CATEGORIES and info.frames > (max_s + 0.01) * info.samplerate:
             too_long.append((f.master, round(info.frames / info.samplerate, 2)))

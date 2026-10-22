@@ -164,8 +164,9 @@ def _convert_and_copy(
     only relabel the sample rate. For single-cycle waveforms: resampling a 2048-sample
     cycle to 48 kHz gives 2229.1 samples, which no loop can repeat without a click, while
     relabelling keeps a perfect cycle (its pitch is set on the device anyway).
-    Stereo is downmixed with _mono_downmix: a plain L+R sum of a phase-inverted file can
-    all but cancel, so those keep their louder channel instead.
+    More than two channels are folded to stereo first (fold_to_stereo). Stereo is downmixed
+    with _mono_downmix: a plain L+R sum of a phase-inverted file can all but cancel, so
+    those keep their louder channel instead.
     """
     try:
         import librosa
@@ -182,6 +183,7 @@ def _convert_and_copy(
         src_bits = 0
     from ..audioio import load as load_audio
     audio, sr = load_audio(source, sr=None, mono=False)
+    audio = fold_to_stereo(audio)            # a device takes mono or stereo (more channels fold)
     src_peak = float(np.max(np.abs(audio), initial=0.0))
     if convert_to_mono:
         audio = _mono_downmix(audio, keep_level=not preserve_length)
@@ -272,6 +274,55 @@ def _convert_and_copy(
 
     sf.write(str(dest), audio, target_sr, subtype=subtype)
     return stretched
+
+
+# More than two channels fold to stereo (devices take mono or stereo; the master holds what a
+# device can play). The channels are read by position in the order WAV and FLAC files use for
+# them: 3 = L R C; 4 = L R (back) L R; 5 = L R C L R; 6 = L R C LFE L R; 7 = L R C LFE
+# (back) C L R; 8 = L R C LFE L R L R; past 8, the channels after the first two alternate
+# left and right. Front left and right go to their side whole; a center or LFE channel goes
+# to both sides at -3 dB, and every other channel to its side at -3 dB. Nothing is left out.
+# The fold is then scaled down where its peak would pass the source's, never up.
+# AIFF and other formats are folded by the same positions. The AIFF-C spec orders 6 channels
+# differently (L, left center, C, R, right center, surround) and nothing in a file says which
+# order it was written in, so such a file keeps all its content with its image shifted.
+_FOLD_SIDES = {3: "LRC", 4: "LRLR", 5: "LRCLR", 6: "LRCCLR", 7: "LRCCCLR", 8: "LRCCLRLR"}
+_FOLD_SIDE_GAIN = 0.7071067811865476            # -3 dB
+FOLD_VERSION = 1                                 # bump when fold_to_stereo changes what it writes
+
+
+def _fold_weights(n: int):
+    """(left, right) weight of each of n > 2 channels."""
+    sides = _FOLD_SIDES.get(n) or ("LR" + "".join("LR"[i % 2] for i in range(n - 2)))
+    out = []
+    for i, side in enumerate(sides):
+        g = 1.0 if i < 2 else _FOLD_SIDE_GAIN
+        out.append((g if side in "LC" else 0.0, g if side in "RC" else 0.0))
+    return out
+
+
+def fold_to_stereo(audio, channels_first: bool = True):
+    """audio with more than two channels folded to two (the order and weights above), in
+    the same layout ((channels, samples) when channels_first, else (samples, channels));
+    anything with one or two channels is returned as it is."""
+    import numpy as np
+    if audio.ndim != 2:
+        return audio
+    x = audio if channels_first else audio.T
+    n = x.shape[0]
+    if n <= 2:
+        return audio
+    w = np.asarray(_fold_weights(n), dtype=np.float64)          # (n, 2)
+    xf = x.astype(np.float64)
+    y = w.T @ xf                                                # (2, samples), in float64
+    src_peak = float(np.max(np.abs(xf), initial=0.0))
+    peak = float(np.max(np.abs(y), initial=0.0))
+    if peak > src_peak > 0:
+        y = y * (src_peak / peak)
+    if np.issubdtype(audio.dtype, np.integer):                  # cast once, after the cap:
+        y = np.rint(y)                                          # integers never wrap
+    y = y.astype(audio.dtype)
+    return y if channels_first else y.T
 
 
 MONO_PHASE_LOSS_DB = -6.0
