@@ -32,8 +32,9 @@ fallback's shape ("OneShot" / "Loop") and "categories" (Sononym's own names) is 
 
 labels and descriptors are rebuilt by the importers (metadata/store.py, shadow.py).
 `ensure_current()` rebuilds a provider in use when its sample count doesn't match its
-source (a database from before they existed, a test that wrote a source directly); a
-worker process never rebuilds, it stops and says so.
+source (a database from before they existed, a test that wrote a source directly), and
+labels again the built-in providers' new and changed samples (shadow.plan); a worker
+process never rebuilds, it stops and says so.
 """
 from __future__ import annotations
 
@@ -480,18 +481,29 @@ _CURRENT: set = set()
 
 def ensure_current(session, log=lambda m: None) -> bool:
     """Rebuild a provider's labels and descriptors if they don't cover its source (sample
-    counts differ). Returns True when it rebuilt. Checked once per database per process."""
+    counts differ); a built-in provider's only for its new and changed samples (shadow.plan).
+    Returns True when it rebuilt. Checked once per database per process."""
     key = str(session.get_bind().url)
     if key in _CURRENT:
         return False
     import multiprocessing as mp
     act = active(session)
     rebuilt = False
-    todo = [(p, covered_count, rebuild) for p in SOURCES if p in act.names]
+    todo: list[tuple[str, Any, Any]] = [(p, covered_count, rebuild) for p in SOURCES if p in act.names]
     if act.fallback:
-        todo += [(p, shadow.covered_count, shadow.rebuild) for p in act.classifiers]
+        todo += [(p, shadow.covered_count, None) for p in act.classifiers]
     from ..db.session import is_read_only
+    worker = mp.parent_process() is not None
     for prov, count, build in todo:
+        if build is None and not worker and not is_read_only():
+            # a built-in provider: only its new and changed samples are labelled again
+            pl = shadow.plan(session, prov)
+            if pl:
+                log(pl.said())
+                shadow.update(session, prov, pl)
+                session.commit()
+                rebuilt = True
+            continue
         need, have = count(session, prov)
         if have == need:
             continue
@@ -499,7 +511,7 @@ def ensure_current(session, log=lambda m: None) -> bool:
             log(f"metadata: the {prov} labels cover {have:,} of {need:,} samples; the next build "
                 f"rebuilds them")
             continue
-        if mp.parent_process() is not None:
+        if worker:
             raise RuntimeError(
                 f"the {prov} labels/descriptors cover {have:,} samples but its source has "
                 f"{need:,}; run `fourier tools db-stats --metadata --rebuild`")

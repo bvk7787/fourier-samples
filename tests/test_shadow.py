@@ -223,7 +223,8 @@ def test_rebuild_reads_every_row_while_it_writes_in_chunks(db, monkeypatch, prov
 
 @pytest.mark.slow
 def test_audio_rebuild_past_the_real_chunk_on_duckdb(tmp_path):
-    """The audio provider writes 3 descriptors a sample: 7,000 samples cross the real chunk."""
+    """The audio provider writes 4 descriptors a sample (the marker, the stamp, duration and
+    harmonicity): 7,000 samples cross the real chunk."""
     S._engine = S._SessionLocal = None
     S.init_db(tmp_path / "big.duckdb")
     n = 7000
@@ -239,6 +240,73 @@ def test_audio_rebuild_past_the_real_chunk_on_duckdb(tmp_path):
                            "SELECT i, 1, 0.5 FROM range(1, :n + 1) t(i)"), {"n": n})
         with S.session_scope() as s:
             got = SH.rebuild(s, "audio")
-        assert got["descriptors"] == 3 * n
+        assert got["descriptors"] == 4 * n
     finally:
         S._engine = S._SessionLocal = None
+
+
+def _labelled(monkeypatch):
+    """The rel paths the path provider reads from here on (it reads each one it labels)."""
+    seen = []
+    real = SH.path_labels
+    monkeypatch.setattr(SH, "path_labels", lambda rel: (seen.append(rel), real(rel))[1])
+    return seen
+
+
+def test_a_new_sample_is_the_only_one_labelled_again(db, monkeypatch):
+    """Adding a file labels that file: the others keep their labels, and the line says how
+    many were new or changed."""
+    with S.session_scope() as s:
+        assert SH.ensure_current(s) == ["path", "audio"]
+        before = _rows(s, "path")
+        s.add(Sample(id=5, path="/l/SampleLibrary/A/One Shots/Zorbl Clap.wav", rel_path="A/One Shots/Zorbl Clap.wav",
+                     filename="Zorbl Clap.wav", duration_s=0.2))
+    seen = _labelled(monkeypatch)
+    said = []
+    with S.session_scope() as s:
+        assert SH.ensure_current(s, log=said.append) == ["path"]        # no audio reading yet
+        after = _rows(s, "path")
+    assert seen == ["A/One Shots/Zorbl Clap.wav"]
+    assert "metadata: updating the path labels (1 of 5 samples new or changed)" in said
+    assert [r for r in after[0] if r[0] != 5] == before[0]
+    assert [r for r in after[1] if r[0] != 5 and r[1] != "inputs"] == [r for r in before[1] if r[1] != "inputs"]
+    assert {r[2] for r in after[0] if r[0] == 5} == {"class.oneshot", "clap"}
+
+
+def test_labels_follow_a_changed_sample_and_drop_a_gone_one(db, monkeypatch):
+    """A sample whose label inputs changed (its events counted again after it was labelled)
+    is labelled again, a removed one loses its rows, and nothing else is read."""
+    with S.session_scope() as s:
+        SH.ensure_current(s)
+        s.execute(text("UPDATE sample_features SET n_events = 1 WHERE sample_id = 4"))
+        s.execute(text("DELETE FROM sample_features WHERE sample_id = 2"))     # no audio reading now
+    seen = _labelled(monkeypatch)
+    with S.session_scope() as s:
+        assert not SH.plan(s, "path")
+        pa = SH.plan(s, "audio")
+        assert [r[0] for r in pa.todo] == [4] and pa.gone == [2]
+        assert pa.said() == "metadata: updating the audio labels (1 of 3 samples new or changed; 1 sample gone)"
+        assert SH.ensure_current(s) == ["audio"]
+        assert SH.ensure_current(s) == []
+        audio = {sid: lab for sid, _k, lab, _r in _rows(s, "audio")[0]}
+        des = {sid for sid, _n, _v in _rows(s, "audio")[1]}
+    assert seen == []
+    assert 2 not in audio and 2 not in des
+    assert audio[4] == "class.oneshot"              # three events was no call; one is a one-shot
+
+
+def test_a_users_shape_folder_rules_rebuild_the_labels(monkeypatch):
+    """The one-shot and loop folder words a user sets ([advanced] PHRASE_ONESHOT_DIR_RE,
+    PHRASE_LOOP_DIR_RE) and the tempo grid's tolerances are part of the label rules, so
+    changing one relabels the library at the next build."""
+    import re
+    from fourier.packs import curate_config as cc
+    before = {p: SH.rules_version(p) for p in (SH.PATH, SH.AUDIO)}
+    monkeypatch.setattr(cc, "PHRASE_ONESHOT_DIR_RE", re.compile(cc.PHRASE_ONESHOT_DIR_RE.pattern + "|zorbls", re.I))
+    assert all(SH.rules_version(p) != before[p] for p in before)
+    monkeypatch.undo()
+    monkeypatch.setattr(cc, "PHRASE_LOOP_DIR_RE", re.compile(cc.PHRASE_LOOP_DIR_RE.pattern + "|zorbls", re.I))
+    assert SH.rules_version(SH.AUDIO) != before[SH.AUDIO]
+    monkeypatch.undo()
+    monkeypatch.setattr(SH, "GRID_MIN_BEATS", SH.GRID_MIN_BEATS + 4)
+    assert SH.rules_version(SH.AUDIO) != before[SH.AUDIO]
