@@ -55,6 +55,18 @@ def test_candidate_fields_all_resolve(db):
         R.sample_select("id", "nope")
 
 
+def test_a_candidate_row_carries_fouriers_own_root(db):
+    """The pYIN root (sample_features.own_root_midi) reaches curation's candidates: the note a
+    pitch window and a set's spread judge where Sononym isn't sure (curate._window_note)."""
+    from fourier.packs import curate as C
+    db.execute(text("UPDATE sample_features SET own_root_midi = 52.0 WHERE sample_id = 1"))
+    db.execute(text("UPDATE sononym_meta SET base_note = 70.0, base_note_confidence = 0.1"))
+    db.commit()
+    rows = R.fetch(db, R.sample_select(*R.CANDIDATE_FIELDS).order_by(Sample.id))
+    assert rows[0].own_root_midi == 52.0 and rows[2].own_root_midi is None
+    assert C._window_note(rows[0]) == 52.0 and C._window_note(rows[2]) is None
+
+
 def test_a_features_field_first_still_selects_from_samples(db):
     rows = R.fetch(db, R.sample_select("tempo_bpm", "path", "categories").order_by(text("path")))
     assert list(rows[0]._fields) == ["tempo_bpm", "path", "categories"]      # no helper id column

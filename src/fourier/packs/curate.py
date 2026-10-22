@@ -3145,9 +3145,10 @@ def _folder_number_roots(session, paths):
 
 def _number_items(pairs, roots=None):
     """number_sets' items: these (path, root) pairs over their folders' other files' roots
-    (_folder_number_roots)."""
+    (_folder_number_roots). A pair without a root never hides the root its folder's read
+    gave the same file."""
     got = dict(roots or {})
-    got.update(pairs)
+    got.update((path, r) for path, r in pairs if r is not None or path not in got)
     return list(got.items())
 
 
@@ -7435,13 +7436,22 @@ def _fill_roots(category, idxs, rec, roots=None):
     """A picked tonal one-shot with no root yet (no note in its name, nothing Sononym was
     sure of) is retuned by a clear pYIN pitch, within the category's cap, smallest shift
     first; never onto a C another note of its set already plays here (names that state
-    their notes, or bare numbers that track the picks' roots, as _one_per_retune_target: that
-    note keeps its pitch). Returns how many."""
+    their notes, or bare numbers that track the picks' roots, as _one_per_retune_target, a
+    file with no root of its own read at the pitch heard here, as verify reads it: that note
+    keeps its pitch). Returns how many."""
     if os.environ.get("FOURIER_NO_PITCH_CHECK") or category not in RETUNE_CATS:
         return 0
+    heard = {}
+    for i in idxs:
+        r = rec[i]
+        if r.get("retune") is not None or r.get("pitch_conflict") or r.get("name_pc") is not None \
+                or r.get("loop_row") or not r.get("path") or _name_multi_note(os.path.basename(r["path"])):
+            continue
+        heard[i] = _detect_pitch(r["path"])
+    # (a file with no root of its own is read at the pitch heard here, as verify reads it)
     implied: dict = {}
-    numbered = _id.number_sets(_number_items([(rec[i]["path"], _number_root(rec[i])) for i in idxs
-                                              if rec[i].get("path")], roots), notes=implied)
+    numbered = _id.number_sets(_number_items([(rec[i]["path"], heard.get(i) if (nr := _number_root(rec[i])) is None
+                                               else nr) for i in idxs if rec[i].get("path")], roots), notes=implied)
 
     def _set(path):
         return _id.set_key(path) if _states_note(path) else numbered.get(path)
@@ -7449,15 +7459,9 @@ def _fill_roots(category, idxs, rec, roots=None):
              if rec[i].get("retune") is not None and rec[i].get("path") and _set(rec[i]["path"]) is not None
              and (p := _played_note(rec[i])) is not None}
     cand = []
-    for i in idxs:
+    for i, midi in heard.items():
         r = rec[i]
-        if r.get("retune") is not None or r.get("pitch_conflict") or r.get("name_pc") is not None \
-                or r.get("loop_row") or not r.get("path"):
-            continue
         name = os.path.basename(r["path"])
-        if _name_multi_note(name):
-            continue
-        midi = _detect_pitch(r["path"])
         if midi is None:
             continue
         n = implied.get(r["path"])

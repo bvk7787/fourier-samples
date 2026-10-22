@@ -80,6 +80,37 @@ def test_a_detected_root_counts_when_the_name_states_the_note():
     assert C._one_per_retune_target([[0, 1]], rec) == ([[0, 1]], 0)
 
 
+def test_a_candidate_without_a_root_never_hides_its_folders_root():
+    """A numbered set is read on its folder's roots (_folder_number_roots); a candidate whose
+    own record has no root keeps the root the folder's read gave it."""
+    assert C._number_items([("a", None), ("b", 61.0), ("c", None)], {"a": 60.0, "b": 61.5}) == \
+        [("a", 60.0), ("b", 61.0), ("c", None)]
+
+
+def test_a_pyin_fill_never_puts_two_notes_of_a_numbered_set_on_one_c(monkeypatch):
+    """Bare-numbered notes whose candidate records carry no root are still one set by their
+    folder's pYIN roots (01, 05, 09 at 60, 64, 68): the second note heard near C4 keeps its
+    pitch, as verify reads the set."""
+    monkeypatch.delenv("FOURIER_NO_PITCH_CHECK", raising=False)
+    roots = {os.path.join(PACK, f"Qzv Lead {n:02d}.wav"): 59.01 + n for n in (1, 5, 9)}
+    rec = [dict(path=os.path.join(PACK, f"Qzv Lead {n:02d}.wav"), tune=None, own_root=None, retune=None,
+                root_src=None, name_pc=None) for n in (1, 5)]
+    monkeypatch.setattr(C, "_detect_pitch", lambda q: roots[q])
+    assert C._fill_roots("SYNTH", [0, 1], rec, roots=roots) == 1
+    assert round(rec[0]["retune"], 2) == -0.01 and rec[1]["retune"] is None
+
+
+def test_a_numbered_set_with_no_stored_roots_is_read_at_the_pitches_heard(monkeypatch):
+    """No root stored for any note (Fourier's own analysis hasn't run on them): the set is read
+    at the pitches the build hears, as verify reads it, so 05 keeps its pitch beside 01 on C4."""
+    monkeypatch.delenv("FOURIER_NO_PITCH_CHECK", raising=False)
+    heard = {os.path.join(PACK, f"Qzv Lead {n:02d}.wav"): 59.01 + n for n in (1, 5, 9)}
+    rec = [dict(path=q, tune=None, own_root=None, retune=None, root_src=None, name_pc=None) for q in heard]
+    monkeypatch.setattr(C, "_detect_pitch", lambda q: heard[q])
+    assert C._fill_roots("SYNTH", [0, 1, 2], rec) == 2
+    assert [None if r["retune"] is None else round(r["retune"], 2) for r in rec] == [-0.01, None, 3.99]
+
+
 def test_a_pyin_root_never_retunes_onto_a_c_its_set_plays(monkeypatch):
     monkeypatch.delenv("FOURIER_NO_PITCH_CHECK", raising=False)
     pitch = {"Frobnik_c34b00ff.wav": 47.99, "Frobnik_f#24b00ff.wav": 42.01, "Frobnik_a44b00ff.wav": 69.0,
