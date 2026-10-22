@@ -1609,6 +1609,33 @@ def _has_word(text, word) -> bool:
     return bool(w) and re.search(r"(?<= )" + re.escape(w) + r"(?:e?s)?(?= )", text) is not None
 
 
+# a folder of drums or hits: it speaks before an instrument named by the folder above it
+_DRUM_FOLDER_RE = re.compile(
+    r"(?<![a-z])(?:drums?|drum ?kits?|kits?|perc(?:ussion|s)?|hits?|kicks?|snares?|claps?|hats?|hi-?hats?"
+    r"|cymbals?|toms?|rides?|crash(?:es)?|shakers?|fills?)(?![a-z])", re.I)
+# bowed strings take their tags from the file's name and folder as they always have; the
+# other acoustic instruments' tags follow _name_tags' stricter rules
+_BOWED_NAME_TAGS = frozenset({"Violin", "Viola", "Cello", "Double Bass", "String Ensemble"})
+# words that name played notes (a phrase) in a file's name or any of its folders, and the
+# folders of phrases or loops (PHRASE_LOOP_DIR_RE, "Line"): never one ringing note of an
+# instrument, however few events the audio finds
+_PHRASE_WORD_RE = re.compile(
+    r"(?<![a-z])(?:phrases?|riffs?|licks?|arps?|arpeggios?|arpeggiated|gliss|glissand[oi]s?|melod(?:y|ies)"
+    r"|runs?|fills?)(?![a-z])", re.I)
+_LINE_FOLDER_RE = re.compile(r"(?<![a-z])lines?(?![a-z])", re.I)
+
+
+def _phrase_named(rel) -> bool:
+    """Whether a path says its file is a phrase: a phrase word in its name or a folder, or a
+    folder of phrases, loops or lines."""
+    segs = [p for p in (rel or "").split("/") if p]
+    if not segs:
+        return False
+    return bool(_PHRASE_WORD_RE.search(os.path.splitext(segs[-1])[0])) or any(
+        _PHRASE_WORD_RE.search(f) or PHRASE_LOOP_DIR_RE.search(f) or _LINE_FOLDER_RE.search(f)
+        for f in segs[:-1])
+
+
 def _name_tags(rel, loop=False) -> list:
     """The Live tags a path's words stand in for (NAME_TAGS), for a build without Live: whole
     words of the file's name or its folder (shadow.shape_scope; a "WAV" folder hands over to
@@ -1617,20 +1644,42 @@ def _name_tags(rel, loop=False) -> list:
     says so) whose own name or folder has a loop word (shadow.shape_labels: "Loops/Loop 05")
     may take a loop tag (a NAME_TAGS key naming a loop, "Drum Loop") from the folders above
     too: a pack's name can say what kind of loop its loops are, never that a file is a loop,
-    and a loop by its audio alone (a riser with onsets) takes nothing from it."""
-    from ..metadata.shadow import drum_hit_named, shape_labels, shape_scope
-    from .curate_config import NAME_TAGS
+    and a loop by its audio alone (a riser with onsets) takes nothing from it.
+    An acoustic instrument's tag (ACOUSTIC_ABLETON_TAGS; bowed strings keep the rules above)
+    goes to a one-shot only (a loop by its audio alone whose name states its note and whose
+    path has no loop or phrase word (_phrase_named) or tempo is a ringing note, a one-shot
+    here), never to a file whose name or folder says synth or keys (ACOUSTIC_NAME_EXCLUDE: a
+    patch named for what it imitates), and never from a vendor's or pack's folder
+    (vendors.pack_depth). A one-shot whose own name and folder name no sound
+    (shadow.near_labels) and no drums or hits may take one from the folder just above its own
+    ("Tenor Saxophone/Vibrato/Note C3.wav"): the file's own words speak first."""
+    from ..metadata.shadow import drum_hit_named, near_labels, path_bpm, shape_labels, shape_scope
+    from .curate_config import ACOUSTIC_ABLETON_TAGS, ACOUSTIC_NAME_EXCLUDE, NAME_TAGS
+    from .vendors import pack_depth
     name, folder = shape_scope(rel)
+    stem = os.path.splitext(name)[0]
     drum_hit = drum_hit_named(name)
-    own = _words_text(os.path.splitext(name)[0])
+    own = _words_text(stem)
     near = own + _words_text(folder) if folder and not drum_hit else own
-    tags = [t for t, words in NAME_TAGS.items() if any(_has_word(near, w) for w in words)]
+    folders = [p for p in (rel or "").split("/") if p][:-1]
+    above = folders[:folders.index(folder)] if folder in folders else []
+    depth = pack_depth(rel)
+    inst = {t for t in ACOUSTIC_ABLETON_TAGS if t not in _BOWED_NAME_TAGS}
+    synth = bool(ACOUSTIC_NAME_EXCLUDE.search(f"{stem} {folder}"))
+    mine = own if len(above) < depth else near           # (a pack's folder names no instrument)
+    a_loop = loop and ("class.loop" in shape_labels(rel) or path_bpm(rel) is not None
+                       or not _note_hits(stem.replace("_", " ")) or _phrase_named(rel))
+    tags = [t for t, words in NAME_TAGS.items()
+            if any(_has_word(mine if t in inst else near, w) for w in words)
+            and not (t in inst and (synth or a_loop))]
     if loop and not drum_hit and "class.loop" in shape_labels(rel):
-        folders = [p for p in (rel or "").split("/") if p][:-1]
-        above = folders[:folders.index(folder)] if folder in folders else []
         far = _words_text(" ".join(above))
         tags += [t for t, words in NAME_TAGS.items() if t not in tags and "loop" in t.lower()
                  and any(_has_word(far, w) for w in words)]
+    elif not a_loop and not drum_hit and not synth and not tags and len(above) > depth \
+            and not near_labels(rel) and not any(_DRUM_FOLDER_RE.search(f) for f in (folder, above[-1])):
+        up = _words_text(above[-1])
+        tags += [t for t, words in NAME_TAGS.items() if t in inst and any(_has_word(up, w) for w in words)]
     return tags
 
 
@@ -4604,6 +4653,14 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                 stats["mostly_silent"] = stats.get("mostly_silent", 0) + 1
                 _out(r, "mostly_silent", _ms)
                 continue
+            # ...nor, in ACOUSTIC, a phrase its name or folder states (_phrase_named) that plays
+            # many notes: the override names the instrument, the onsets say how many notes
+            _onc = (r.onset_rate_hz or 0.0) * (r.duration_s or 0.0)
+            if not _pin and category == "ACOUSTIC" and cfg.get("max_onsets") is not None \
+                    and _onc > cfg["max_onsets"] and _phrase_named(rel):
+                stats["many_onsets"] = stats.get("many_onsets", 0) + 1
+                _out(r, "many_onsets", [round(_onc, 1), cfg["max_onsets"]])
+                continue
             if r.file_hash and r.file_hash in seen_hash:
                 _twin(r, seen_hash, stats, _out)
                 continue
@@ -4756,9 +4813,14 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
                 continue
         if cfg["kind"] == "instrument":
             dur = r.duration_s
-            # named as keys by the built-in providers (without Sononym): one event between
-            # silences is one note or chord, whatever its onsets (a tremolo, a chord's beating)
-            _kl = fallback and clsrc and _keys_labeled(r)
+            # named as keys by the built-in providers (without Sononym), or as an acoustic
+            # instrument (its name, or its path's words standing in for Live's tag): one event
+            # between silences is one note or chord, whatever its onsets (a tremolo, a chord's
+            # beating, a ringing harp string); an instrument's phrase (_phrase_named) isn't
+            _kl = fallback and ((clsrc and _keys_labeled(r)) or (category == "ACOUSTIC" and (
+                _acoustic_tagged(_as_list(r.ableton_tags), r.filename, pack)
+                or _acoustic_reserved(r.filename or "", _as_list(r.ableton_tags), rel))
+                and not _phrase_named(rel)))
             # single-note guard: a single note (short or long-sustained) has ~1
             # onset; phrases/arps/loops have many. Drops phrases, keeps notes.
             onc = (r.onset_rate_hz or 0.0) * (dur or 0.0)

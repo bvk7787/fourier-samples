@@ -167,9 +167,17 @@ phrase embeds the same on every run.
   needs as evidence come from whole words of the file's name and folder (`NAME_TAGS`,
   `curate._name_tags`): "drum loop", "break", "breakbeat", "beat" or "groove" for a drum loop's
   "Drum Loop"; violin, viola, cello, double bass or string ensemble for ACOUSTIC's bowed
-  strings. A file whose own name names a drum hit takes none from its folder. A loop by its own
-  name or folder ("Loops/Roller 01") may take a loop tag from its pack's name ("Jungle Breaks"),
-  which never makes a file a loop; a loop by its audio alone takes nothing from it.
+  strings, and harp, sitar, classical or acoustic guitar, flute, clarinet, oboe, bassoon,
+  English horn, sax, trumpet, trombone, tuba, French horn, timpani, xylophone, vibraphone,
+  marimba or glockenspiel for its other instruments. A file whose own name names a drum hit
+  takes none from its folder. A loop by its own name or folder ("Loops/Roller 01") may take a
+  loop tag from its pack's name ("Jungle Breaks"), which never makes a file a loop; a loop by
+  its audio alone takes nothing from it. The other instruments' tags go to one-shots only,
+  never to a file whose name or folder says synth, FM or keys, and never come from a vendor's
+  or pack's folder. A one-shot whose own name and folder name no sound and no drums or hits
+  takes an instrument's tag from the folder just above its own ("Tenor Saxophone/Vibrato/Note
+  01.wav"), and a one-shot ACOUSTIC takes by an instrument's name or tag is one note when it
+  is one event between silences, however many onsets its tremolo or ring gives (as keys are).
 - **Path words** (without Sononym) are split into letters, digits and camelCase
   (`shadow.words_of`: "kick01", "HiHat58", "BD01", "808Kick"; a plural "s" after a number stays,
   "808s"). `path.yaml` knows common abbreviations (BD, kck, SD, snr, CH / OH / CP in the file's

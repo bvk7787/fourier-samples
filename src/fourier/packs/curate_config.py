@@ -785,12 +785,21 @@ ABLETON_TAG_CATEGORY = _tunable("ABLETON_TAG_CATEGORY", {
 # Without Live (metadata/providers.py), the few Live tags a category needs as evidence come
 # from the file's name and its folder instead (curate._name_tags; never a vendor's or pack's
 # name): a word here, as whole words (a plural too), stands in for the tag. DRUMLOOPS keeps
-# a loop only with a drum tag; the ACOUSTIC pool takes bowed strings by their instrument tag.
+# a loop only with a drum tag; the ACOUSTIC pool takes acoustic instruments by their tag. An
+# instrument tag may come from a folder above too, for a one-shot whose own name and folder
+# name no sound ("Tenor Saxophone/Vibrato/Note 01.wav"): a vote below the file's own name.
 NAME_TAGS = _tunable("NAME_TAGS", {
     "Drum Loop": ["drum loop", "drumloop", "drum_loop", "break", "breakbeat", "beat", "groove"],
     "Violin": ["violin", "fiddle"], "Viola": ["viola"], "Cello": ["cello"],
     "Double Bass": ["contrabass", "double bass", "upright bass"],
     "String Ensemble": ["string ensemble", "string section", "string quartet"],
+    "Harp": ["harp"], "Sitar": ["sitar"], "Classical Guitar": ["classical guitar"],
+    "Acoustic Guitar": ["acoustic guitar"],
+    "Flute": ["flute"], "Clarinet": ["clarinet"], "Oboe": ["oboe"], "Bassoon": ["bassoon"],
+    "English Horn": ["english horn", "cor anglais"], "Sax": ["sax", "saxophone"],
+    "Trumpet": ["trumpet"], "Trombone": ["trombone"], "Tuba": ["tuba"], "French Horn": ["french horn"],
+    "Timpani": ["timpani"], "Xylophone": ["xylophone"], "Vibraphone": ["vibraphone"],
+    "Marimba": ["marimba"], "Glockenspiel": ["glockenspiel"],
 })
 # Words a library names its sounds with that the path rules don't know (the `words` knob,
 # fourier/knobs.py): {CATEGORY: [word, ...]}, each a strong path word for the category's first
