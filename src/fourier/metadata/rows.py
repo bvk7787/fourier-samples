@@ -348,6 +348,17 @@ def usable_count(session) -> int:
     return n
 
 
+# the samples a walk marked missing at their current path (a reused id never matches)
+MISSING_IDS_SQL = ("SELECT mf.sample_id FROM missing_files mf "
+                   "JOIN samples sx ON sx.id = mf.sample_id AND sx.path = mf.path")
+
+
+def not_missing(id_col: str) -> str:
+    """SQL: the sample id_col names isn't marked missing (what the analysis steps read: a
+    file that isn't there can't be read)."""
+    return f"{id_col} NOT IN ({MISSING_IDS_SQL})"
+
+
 def missing_marked(session) -> bool:
     """Whether a library walk marked any sample missing (ingest/importer.py: a file it didn't
     find, or couldn't read). Only then does sample_select leave those samples out: a database
