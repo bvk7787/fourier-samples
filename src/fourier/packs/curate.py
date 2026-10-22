@@ -168,6 +168,12 @@ def prepare_prompts(log=print) -> int:
     return n
 
 
+def unit_rows(emb):
+    """The index's rows as unit vectors (clap_features.unit_rows)."""
+    from ..analysis.clap_features import unit_rows as _unit_rows
+    return _unit_rows(emb)
+
+
 def load_index():
     """The cached CLAP search index (ids, embeddings) from ~/.fourier/clap_index.npz, via its
     memory-mapped .npy copies (clap_features.load_index_fast)."""
@@ -2034,12 +2040,22 @@ def _prune_near_dups(rec, emb_n, thr, keep=0, partners=None, apart=None):
     two samples it calls apart are never each other's duplicate (loops at different tempos)."""
     if len(rec) < 2 or thr >= 1.0:
         return rec, 0
+    # one BLAS thread: each product is one kept matrix by one vector, too small to share out
+    # (threads spin-waiting on them cost more than the work)
+    with _limit_threads():
+        return _prune_near_dups_in(rec, emb_n, thr, keep, partners, apart)
+
+
+def _prune_near_dups_in(rec, emb_n, thr, keep, partners, apart):
     order = sorted(range(len(rec)), key=lambda i: (not rec[i].get("incumbent"), -rec[i]["qual"], rec[i]["id"]))
-    keep_idx, kept_vecs, dropped = [], [], []
+    keep_idx, dropped = [], []
+    # the kept vectors, one row each, in a matrix made once: building it from a list for
+    # every candidate copied every kept vector each time (quadratic in the pool)
+    K = np.empty((len(rec), emb_n.shape[1]), dtype=emb_n.dtype)
     for i in order:
         v = emb_n[rec[i]["row"]]
-        if kept_vecs:
-            sims = np.asarray(kept_vecs) @ v
+        if keep_idx:
+            sims = K[:len(keep_idx)] @ v
             if apart is not None:
                 # asked only of the pairs over thr: the only ones it can change
                 for k in np.flatnonzero(sims > thr):
@@ -2048,16 +2064,16 @@ def _prune_near_dups(rec, emb_n, thr, keep=0, partners=None, apart=None):
             if float(np.max(sims)) > thr:
                 dropped.append((i, keep_idx[int(np.argmax(sims))]))
                 continue
+        K[len(keep_idx)] = v
         keep_idx.append(i)
-        kept_vecs.append(v)
     if dropped and len(keep_idx) < keep:
         left = [i for i, _j in dropped]
         while left and len(keep_idx) < keep:
-            K = np.asarray(kept_vecs)
-            far = min(left, key=lambda i: (float(np.max(K @ emb_n[rec[i]["row"]])), i))
+            Kk = K[:len(keep_idx)]
+            far = min(left, key=lambda i: (float(np.max(Kk @ emb_n[rec[i]["row"]])), i))
             left.remove(far)
+            K[len(keep_idx)] = emb_n[rec[far]["row"]]
             keep_idx.append(far)
-            kept_vecs.append(emb_n[rec[far]["row"]])
     keep_set = set(keep_idx)
     if partners is not None:
         partners.update({rec[i]["id"]: rec[j]["id"] for i, j in dropped if i not in keep_set})
@@ -6416,8 +6432,10 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         build_index(session)
 
     ids, emb = load_index()
-    emb = emb.astype("float32")
-    emb_n = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-9)
+    # read where they are: the index stays memory-mapped and its unit rows are shared with
+    # the other workers (clap_features.unit_rows), where each worker copied both
+    emb_n = unit_rows(emb)
+    emb = np.asarray(emb, dtype=np.float32)
     id2row = {int(i): r for r, i in enumerate(ids)}
 
     if homes is None or support is None:
@@ -7194,8 +7212,7 @@ def build_all_parallel(db_path, categories, out_dir, jobs, opts, log=print, prog
             log(f"CLAP index stale ({idx_n} vs {db_n}); rebuilding once before fan-out...")
             build_index(session)
         ids, emb = load_index()
-        emb = emb.astype("float32")
-        emb_n = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-9)
+        emb_n = unit_rows(emb)          # (written beside the index here, for the workers)
         id2row = {int(i): r for r, i in enumerate(ids)}
         homes, support, votes = compute_homes(session, emb_n, id2row, log)
     del emb, emb_n  # free ~0.5 GB in the parent before the workers start
