@@ -374,6 +374,26 @@
   "type": "float",
   "value": 0.985
  },
+ "curate.GROOVE_SAME_MIN": {
+  "type": "float",
+  "value": 0.9
+ },
+ "curate.GROOVE_MAX_S": {
+  "type": "float",
+  "value": 32.0
+ },
+ "curate.GROOVE_MAX_LAG_S": {
+  "type": "float",
+  "value": 0.07
+ },
+ "curate.GROOVE_HOP": {
+  "type": "int",
+  "value": 128
+ },
+ "curate.GROOVE_PAD": {
+  "type": "int",
+  "value": 2048
+ },
  "curate.INSTRUMENT_COPY_COS": {
   "type": "float",
   "value": 0.95
