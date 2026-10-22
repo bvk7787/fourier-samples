@@ -99,15 +99,23 @@ def pytest_configure_node(node):
 
 
 def pytest_configure(config):
+    # librosa's numba functions are compiled once and cached on disk; processes compiling the
+    # same function at once can race on one cache (a half-written index fails the load, or
+    # crashes librosa's pYIN). So each run has a cache folder of its own, made by the run's
+    # first process (pytest-xdist's controller, or the only one) and removed when it ends, and
+    # each worker in it a subfolder: two runs on one machine never share a cache, and a run
+    # compiles once per worker. A $NUMBA_CACHE_DIR you set is used as it is and kept (warm
+    # next time; give runs at the same time different ones). Set before any test module
+    # imports numba.
     worker = getattr(config, "workerinput", None)
-    if worker is None and getattr(config.option, "dist", "no") != "no":
-        return                  # pytest-xdist's controller runs no test; its workers inherit its env
-    # librosa's numba functions are compiled once and cached on disk; workers compiling the
-    # same function at once can race on one cache (a half-written index fails the load). Each
-    # worker keeps its own, which outlives the run (warm next time): under $NUMBA_CACHE_DIR when
-    # the user set one, else the system temp folder. Set before any test module imports numba.
-    numba = os.environ.get("NUMBA_CACHE_DIR") or Path(tempfile.gettempdir()) / "fourier-test-numba"
-    os.environ["NUMBA_CACHE_DIR"] = str(Path(numba) / WORKER)
+    if worker is None:
+        if not os.environ.get("NUMBA_CACHE_DIR"):
+            run = tempfile.mkdtemp(prefix="fourier-test-numba-")
+            atexit.register(shutil.rmtree, run, ignore_errors=True)
+            os.environ["NUMBA_CACHE_DIR"] = run
+        if getattr(config.option, "dist", "no") != "no":
+            return              # pytest-xdist's controller runs no test; its workers inherit its env
+    os.environ["NUMBA_CACHE_DIR"] = str(Path(os.environ["NUMBA_CACHE_DIR"]) / WORKER)
     if worker and worker.get("fourier_dist") == "loadgroup":
         config.option.loadgroup = True
 
