@@ -496,3 +496,24 @@ def test_release_staged_outside_a_cloud_synced_folder(tmp_path, db, fake_rsync, 
     assert res.exit_code == 0, res.output
     assert (root / "releases" / "v1" / "KICKS" / "deep" / "k.wav").exists()
     assert not list(st.iterdir()) and not list((root / "releases").glob("*.partial"))
+
+
+# ---------------------------------------------------------------------------
+# Guards against: `build --base` stops with "rsync not found" on a system without rsync,
+#        while publish and sync copy in Python there
+# ---------------------------------------------------------------------------
+def test_additive_build_copies_the_base_without_rsync(tmp_path, db, monkeypatch):
+    import shutil as _shutil
+    real = _shutil.which
+    monkeypatch.setattr(_shutil, "which",
+                        lambda n, *a, **k: None if n == "rsync" else real(n, *a, **k))
+    _setup_min_release(tmp_path, db, monkeypatch)
+    (tmp_path / "releases" / "v2" / ".acme").write_text("kept")           # dotfiles copy too
+    out = tmp_path / "m"
+    (out / "OLD").mkdir(parents=True)
+    (out / "OLD" / "gone.wav").write_bytes(b"old")
+    (out / "manifest.json").write_text("{}")                              # a master Fourier made
+    R.additive_build(db.session, "v2", str(out), log=lambda m: None)
+    assert (out / "KICKS" / "deep" / "BD 1.wav").read_bytes() == b"kick"
+    assert (out / ".acme").read_text() == "kept"
+    assert not (out / "OLD").exists(), "a file the base doesn't have was left in the master"

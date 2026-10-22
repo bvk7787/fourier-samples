@@ -1429,10 +1429,10 @@ REMOVED / UNVERIFIED and whether re-transferring is ADDITIVE (safe).
 a strict superset of a release:
 
 - Refuses to build into the releases folder, or into a non-empty folder without a manifest.
-- Copies the release verbatim into the out dir (rsync `--delete`), then builds additions per
-  category into a temp dir, excluding samples already released in that category (so a Misfiled
-  release sample can re-home) and, with `--only-pack` / `--since`, every sample outside that
-  set.
+- Copies the release verbatim into the out dir (rsync `--delete`, or the same in Python
+  without rsync), then builds additions per category into a temp dir, excluding samples
+  already released in that category (so a Misfiled release sample can re-home) and, with
+  `--only-pack` / `--since`, every sample outside that set.
 - Each category adds at most `round(budget x allowance)` files (`ADD_ALLOWANCE` 0.15).
 - A new folder whose CLAP centroid is within cosine 0.80 (`ADD_ROUTE_MIN`) of an existing
   folder with room for all its files joins the closest; otherwise it becomes a new folder

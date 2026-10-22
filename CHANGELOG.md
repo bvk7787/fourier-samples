@@ -25,6 +25,14 @@ change the CLI or the config).
 
 ### Fixed
 
+- `fourier build --base vN` works without rsync (it copies in Python, as publish and sync do).
+- `fourier tools audit` maps the master to the library through the manifest, so it runs on a
+  default master.
+- `fourier setup` stops when the check would read another config than the one it writes (a shell
+  pointed at the demo or at another config, or a `fourier.toml` in the current folder) and says
+  how to get back to your own, instead of checking and building the other one.
+- `fourier devices list` never cuts a device ID; it shows the Name column when the terminal has
+  room for it, and leaves out its last columns on a narrow terminal.
 - A build stopped while it put the new master in place is finished by the next `fourier
   build`, which no longer tells you to move Fourier's own files out of the master;
   `manifest.json` is now replaced last. Render and publish wait for it. When finishing fails,

@@ -12,7 +12,6 @@ Exposed as `fourier tools audit`.
 from __future__ import annotations
 
 import json
-import os
 import re
 import urllib.request
 from collections import Counter, defaultdict
@@ -69,22 +68,26 @@ def run_audit(session, master_dir, model=DEFAULT_MODEL, far=0.55, out_path=None,
     for sid, path, rel, fn, cats, cls in fetch(
             session, sample_select("id", "path", "rel_path", "filename", "categories", "classes",
                                    session=session)):
-        meta[sid] = dict(pack=_pack_of(rel, path or ""), fn=fn or "", cats=list(cats or ()))
+        meta[sid] = dict(pack=_pack_of(rel, path or ""), fn=fn or "", path=path or "",
+                         cats=list(cats or ()))
     w(f"# Curated vs library coverage audit\n\nLibrary: {len(meta):,} samples, "
       f"{len(ids):,} with CLAP embeddings.\n")
 
-    # map curated master files -> library ids by filename stem
-    cur_stems = {os.path.splitext(p.name)[0].lower()
-                 for p in master.rglob("*") if p.suffix.lower() == ".wav" and not p.name.startswith("_")}
-    stem2ids = defaultdict(list)
-    for sid, m in meta.items():
-        stem2ids[os.path.splitext(m["fn"])[0].lower()].append(sid)
-    cur_ids = {i for st in cur_stems for i in stem2ids.get(st, [])}
+    # map curated master files -> library ids through the manifest's source paths (a master
+    # file's own name is often renamed, so it can't be matched to the library by name)
+    if not (master / "manifest.json").is_file():
+        raise RuntimeError(f"no manifest.json in {master}; is the master built?")
+    from . import manifests
+    man = manifests.read(master)
+    srcs = {e["src"] for cd in (man.get("categories") or {}).values() if isinstance(cd, dict)
+            for e in cd.get("entries") or () if isinstance(e, dict) and e.get("src")}
+    cur_ids = {sid for sid, m in meta.items() if m["path"] in srcs}
     cur_rows = sorted({id2row[i] for i in cur_ids if i in id2row})
     if not cur_rows:
-        raise RuntimeError("no curated files mapped to the library; is the master built?")
+        raise RuntimeError("no curated files mapped to the library; the master's manifest names "
+                           "no analyzed sample (was it built from this library?)")
     C = emb[np.array(cur_rows)]
-    w(f"Curated master mapped to {len(cur_rows):,} library samples (by filename stem).\n")
+    w(f"Curated master mapped to {len(cur_rows):,} library samples (by source path).\n")
 
     # nearest-curated cosine for every embedded sample
     nn = np.empty(len(ids), dtype="float32")
