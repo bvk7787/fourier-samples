@@ -91,6 +91,8 @@ def scan(only, prune, walk):
       fourier tools scan --walk          # Sononym, then a walk of the library folders
       fourier tools scan --prune
     """
+    from ._app import stop_note
+    stop_note("The scan stopped part way: `fourier tools scan` (or `fourier build`) scans again.")
     run_scan(only, prune, walk)
 
 

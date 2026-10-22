@@ -79,6 +79,9 @@ def render(device_id, master_dir, release, no_lock, out_dir, max_mb, check, card
     except UnsafePath as e:
         console.print(str(e), style="red", markup=False, highlight=False, soft_wrap=True)
         raise SystemExit(1) from None
+    from ._app import stop_note
+    stop_note(f"The previous render in {out_dir} is as it was: `fourier render {device_id}"
+              + (f" --release {release}" if release else "") + "` renders again.")
     try:
         # a render's lines name paths: never hard-wrapped (soft_wrap; the terminal folds them)
         r = render_device(device_id, master_dir, out_dir, max_mb=max_mb,
@@ -256,6 +259,9 @@ def sync(device_id, volume, render_dir, delete, dry_run, force, overwrite_change
     record_card(device_id, render_dir, dest, volume, known | set(rendered), state,
                 pending={**pending,
                          **{r: [rendered[r][0], int(rstat(r).st_mtime), rendered[r][1]] for r in plan.copy}})
+    from ._app import stop_note
+    stop_note(f"Some files are on the card and some aren't yet: run the same `fourier sync "
+              f"{device_id}` again to finish before you eject it.")
     try:
         for rel in plan.copy:
             copy_file_whole(_os.path.join(render_dir, rel), _os.path.join(dest, rel), CARD_TMP)
@@ -616,6 +622,8 @@ def publish(src, root, notes, as_version, force, as_release, dry_run, base, no_v
     if _os.path.exists(partial):
         shutil.rmtree(partial)
     console.print(f"Cutting RELEASE {src} -> {target} ...")
+    from ._app import stop_note
+    stop_note("Nothing was published: `fourier publish` starts again.")
     _os.makedirs(partial)
     open(_os.path.join(partial, PUBLISH_MARK), "w").write(f"v{n}\n")    # this copy is publish's
     try:
@@ -657,11 +665,14 @@ def publish(src, root, notes, as_version, force, as_release, dry_run, base, no_v
         old = _os.path.join(staging, f"v{n}.replaced")
         if _os.path.exists(old):
             shutil.rmtree(old)
+        stop_note(f"v{n} was being replaced, and the new and the old copy may both be left "
+                  f"aside: `fourier releases` says which is which and what to keep.")
         _os.rename(target, old)
         _os.rename(partial, target)
         shutil.rmtree(old)
     else:
         _os.rename(partial, target)
+    stop_note(None)
     # the release must be there, whole, under its name (a sync can rename it back)
     want = sum(len(f) for d_, _d, f in _os.walk(src)
                if _os.path.relpath(d_, src).split(_os.sep)[0] != "_REVIEW")

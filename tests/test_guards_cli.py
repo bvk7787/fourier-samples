@@ -969,7 +969,8 @@ def _publish_force_stopped_between_renames(env, monkeypatch, m):
     with monkeypatch.context() as mp:
         mp.setattr(os, "rename", stop)
         res = _run(env, "publish", "--from", str(m), "--no-verify", "--force", "--as-version", "1")
-    assert res.exit_code == 1 and "Aborted" in res.output, res.output
+    assert res.exit_code == 130 and "`fourier releases` says which is which" in _flat(res.output), \
+        res.output
 
 
 @pytest.mark.parametrize("cloud", [False, True])

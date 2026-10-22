@@ -154,6 +154,31 @@ SECTIONS = (
 )
 
 
+# what a Ctrl-C at this point of the running command leaves behind, and what carries on
+# from there (stop_note); the root prints it when a Ctrl-C stops the command
+_STOP_NOTE: list = [None]
+
+
+def stop_note(note) -> None:
+    """Set the line a Ctrl-C from here on ends with: what's kept and the command that carries
+    on. note: text, a function returning it (read when the Ctrl-C comes), or None."""
+    _STOP_NOTE[0] = note
+
+
+def stopped_by_user() -> None:
+    """The last lines after a Ctrl-C: in place of click's bare "Aborted!", what's kept and the
+    command that carries on (stop_note)."""
+    note = _STOP_NOTE[0]
+    _STOP_NOTE[0] = None
+    try:
+        note = note() if callable(note) else note
+    except Exception:                          # noqa: BLE001 (stopping anyway)
+        note = None
+    console.print()
+    console.print("Stopped (Ctrl-C)." + (f" {note}" if note else ""), style="yellow",
+                  markup=False, highlight=False, soft_wrap=True)
+
+
 def unhandled(ctx, e: Exception) -> None:
     """One plain line for an error no command handled, the traceback kept in a file for a
     bug report."""
@@ -193,8 +218,11 @@ class SectionedGroup(click.Group):
     def invoke(self, ctx):
         try:
             return super().invoke(ctx)
+        except KeyboardInterrupt:
+            stopped_by_user()
+            raise SystemExit(130) from None
         except (click.exceptions.ClickException, click.exceptions.Abort, click.exceptions.Exit,
-                SystemExit, KeyboardInterrupt):
+                SystemExit):
             raise
         except Exception as e:                     # noqa: BLE001 (the last stop before a traceback)
             import os as _os
