@@ -284,3 +284,58 @@ def test_a_shapeless_held_sound_is_offered_the_oneshot_categories():
 # --- 7: a one-bar loop -----------------------------------------------------------------------
 def test_length_tempo_takes_one_bar_too():
     assert C._length_tempo(240.0 / 124, 125.5) == 124.0
+
+
+# --- a one-bar break the beat tracker reads a third off -----------------------------------------
+def _beat(path, bpm, bars, hits, sr=44100):
+    """A drum loop of `bars` bars at `bpm`: decaying noise bursts on the given 16th notes of
+    each bar (a stand-in break), cut exactly to its length."""
+    import soundfile as sf
+    six = 15.0 / bpm
+    n = int(round(bars * 16 * six * sr))
+    y = np.zeros(n)
+    rng = np.random.default_rng(0)
+    burst = rng.standard_normal(int(0.08 * sr)) * np.exp(-np.arange(int(0.08 * sr)) / (0.015 * sr))
+    for b in range(bars):
+        for k, amp in hits:
+            i = int(round((b * 16 + k) * six * sr))
+            m = min(len(burst), n - i)
+            y[i:i + m] += amp * burst[:m]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(path), (0.5 * y / np.abs(y).max()).astype("float32"), sr, subtype="PCM_16")
+    return n / sr
+
+
+_BREAK = [(0, 1.0), (2, 0.4), (4, 0.9), (6, 0.4), (7, 0.3), (10, 1.0), (12, 0.9), (14, 0.4), (15, 0.3)]
+GridRow = namedtuple("GridRow", "path rel_path filename duration_s tempo_bpm bpm harmonicity acid_bpm acid_beats")
+
+
+def test_a_one_bar_break_read_a_third_off_takes_its_length_tempo(tmp_path):
+    """Without Sononym, a percussive loop whose analyzer's tempo no whole bar count agrees
+    with takes the tempo at which it is whole bars when its onsets sit on that tempo's 16th
+    notes: a one-bar break at 140 read as 184.6 is filed at 140."""
+    p = tmp_path / "Acme Pack" / "Breaks" / "Qzv Break 01.wav"
+    dur = _beat(p, 140, 1, _BREAK)
+    r = GridRow(str(p), "Acme Pack/Breaks/Qzv Break 01.wav", p.name, dur, 184.57, None, 0.2, None, None)
+    assert C._length_tempo(dur, 184.57) is None                    # the old rule finds nothing
+    assert C._grid_tempo(r) == 140.0
+    assert C._resolve_tempo(r.filename, dur, None, 184.57, C._fallback_tempos(r)) == (140.0, "length")
+    # tonal (a riff or a pad): never by the grid
+    assert C._grid_tempo(r._replace(harmonicity=0.8)) is None
+
+
+def test_a_riff_of_three_bars_takes_no_whole_bar_tempo_from_the_grid(tmp_path):
+    """A percussive riff of 3 bars at 140 (2 bars at 93.3 or 4 at 186.7 by its length) and a
+    loop of 1.5 bars: their onsets miss those tempos' 16ths, so the grid gives no tempo."""
+    p = tmp_path / "Acme Pack" / "Synth" / "Qzv Riff 03.wav"
+    hits = [(0, 1.0), (3, 0.6), (6, 0.8), (8, 0.5), (10, 0.9), (13, 0.6), (14, 0.5)]
+    dur = _beat(p, 140, 3, hits)
+    r = GridRow(str(p), "Acme Pack/Synth/Qzv Riff 03.wav", p.name, dur, 123.0, None, 0.2, None, None)
+    assert C._grid_tempo(r) is None
+    q = tmp_path / "Acme Pack" / "Breaks" / "Qzv Break 07.wav"
+    _beat(q, 140, 2, _BREAK)
+    import soundfile as sf
+    y, sr = sf.read(str(q))
+    sf.write(str(q), y[:int(round(1.5 * 240 / 140 * sr))], sr, subtype="PCM_16")      # 1.5 bars
+    r = GridRow(str(q), "Acme Pack/Breaks/Qzv Break 07.wav", q.name, 1.5 * 240 / 140, 123.0, None, 0.2, None, None)
+    assert C._grid_tempo(r) is None

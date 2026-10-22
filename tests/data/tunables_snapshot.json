@@ -8546,6 +8546,30 @@
   "type": "float",
   "value": 0.03
  },
+ "curate.GRID_MAX_HARMONIC": {
+  "type": "float",
+  "value": 0.5
+ },
+ "curate.GRID_MIN_ONSETS_PER_BAR": {
+  "type": "int",
+  "value": 4
+ },
+ "curate.GRID_FIT_MIN": {
+  "type": "float",
+  "value": 0.75
+ },
+ "curate.GRID_TOL": {
+  "type": "float",
+  "value": 0.15
+ },
+ "curate.GRID_LAG_MAX_S": {
+  "type": "float",
+  "value": 0.04
+ },
+ "curate.GRID_MAX_S": {
+  "type": "float",
+  "value": 32.0
+ },
  "curate.NAME_TEMPO_TOL_MS": {
   "type": "float",
   "value": 10.0
