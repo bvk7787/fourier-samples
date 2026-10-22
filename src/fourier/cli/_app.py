@@ -399,12 +399,21 @@ def main(ctx, db, config_path, sets, verbose):
             from fourier.analysis.clap_features import load_index_fast as _lif
             _idx_n = len(_lif(ids_only=True)[0])
             from ..db.session import peek           # read-only: a dry run changes nothing
-            _db_n = peek("SELECT COUNT(*) FROM sample_features") or 0
-            if _db_n > _idx_n:
+            from ..metadata.rows import not_missing
+            try:
+                # waiting for an embedding (less the samples left out as missing or
+                # unreadable: no step reads them), and embedded since the index was written
+                _wait = peek(f"SELECT COUNT(*) FROM sample_features WHERE clap_embedding IS "
+                             f"NULL AND {not_missing('sample_id')}") or 0
+                _emb = peek("SELECT COUNT(*) FROM sample_features WHERE clap_embedding IS "
+                            "NOT NULL") or 0
+                _n = _wait + max(0, _emb - _idx_n)
+            except Exception:                        # a database from before those columns
+                _n = max(0, (peek("SELECT COUNT(*) FROM sample_features") or 0) - _idx_n)
+            if _n > 0:
                 console.print(
-                    f"[yellow]Note: {_db_n - _idx_n:,} sample(s) aren't in the CLAP index yet "
-                    f"({_idx_n:,} indexed / {_db_n:,} in DB). `fourier build` "
-                    f"refreshes it.[/yellow]")
+                    f"[yellow]Note: {_n:,} sample(s) aren't in the CLAP index yet "
+                    f"({_idx_n:,} indexed). `fourier build` refreshes it.[/yellow]")
     except Exception:
         pass
 

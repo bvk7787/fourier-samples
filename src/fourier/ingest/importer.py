@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .. import platforms
+from ..audioio import NOT_FINITE, not_finite
 from ..db.models import Sample, SononymMeta
 from ..db.session import session_scope
 from .sononym import SononymAsset, SononymReader
@@ -781,6 +782,8 @@ def _check_known(session, sid: int, path: str, fact, baseline: list, doubt: list
     info = file_info(path)
     if info is None:
         return "unreadable"
+    if not_finite(path):
+        return "not finite"
     _refresh_changed(session, sample, path, st, hashes, info)
     return "changed"
 
@@ -1062,7 +1065,7 @@ def scan_filesystem(
 
     def error(path, what):
         counts["errors"] += 1
-        errors[str(path)] = what
+        errors[str(path)] = (what, _stat_of(path))    # as it was when read, not at the walk's end
         if len(counts["error_files"]) < ERRORS_LISTED:
             counts["error_files"].append(f"{path} ({what})")
 
@@ -1091,6 +1094,12 @@ def scan_filesystem(
                 if hit is not None:
                     sid, no_rel, no_dur = hit
                     counts["skipped"] += 1
+                    # a known file left out as damaged (NaN or infinite values), unchanged since:
+                    # not read again; any other failure is read again (it may have been mid-copy)
+                    was = bad_before.get(f.path) or bad_before.get(f.key)
+                    if was and was.get("why") == NOT_FINITE and was.get("stat") == _stat_of(f.path):
+                        error(f.path, NOT_FINITE)
+                        continue
                     info = None
                     if no_dur and not platforms.cloud_only(f.path):
                         info = file_info(f.path)
@@ -1103,8 +1112,8 @@ def scan_filesystem(
                     else:
                         # (its bytes changed at the same path: read again, analyzed again)
                         got = _check_known(session, sid, f.path, facts.get(at), baseline, doubt)
-                        if got == "unreadable":               # left out: marked missing below
-                            error(f.path, "can't be read")
+                        if got in ("unreadable", "not finite"):    # left out: marked missing below
+                            error(f.path, NOT_FINITE if got == "not finite" else "can't be read")
                             continue
                         if got == "changed":
                             counts["changed"] = counts.get("changed", 0) + 1
@@ -1113,7 +1122,7 @@ def scan_filesystem(
                     seen_ids.add(sid)
                     continue
                 st = os.stat(f.path)
-                was = bad_before.get(f.path)
+                was = bad_before.get(f.path) or bad_before.get(f.key)
                 if was and was.get("stat") == [st.st_size, st.st_mtime_ns]:
                     error(f.path, was.get("why") or "can't be read")   # unchanged since: not read again
                     continue
@@ -1126,6 +1135,9 @@ def scan_filesystem(
                     info = file_info(f.path)
                     if info is None:
                         error(f.path, "can't be read")
+                        continue
+                    if not_finite(f.path):
+                        error(f.path, NOT_FINITE)
                         continue
                 sample = Sample(
                     path=f.key,
@@ -1171,6 +1183,37 @@ def scan_filesystem(
 SCAN_ERRORS = "scan_errors.json"     # in the home: {library folder: {file: why}} of the last walks
 
 
+def _stat_of(path) -> list | None:
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return [st.st_size, st.st_mtime_ns]
+
+
+def leave_out_unreadable(session, items, why: str) -> int:
+    """Samples an analysis step found it can't read (items: (sample id, path)): marked missing,
+    as a walk marks a file it can't read, and kept with the walk's errors (scan_errors.json),
+    so every step leaves them out and the next walk doesn't read them again until they change.
+    Returns how many were marked."""
+    import time
+
+    from ..db.models import MissingFile
+    from ..places import library_root_of
+    doc, n = _scan_error_doc(), 0
+    for sid, path in items:
+        if session.get(MissingFile, sid) is None:
+            session.add(MissingFile(sample_id=sid, path=path, since=int(time.time())))
+            n += 1
+        root = library_root_of(path)
+        if root is not None:
+            st = _stat_of(path)
+            doc.setdefault(os.path.normpath(root), {})[str(path)] = {"why": why, **({"stat": st} if st else {})}
+    session.commit()
+    _write_scan_error_doc(doc)
+    return n
+
+
 def _scan_error_doc() -> dict:
     """{library folder: {file: {"why", "stat": [size, mtime_ns]}}} of the last walks (an older
     file's {file: why} reads as without a stat)."""
@@ -1189,21 +1232,22 @@ def _save_scan_errors(root_s: str, errors: dict) -> None:
     """Remember the files the last walk of a library folder couldn't read (corrupt or empty)
     with their size and time, so doctor and setup count them as errors, not as files waiting
     for analysis, and the next walk doesn't read them again until they change."""
-    import json
-    from ..paths import home_path
-    p = home_path(SCAN_ERRORS)
     doc = _scan_error_doc()
     if errors:
         entry = {}
-        for f, why in sorted(errors.items()):
-            try:
-                st = os.stat(f)
-                entry[f] = {"why": why, "stat": [st.st_size, st.st_mtime_ns]}
-            except OSError:
-                entry[f] = {"why": why}
+        for f, got in sorted(errors.items()):
+            why, st = got if isinstance(got, tuple) else (got, _stat_of(f))
+            entry[f] = {"why": why, **({"stat": st} if st else {})}
         doc[root_s] = entry
     else:
         doc.pop(root_s, None)
+    _write_scan_error_doc(doc)
+
+
+def _write_scan_error_doc(doc: dict) -> None:
+    import json
+    from ..paths import home_path
+    p = home_path(SCAN_ERRORS)
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
         tmp = p.with_suffix(".tmp")
