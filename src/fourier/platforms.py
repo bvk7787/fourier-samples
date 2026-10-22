@@ -130,6 +130,46 @@ def mount_points() -> list[Path]:
     return list(dict.fromkeys(out))
 
 
+def _volume_roots() -> list[Path]:
+    """The folders removable and network volumes are mounted under, most specific first."""
+    if sys.platform == "darwin":
+        return [Path("/Volumes")]
+    if sys.platform.startswith("win"):
+        return []
+    user = os.environ.get("USER") or ""
+    return ([Path("/run/media") / user, Path("/media") / user] if user else []) + \
+        [Path("/media"), Path("/mnt")]
+
+
+def unmounted_volume(path) -> Path | None:
+    """The volume a path sits on (/Volumes/<name>, /media/<you>/<name>, /mnt/<name>) when that
+    volume isn't there: its folder is missing, or an empty folder that isn't a mount point (a
+    mount point left behind). None when it's there, or for a path on no such volume."""
+    try:
+        p = Path(os.path.abspath(os.path.expanduser(str(path))))
+    except (OSError, ValueError):
+        return None
+    for root in _volume_roots():
+        try:
+            rel = p.relative_to(root)
+        except ValueError:
+            continue
+        if not rel.parts:
+            return None
+        vol = root / rel.parts[0]
+        if not os.path.lexists(vol):
+            return vol
+        if os.path.islink(vol) or os.path.ismount(vol):
+            return None
+        try:
+            with os.scandir(vol) as it:
+                empty = next(it, None) is None
+        except OSError:
+            return None
+        return vol if empty else None
+    return None
+
+
 def is_volume_root(path) -> bool:
     """Whether a folder is where a card or drive is mounted: one of mount_points(), or a mount
     point of its own; never the system's root or a folder that holds the home folder."""

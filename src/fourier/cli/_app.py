@@ -118,6 +118,32 @@ def read_only_config(ctx=None) -> None:
     root.obj["resolved_written"] = None
 
 
+def _check_home() -> None:
+    """$FOURIER_HOME naming a folder that isn't there: on a volume that isn't mounted, stop
+    before anything is written (a new home would start on the system disk, under the empty
+    mount point); elsewhere, say once that this is a new, empty home."""
+    import os as _os
+    env = _os.environ.get("FOURIER_HOME")
+    if not env:
+        return
+    from ..paths import fourier_home
+    home = fourier_home()
+    if home.exists():
+        return
+    from ..platforms import unmounted_volume
+    vol = unmounted_volume(home)
+    if vol is not None:
+        console.print(f"FOURIER_HOME is {home}, on {vol}, which isn't mounted. Nothing was "
+                      f"written: connect that drive (or point FOURIER_HOME at the home you "
+                      f"use) and run this again.", style="red", markup=False, highlight=False,
+                      soft_wrap=True)
+        raise SystemExit(1)
+    console.print(f"Note: FOURIER_HOME is {home}, which doesn't exist yet: this is a new, "
+                  f"empty Fourier home (no database, analysis or ratings). If your home is "
+                  f"somewhere else, point FOURIER_HOME there.", style="yellow", markup=False,
+                  highlight=False, soft_wrap=True)
+
+
 def hold_home(ctx=None) -> None:
     """For a command that writes the home or what it feeds (build, scan, analyze, render,
     sync, publish): hold the home's lock until the command ends (fourier/homelock.py), or stop
@@ -343,6 +369,7 @@ def main(ctx, db, config_path, sets, verbose):
             console.print(f"[yellow]fourier {ctx.invoked_subcommand} uses its own database and "
                           f"config: --db, --config and --set are ignored[/yellow]")
         return
+    _check_home()
     if ctx.invoked_subcommand not in WRITES_CONFIG:
         _resolve_config(ctx, config_path, sets)
     ctx.obj["config_args"] = (config_path, sets)
