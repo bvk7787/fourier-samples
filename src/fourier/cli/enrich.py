@@ -626,8 +626,9 @@ def enrich_quality(workers, force):
     """
     Check all samples for clipping and DC offset (fast, no heavy DSP).
 
-    Populates is_clipped and dc_offset_ratio in sample_features.
-    Much faster than a full librosa pass.
+    Populates clip_share, is_clipped and dc_offset_ratio in sample_features: clipping is read
+    on the file at its own rate, each channel (librosa_features.full_scale_share). A database
+    measured before clip_share is measured again. Much faster than a full librosa pass.
 
     After running, clipped or DC-offset samples are automatically penalised
     during pack building (is_clipped → -2.0 score; dc_offset > 0.02 → -0.5).
@@ -651,21 +652,20 @@ def enrich_quality(workers, force):
             import soundfile as sf
 
             from fourier.analysis.clap_features import read_seconds
+            from fourier.analysis.librosa_features import CLIP_SHARE, full_scale_share
             cap = read_seconds(path)            # a very long file: its start
             if cap is None:
-                data, _ = sf.read(path, always_2d=False, dtype="float32")
+                data, _ = sf.read(path, always_2d=True, dtype="float32")
             else:
-                data, _ = sf.read(path, always_2d=False, dtype="float32",
+                data, _ = sf.read(path, always_2d=True, dtype="float32",
                                   frames=int(cap * sf.info(path).samplerate))
-            if data.ndim > 1:
-                y = data.mean(axis=1)
-            else:
-                y = data
+            y = data.mean(axis=1)
             if len(y) == 0:
                 return sample_id, None
-            clipped = int(np.sum(np.abs(y) >= 0.999))
+            share = full_scale_share(data)
             return sample_id, {
-                "is_clipped": int(clipped / len(y) > 0.001),
+                "clip_share": round(share, 6),
+                "is_clipped": int(share > CLIP_SHARE),
                 "dc_offset_ratio": round(float(abs(np.mean(y))), 6),
             }
         except Exception:
@@ -688,7 +688,7 @@ def enrich_quality(workers, force):
                 q.outerjoin(SampleFeatures, Sample.id == SampleFeatures.sample_id)
                 .filter(
                     (SampleFeatures.id == None)  # noqa: E711
-                    | (SampleFeatures.is_clipped == None)  # noqa: E711
+                    | (SampleFeatures.clip_share == None)  # noqa: E711
                 )
             )
         samples = q.all()
@@ -696,13 +696,22 @@ def enrich_quality(workers, force):
         if not samples:
             console.print("[green]All samples already have quality data.[/green]")
             return
-
         workers = _workers(workers, WORKER_CAPS["quality"])
         console.print(
             f"[cyan]Quality checking {len(samples):,} samples ({workers} workers)…[/cyan]"
         )
         paths = _on_this_machine([(s.id, s.path) for s in samples])
         where = dict(paths)
+        # rows an earlier version measured: a one-time read of each file after the update (a
+        # file that's gone or only in the cloud isn't read, so it isn't counted)
+        again = 0 if force else sum(
+            1 for (i,) in session.query(SampleFeatures.sample_id)
+            .filter(SampleFeatures.clip_share == None,  # noqa: E711
+                    SampleFeatures.is_clipped != None)  # noqa: E711
+            if i in where and os.path.isfile(where[i]))
+        if again:
+            console.print(f"Measuring clipping again for {again:,} sample{'s' if again != 1 else ''} an "
+                          f"earlier version measured (once, after an update).", markup=False, highlight=False)
         t0 = time.monotonic()
         n_ok = n_err = n_clipped = n_dc = n_gone = 0
 
@@ -759,6 +768,7 @@ def _upsert_quality_batch(session, batch: list[tuple[int, dict]]) -> None:
         if feat is None:
             feat = SampleFeatures(sample_id=sample_id)
             session.add(feat)
+        feat.clip_share = result["clip_share"]
         feat.is_clipped = result["is_clipped"]
         feat.dc_offset_ratio = result["dc_offset_ratio"]
     session.commit()

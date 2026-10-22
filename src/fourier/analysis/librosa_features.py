@@ -43,6 +43,29 @@ _MAX_DURATION_S = 30.0
 _MIN_DURATION_FOR_HPSS = 0.05
 
 
+CLIP_RUN = 3            # samples in a row at full scale: a flat top (a peak that touches full scale is one or two)
+CLIP_SHARE = 0.001      # a file clips when more than this share of its samples sit in such runs
+FULL_SCALE = 0.999
+
+
+def full_scale_share(data) -> float:
+    """The share of a signal's samples (frames x channels, read at the file's own rate) that
+    sit in runs of CLIP_RUN or more at full scale: the flat tops clipping leaves. Read the file
+    as it is: a resampled copy rings over full scale at a sharp transient that never got there."""
+    import numpy as np
+    a = np.asarray(data, dtype="float32")
+    a = a[:, None] if a.ndim == 1 else a
+    if not a.size:
+        return 0.0
+    full = np.abs(a) >= FULL_SCALE
+    n = 0
+    for ch in full.T:
+        d = np.diff(np.concatenate(([0], ch.astype(np.int8), [0])))
+        lens = np.flatnonzero(d == -1) - np.flatnonzero(d == 1)
+        n += int(lens[lens >= CLIP_RUN].sum())
+    return n / full.size
+
+
 def compute_features(path: str | Path, sr: int = _SR) -> dict:
     """
     Compute Tier 2 librosa features for a single audio file.
@@ -227,13 +250,10 @@ def compute_features(path: str | Path, sr: int = _SR) -> dict:
         except Exception as exc:
             log.debug(f"HPSS failed for {path.name}: {exc}")
 
-    # ── Quality gate: clipping and DC offset ─────────────────────────────────
-    # Computed on the raw (non-resampled) signal for accuracy.
-    # is_clipped:      1 if >0.1% of samples are at ±0.999 (librosa normalises to ±1).
-    # dc_offset_ratio: |mean(y)| — should be ~0 for clean audio; >0.02 is audible.
+    # ── Quality gate: DC offset ─────────────────────────────────────────────
+    # dc_offset_ratio: |mean(y)| — should be ~0 for clean audio; >0.02 is audible. Clipping is
+    # the quality step's (full_scale_share, on the file at its own rate).
     try:
-        clipped = int(np.sum(np.abs(y) >= 0.999))
-        result["is_clipped"] = int(clipped / len(y) > 0.001)
         result["dc_offset_ratio"] = round(float(abs(np.mean(y))), 6)
     except Exception as exc:
         log.debug(f"Quality gate failed for {path.name}: {exc}")

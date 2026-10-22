@@ -51,6 +51,18 @@ def ratings(monkeypatch):
 
 # --- the selection's rules ------------------------------------------------------------------
 
+def test_a_clipped_file_is_said_in_its_homes_why_log_on_a_first_build(ratings):
+    """A clipped candidate is left out with its reason in the category it's homed in, with
+    no previous build too; another category whose candidates it is says nothing of it."""
+    rows = [_row(1, "Kick 01.wav"), _row(2, "Kick 02.wav", is_clipped=1), _row(3, "Kick 03.wav", is_clipped=1)]
+    homes = {1: "KICKS", 2: "KICKS", 3: "SNARES"}
+    why = {}
+    rec, _fm, _st = C._select_records(rows, CATEGORIES["KICKS"], _emb(3), {i + 1: i for i in range(3)},
+                                      homes=homes, category="KICKS", why=why, prev=None)
+    assert [r["id"] for r in rec] == [1]
+    assert why["hygiene"] == {2: "clipped"}
+
+
 def test_ratings_wavetables_and_routing_each_write_their_reason(ratings):
     rows = [_row(1, "Kick 01.wav"),
             _row(2, "Kick 02.wav"),                                       # rated Drop
