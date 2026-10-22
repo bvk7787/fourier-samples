@@ -16,12 +16,17 @@ VERBOSE_ENV = "FOURIER_VERBOSE"
 REINSTALL = ("it comes with Fourier Samples, so the install is incomplete: reinstall it (the "
              "README's Updating section), then run `fourier doctor`")
 _QUIET = ((UserWarning, r"librosa(\.|$)"), (Warning, r"numba(\.|$)"))
+# ...and those two by what they say: a librosa that warns at its caller (stacklevel=2, as 1.0
+# does) names Fourier's own module, which the module filter above doesn't match
+_QUIET_SAID = (r"n_fft=\d+ is too large for input signal", r"Trying to estimate tuning from empty")
 
 
 def quiet_library_warnings(on: bool = True) -> None:
     """Hide (on) or show again (off) librosa's and numba's warnings in this process."""
     for category, module in _QUIET:
         _warnings.filterwarnings("ignore" if on else "default", category=category, module=module)
+    for said in _QUIET_SAID:
+        _warnings.filterwarnings("ignore" if on else "default", message=said, category=UserWarning)
 
 
 if not _os.environ.get(VERBOSE_ENV):

@@ -830,13 +830,19 @@ def test_librosa_and_numba_warnings_stay_out_unless_verbose(verbose):
             "warnings.warn_explicit('n_fft=1024 is too large', UserWarning, 'spectrum.py', 1, "
             "module='librosa.core.spectrum')\n"
             "warnings.warn_explicit('reflected list', Warning, 'core.py', 1, module='numba.core')\n"
-            "warnings.warn_explicit('a real one', UserWarning, 'x.py', 1, module='fourier.x')\n")
+            "warnings.warn_explicit('a real one', UserWarning, 'x.py', 1, module='fourier.x')\n"
+            # a librosa that warns at its caller (stacklevel=2) names Fourier's module
+            "warnings.warn_explicit('n_fft=2048 is too large for input signal of length=1985', "
+            "UserWarning, 'librosa_features.py', 241, module='fourier.analysis.librosa_features')\n"
+            "warnings.warn_explicit('Trying to estimate tuning from empty frequency set.', "
+            "UserWarning, 'key_detection.py', 1, module='fourier.analysis.key_detection')\n")
     env = {k: v for k, v in os.environ.items() if k != "FOURIER_VERBOSE"}
     if verbose:
         env["FOURIER_VERBOSE"] = "1"
     err = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env).stderr
     assert "a real one" in err
     assert ("n_fft" in err and "reflected list" in err) == verbose, err
+    assert ("length=1985" in err and "empty frequency set" in err) == verbose, err
 
 
 def test_the_pin_runs_quietly_and_shows_its_output_only_when_it_fails(monkeypatch, capsys):
