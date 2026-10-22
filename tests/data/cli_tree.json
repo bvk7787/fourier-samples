@@ -2488,7 +2488,7 @@
    },
    {
     "default": "False",
-    "help": "With --missing: remove those samples from the database",
+    "help": "With --missing: remove those samples from the database (refused while a library folder is missing, or for more than a fifth of the samples)",
     "hidden": false,
     "is_flag": true,
     "kind": "Option",
@@ -2497,6 +2497,22 @@
     "nargs": 1,
     "opts": [
      "--prune"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "With --prune: remove them even when they're more than a fifth of the samples",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "force",
+    "nargs": 1,
+    "opts": [
+     "--force"
     ],
     "required": false,
     "show_default": false,

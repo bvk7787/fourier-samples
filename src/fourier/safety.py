@@ -260,6 +260,62 @@ def check_clear(p, what: str, extra: tuple = (), master: bool = False) -> Path:
     return r
 
 
+def check_output_place(p, what: str, kind: str, masters=()) -> Path:
+    """An output folder that can't copy the master into itself, replace or write into one of
+    Fourier's own places, or be read back as samples. kind "renders": a folder a render (or a
+    --new-only copy) replaces; it can't be, hold or sit in the master, its .next or .prev,
+    the Fourier home, the releases, a release or the device locks. kind "publish": a publish
+    root; it can't be or sit in the master, .next, .prev or the Fourier home, and its
+    releases folder can't be, hold or sit in any of them. A renders folder can't be or hold a
+    library folder; a publish root can't be one, and its releases folder can't hold one.
+    Either sits inside a library folder only within the configured renders or publish
+    folder, which the library scan skips (walk.own_folders). masters: other masters to check
+    (publish --from)."""
+    r = check_not_personal(p, what)
+    try:
+        from . import places as P
+        from .paths import fourier_home
+        ms = [P.master_dir(), *[str(m) for m in masters if m]]
+        own = [(lbl, _resolve(f"{m.rstrip('/')}{suf}")) for m in ms
+               for lbl, suf in (("the master", ""), ("the master's .next folder", ".next"),
+                                ("the master's .prev folder", ".prev"))]
+        home = _resolve(fourier_home())
+        libs = [_resolve(x) for x in P.library_roots()]
+        skipped = [_resolve(P.renders_dir()), _resolve(P.publish_root())]
+        releases, locks = _resolve(P.releases_root()), _resolve(P.lock_dir())
+    except UnsafePath:
+        raise
+    except Exception as e:
+        raise UnsafePath(f"can't tell where Fourier's own folders are ({e}), so nothing is "
+                         f"written: fix fourier.toml and run again") from None
+    refuse = lambda label, place: UnsafePath(
+        f"{what} ({r}) can't be, hold or sit in {label} ({place}): pick a folder of its own")
+    if kind == "publish":
+        rel = r / "releases"
+        for label, place in own + [("the Fourier home", home)]:
+            if _contains(place, r) or _overlaps(rel, place):
+                raise refuse(label, place)
+    else:
+        places = own + [("the Fourier home", home), ("the releases", releases),
+                        ("the device locks", locks)]
+        places += [("a release", _resolve(x)) for x in published_releases()]
+        for label, place in places:
+            if _overlaps(r, place):
+                raise refuse(label, place)
+    for lib in libs:
+        holds = (_contains(r, lib) and _contains(lib, r)) or _contains(r / "releases", lib) \
+            if kind == "publish" else _contains(r, lib)
+        if holds:
+            raise UnsafePath(f"{what} ({r}) can't be or hold a library folder ({lib})")
+        if _contains(lib, r) and not any(_contains(x, r) for x in skipped):
+            key = "publish" if kind == "publish" else "renders"
+            raise UnsafePath(f"{what} ({r}) is inside a library folder ({lib}), where the library "
+                             f"scan would read it as samples: pick a folder outside the library, "
+                             f"or set [output] {key} in fourier.toml to it (the scan skips that "
+                             f"folder)")
+    return r
+
+
 def check_master_dir(out_dir, *, extra: tuple = ()) -> Path:
     """A folder a build may replace: new, empty, or a previous Fourier master (manifest.json
     with fourier_manifest); never a library, a release, the Fourier home, the home folder or
