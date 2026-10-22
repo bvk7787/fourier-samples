@@ -21,6 +21,64 @@ class UnsafePath(ValueError):
     pass
 
 
+_NOT_WRITABLE = (13, 1, 30)            # EACCES, EPERM, EROFS
+
+
+def unwritable_folder(e: BaseException) -> Path | None:
+    """The folder a permission error (or a read-only drive) stopped Fourier writing in, or
+    None when e is another error or names no absolute path. A file that's there and a folder
+    that's writable name the file; otherwise the folder holding it (or the nearest one that
+    exists), which is where a file couldn't be made, replaced or removed."""
+    if not isinstance(e, OSError) or e.errno not in _NOT_WRITABLE or not e.filename:
+        return None
+    p = Path(os.fsdecode(e.filename))
+    if not p.is_absolute():
+        return None
+    try:
+        if p.is_file() and os.access(p.parent, os.W_OK):
+            return p
+        if p.is_dir() and not os.access(p, os.W_OK):
+            return p
+        p = p.parent
+        while not p.exists() and p.parent != p:
+            p = p.parent
+    except OSError:
+        return None
+    return p
+
+
+def unwritable(e: BaseException) -> tuple[str, str] | None:
+    """For a permission error or a read-only drive (unwritable_folder): what happened and what
+    to do, as two plain sentences without their full stops; None for any other error."""
+    where = unwritable_folder(e)
+    if where is None:
+        return None
+    if getattr(e, "errno", None) == 30:
+        return (f"{where} is on a drive that's read-only",
+                "Choose a folder on a drive Fourier can write to, or make that drive writable")
+    return (f"Fourier can't write in {where}: you don't have permission",
+            "Make it writable for you, or choose another folder")
+
+
+def rmtree_own(path) -> None:
+    """Remove a folder of Fourier's own (a snapshot, a build): a copy keeps the modes of what
+    it copied, so its folders can be read-only, and they're made writable first."""
+    import shutil
+    try:
+        shutil.rmtree(path)
+        return
+    except PermissionError:
+        pass
+    for root, dirs, _files in os.walk(path):
+        for d in (root, *(os.path.join(root, x) for x in dirs)):
+            if not os.path.islink(d):
+                try:
+                    os.chmod(d, os.stat(d).st_mode | 0o700)
+                except OSError:
+                    pass
+    shutil.rmtree(path)
+
+
 OFFLINE_HINT = ('make the library folder available offline (Finder: "Keep Downloaded"; '
                 'OneDrive: "Always keep on this device")')
 

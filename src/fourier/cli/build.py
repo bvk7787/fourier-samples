@@ -11,7 +11,7 @@ from rich.table import Table
 
 from ._app import _table_cols, console, log, main, tools  # noqa: F401
 from ..places import master_dir as _master_dir
-from ..safety import CloudOnlySources
+from ..safety import CloudOnlySources, rmtree_own, unwritable
 from .config import _tunable_meta
 
 # ---------------------------------------------------------------------------
@@ -1351,7 +1351,6 @@ def _drop_swap(out_dir, nxt, prev, gone) -> None:
     removed, and so is the copy at .prev when it's unfinished (one that's whole is kept). The
     build that found it goes ahead."""
     import os as _os
-    import shutil as _sh
     whole = False
     if _os.path.isfile(_os.path.join(prev, "manifest.json")):
         try:
@@ -1360,7 +1359,7 @@ def _drop_swap(out_dir, nxt, prev, gone) -> None:
             whole = False
     removed = _os.path.isdir(prev) and not whole
     if removed:
-        _sh.rmtree(prev)
+        rmtree_own(prev)
     _os.remove(_os.path.join(nxt, SWAP_MARK))
     console.print(
         f"The last build stopped while it copied the master to {prev}, before it changed the "
@@ -1375,21 +1374,24 @@ def _swap_failed(e, stage, build_dir, out_dir, prev) -> None:
     """What to do when putting the build in place failed with an error (a permission, a full
     disk, a file another app holds): fix that, then build. Building alone would fail the same
     way."""
+    plain = unwritable(e)
+    what, fix = (plain[0], "Make that " + ("drive" if "read-only" in plain[0] else "folder")
+                 + " writable for you") if plain else (
+        f"{e}", "Fix that first (the error names the file)")
     if stage is None:
-        console.print(f"Putting the new master in place failed before it began: {e}. The master at "
-                      f"{out_dir} is unchanged and the new build stays in {build_dir}. Fix that "
-                      f"first (the error names the file), then run `fourier build`.", style="red",
+        console.print(f"Putting the new master in place failed before it began: {what}. The "
+                      f"master at {out_dir} is unchanged and the new build stays in {build_dir}. "
+                      f"{fix}, then run `fourier build`.", style="red",
                       markup=False, highlight=False, soft_wrap=True)
         return
     if stage == "snapshot":
-        where = (f"Copying the master to {prev} failed: {e}. The master at {out_dir} is unchanged "
-                 f"and the new build stays in {build_dir}.")
+        where = (f"Copying the master to {prev} failed: {what}. The master at {out_dir} is "
+                 f"unchanged and the new build stays in {build_dir}.")
     else:
-        where = (f"Putting the new master in place at {out_dir} failed: {e}. It's partly in place "
-                 f"(the new build is in {build_dir}, the previous master in {prev}).")
-    console.print(f"{where} Fix that first (the error names the file), then run `fourier build`: "
-                  f"it finishes putting the new master in place.", style="red", markup=False,
-                  highlight=False, soft_wrap=True)
+        where = (f"Putting the new master in place at {out_dir} failed: {what}. It's partly in "
+                 f"place (the new build is in {build_dir}, the previous master in {prev}).")
+    console.print(f"{where} {fix}, then run `fourier build`: it finishes putting the new master "
+                  f"in place.", style="red", markup=False, highlight=False, soft_wrap=True)
 
 
 def _remove_build(build_dir) -> None:
@@ -1450,7 +1452,7 @@ def _swap_in(build_dir, out_dir, resume=None):
             _write_swap_mark(build_dir, "snapshot", files)
             stage = "snapshot"
             if _os.path.exists(prev):
-                _sh.rmtree(prev)
+                rmtree_own(prev)
             _sh.copytree(out_dir, prev, copy_function=_link_or_copy)
         _write_swap_mark(build_dir, "sync", files)
         stage = "sync"

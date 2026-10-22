@@ -89,8 +89,10 @@ def render(device_id, master_dir, release, no_lock, out_dir, max_mb, check, card
                           log=lambda m: console.print(m, markup=False, highlight=False, soft_wrap=True),
                           release=release, write_lock=bool(release) and not no_lock)
     except Exception as e:
-        console.print(f"[red]{e}[/red]")
-        raise SystemExit(1)
+        from ._app import say_unwritable
+        if not say_unwritable("fourier render", e):
+            console.print(str(e), style="red", markup=False, highlight=False, soft_wrap=True)
+        raise SystemExit(1) from None
     if r.get("failed"):
         console.print(f"[red]{r['failed']} files failed to convert (the FAILED lines above say why), "
                       f"so the render wasn't replaced[/red]"
@@ -272,6 +274,9 @@ def sync(device_id, volume, render_dir, delete, dry_run, force, overwrite_change
         for rel in plan.delete:
             _os.remove(_os.path.join(dest, rel))
     except OSError as e:
+        from ._app import say_unwritable
+        if say_unwritable(f"fourier sync {device_id}", e):
+            raise SystemExit(1) from None
         stop(f"copy failed: {e}")
     for dp, dns, _fns in _os.walk(dest, topdown=False):      # folders the delete emptied
         rel = _os.path.relpath(dp, dest)
