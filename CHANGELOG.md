@@ -25,6 +25,12 @@ change the CLI or the config).
 
 ### Fixed
 
+- Ctrl-C during the analysis stops within seconds and keeps the samples already analyzed; a
+  worker that runs out of memory ends the step with one line saying what to run instead.
+- A library drive unplugged during the analysis no longer leaves files marked analyzed
+  ("unpitched", "no events"): they're analyzed when the library is back.
+- The analysis uses one worker per CPU per step (up to 6), so small machines start fewer
+  processes.
 - `fourier build -j 2` or more could hang forever on Linux on a first build, and
   stopped with "Could not set lock" on a Mac (and on Linux with Python 3.14) with a DuckDB
   home. Workers now get the CLAP prompts and the database from the build itself.

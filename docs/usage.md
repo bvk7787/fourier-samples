@@ -340,7 +340,7 @@ device profile its own card folder (`fourier devices new --card-dir /Samples/Hou
 | My sounds came out at a different pitch, level or name | The default prepares them for hardware: melodic one-shots tuned to C, loops evened out, near-mono files made mono, tidy names. `retune = "off"`, `loudness = "gentle"`, `stereo = "keep"` and `names = "keep"` keep them as they are (setup's "as-is"). |
 | The set is too big for my card or takes too long to load | `size = "1GB"` (or a card's size) makes it fit. `fourier build --dry-run` shows the size per category first. |
 | I only want some of my packs | Fourier reads every folder in `library`, so list just the ones you want (`library = ["~/Samples/Drums", "~/Samples/Acme"]`). There is no per-pack exclude. For Splice or Loopcloud downloads, add their sample folder (`~/Splice/sounds`) to `library`. |
-| Builds are slow | `fourier build -j 4` (or more) builds categories in parallel. The first build's analysis is the long part, and it runs once. |
+| Builds are slow | `fourier build -j 4` (or more) builds categories in parallel. The first build's analysis is the long part, and it runs once, on one worker per CPU. |
 | A file is "too quiet" | It is near-silent once trimmed, or a soft velocity layer of a louder take, so export skipped it. |
 | One pack fills a whole category | The vendor cap is reading the wrong folder. With `vendors = "first-folder"`, a library organized by sound type has one "vendor" per type folder, so the cap can't tell your packs apart. `vendors = "auto"` detects the layout. |
 | I don't want the kits and slice folders | `sets = "off"` builds the category folders only. |
