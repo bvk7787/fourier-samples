@@ -3664,6 +3664,18 @@ def _own_names(stem, limit, namer=canonical_stem, alt=None):
     return base, lambda k: f"{namer(stem, limit - len(str(k)) - 1)}_{k}"
 
 
+def _naming_order(picks, rec, prev_names, fallback=False):
+    """The order a folder's picks take their names in (_choose_outname): files the previous
+    build named first, so a newcomer with the same stem gets the "_2" and a path never starts
+    holding a different sample (without Sononym, then a file already at C ahead of one
+    retuned to C: the plain name goes to the one that always played it); newcomers by source
+    path, so two of one name get the same names whatever order the picks came in."""
+    def key(i):
+        new = rec[i]["path"] not in prev_names
+        return new, fallback and abs(rec[i].get("retune") or 0.0) >= 0.5, rec[i]["path"] if new else ""
+    return sorted(picks, key=key)
+
+
 def _choose_outname(stem, taken, prev_name=None, limit=None, namer=canonical_stem, alt=None):
     """A file's name in its folder (`taken`: the names already there, lowercased; APFS and
     FAT32 cards fold case). Its previous build's name when that is still one of its own names
@@ -6733,12 +6745,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
     for c, want in zip(clusters, _allocs):
         dest = kroot / c["name"]; dest.mkdir(parents=True, exist_ok=True)
         cop = 0
-        # files the previous build named claim their names first, so a newcomer with the same
-        # stem gets the "_2" and a path never starts holding a different sample
-        # (without Sononym, then a file already at C ahead of one retuned to C: the plain
-        # name goes to the one that always played it)
-        for i in sorted(c["_pick"], key=lambda i: (rec[i]["path"] not in _prev_names,
-                                                   _fb and abs(rec[i].get("retune") or 0.0) >= 0.5)):
+        for i in _naming_order(c["_pick"], rec, _prev_names, _fb):
             src = rec[i]["path"]
             try:
                 outp = export_one(src, dest, pinned=rec[i].get("pin") is True, retune=rec[i].get("retune"),

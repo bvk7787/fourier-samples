@@ -1511,6 +1511,27 @@ def test_file_names_stay_with_their_samples():
     assert C._choose_outname("Kick", {"kick.wav"}, prev_name="Kick.wav") == "Kick_2.wav"   # taken: no reuse
 
 
+def test_newcomers_of_one_name_are_named_by_their_source_path():
+    """Two new picks with one file name from different folders get the same names whatever
+    order the picks came in (the plain name to the first source path); a file the previous
+    build named still claims its name first."""
+    rec = [dict(path="/l/Acme Jorbl One/qzv_rim0.wav"), dict(path="/l/Acme Pure/Rim/qzv_rim0.wav"),
+           dict(path="/l/Acme Jorbl One/qzv_kick.wav")]
+
+    def names(picks, prev):
+        taken, out = set(), {}
+        for i in C._naming_order(picks, rec, prev):
+            n = C._choose_outname("qzv_rim0" if "rim" in rec[i]["path"] else "qzv_kick", taken,
+                                  prev.get(rec[i]["path"]))
+            taken.add(n.lower())
+            out[rec[i]["path"]] = n
+        return out
+    a, b = names([0, 1, 2], {}), names([2, 1, 0], {})
+    assert a == b and a["/l/Acme Jorbl One/qzv_rim0.wav"] == "qzv_rim0.wav"
+    prev = {"/l/Acme Pure/Rim/qzv_rim0.wav": "qzv_rim0.wav"}
+    assert names([0, 1], prev)["/l/Acme Pure/Rim/qzv_rim0.wav"] == "qzv_rim0.wav"
+
+
 def test_previous_names_claim_first(monkeypatch, tmp_path):
     doc = {"categories": {"KICKS": {"entries": [{"src": "/a/Kick.wav", "out": "f/Kick.wav", "family": "f"}]}}}
     monkeypatch.setitem(C._PREV_FAMS, "doc", doc)
