@@ -182,9 +182,10 @@ whichever the installed soundfile reads (not `.m4a`). It reports what it skipped
 
 The message says which files and what to run.
 
-Rules for your own packs, and categories only your library needs, go in a private overlay:
-a YAML file that fourier.toml names. Keys are tunable names (`fourier config explain <name>`
-says what one does). Most overlays set a few of the `library` tunables, which ship empty:
+Rules for your own packs, and categories only your library needs, go in a private overlay: a
+YAML file that fourier.toml names (a relative path is read from fourier.toml's folder). Keys are
+tunable names (`fourier config explain <name>` says what one does). Most overlays set a few of
+the `library` tunables, which ship empty:
 
 ```yaml
 # my-library.yaml   (fourier.toml: overlay = "my-library.yaml")

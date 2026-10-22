@@ -17,7 +17,8 @@ no listening port and sends no telemetry. It reads your sample library and write
   config (`~/.config/fourier`), and the master, renders and releases;
 - the CLAP model in the Hugging Face cache (`~/.cache/huggingface`);
 - the device card you name to `fourier sync`;
-- the copies `fourier tools import-folder` adds to a library folder.
+- the copies `fourier tools import-folder` adds to a library folder;
+- scratch folders in the system's temp folder, removed when the command ends.
 
 It uses the network only for:
 
@@ -25,7 +26,7 @@ It uses the network only for:
   own index for a CPU-only build), and offering `uv self update` when uv is too old for that;
 - downloading the CLAP model from Hugging Face once, pinned to one revision;
 - a local Ollama server on `localhost`, when you turn folder descriptions on or run `fourier
-  tools audit`.
+  tools audit`, and the model setup asks it to download when you say yes.
 
 The report page (`fourier open report`) is a local file that plays the master's own files. It
 loads nothing from the network.

@@ -24,7 +24,7 @@ always current, so check it before suggesting an option you aren't sure of.
   anything under `releases/` or the device lock files, and don't delete a release a device
   render was made from. Changes after a release is on a device go into the next release.
 - **Ask before the long or the irreversible.** A first `fourier build` analyzes the whole
-  library (about 30 files a second, so 100,000 files is about an hour); `fourier sync
+  library (hours on a large one; `fourier doctor` gives the estimate for it); `fourier sync
   --delete` removes files from a card; `fourier publish` makes a release. Say what it will do
   and let the user start it. `fourier build --dry-run`, `publish --dry-run` and `render
   --dry-run` are safe previews.

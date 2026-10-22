@@ -71,8 +71,15 @@ fourier demo
 ```
 
 Already have Python 3.11 or later? `pipx install fourier-samples` works too, or `pip install
-fourier-samples` in a virtual environment. For the latest code, run `uv tool install
-"fourier-samples @ git+https://github.com/bvk7787/fourier-samples"`.
+fourier-samples` in a virtual environment.
+
+These docs follow the code on main, and the release on PyPI can be behind it (CHANGELOG.md
+lists what main has under Unreleased). To install main:
+
+```bash
+uv tool install --reinstall "fourier-samples @ git+https://github.com/bvk7787/fourier-samples"
+fourier setup      # puts back the CLAP software a reinstall leaves out
+```
 
 `fourier demo` needs no library and no model. It generates 280 synthetic samples in
 `./fourier-demo` (or `--dir PATH`), builds and verifies a master from them, and renders it for
@@ -90,8 +97,10 @@ by saying what to try next.
 - **Disk.** About 25 GB free for a large library. The master is 5 to 7 GB, or less for a smaller
   library or with `size`. Each device render and release takes up to as much again, plus the
   downloads and the caches in `~/.fourier`.
-- **Time.** The first build listens to every sample, about an hour for each 100,000 files;
-  later builds take minutes.
+- **Time.** The first build listens to every sample, which takes hours on a large library,
+  and longer on a computer whose graphics chip PyTorch can't use (an Intel Mac without an AMD
+  graphics card, or Linux without an NVIDIA GPU). `fourier setup` and `fourier doctor`
+  estimate it for your library before you start. Later builds take minutes.
 - **Any library size, any layout.** Maker/pack folders, folders by sound type, or one flat
   folder all work.
 - **Optional: [Sononym](https://www.sononym.net) and Ableton Live.** When their data is there,
@@ -134,6 +143,7 @@ only scan and analyze what's new.
   download the model).
 - **FAIL**: this would stop a build, such as no CLAP install, no library, or a folder it can't
   read.
+- **INFO**: for your information; nothing to do.
 
 **Digitakt 2:** connect it over USB, open Elektron Transfer and drag the render's category
 folders into a folder on the +Drive, such as `/fourier`. Transfer never overwrites a file of
@@ -157,8 +167,8 @@ flowchart LR
     dt["Digitakt 2<br/>via Transfer"]
     m8["M8<br/>SD card"]
     lib --> build --> master -- "fourier publish" --> rel
-    rel -- "render, sync" --> dt
-    rel -- "render, sync" --> m8
+    rel -- "render, then Transfer" --> dt
+    rel -- "render, then sync" --> m8
     master -. "render without --release: a preview" .-> dt
 ```
 
@@ -168,8 +178,8 @@ when something goes wrong. [docs/usage.md](https://github.com/bvk7787/fourier-sa
 has every command, the words used here, rating files, configuration, and the styles and knobs.
 
 Working with a coding assistant? [skills/fourier/SKILL.md](https://github.com/bvk7787/fourier-samples/blob/main/skills/fourier/SKILL.md)
-teaches it Fourier: the safe commands, how to read a build, and the usual fixes. Copy the
-`fourier` folder into `~/.claude/skills/` for Claude Code, or point your assistant at the file.
+teaches it Fourier: the safe commands, how to read a build, and the usual fixes. Save that file
+as `~/.claude/skills/fourier/SKILL.md` for Claude Code, or point your assistant at it.
 
 ## Updating
 
@@ -188,9 +198,9 @@ explains how the CLAP software is kept across upgrades, and how to update PyTorc
 |---------|--------|---------|
 | `digitakt_2` | Elektron Digitakt 2 | `NN_CATEGORY/family`, 48 kHz / 16-bit, stereo kept |
 | `m8_tracker` | Dirtywave M8 | `/Samples/Fourier/NN_CATEGORY/family`, 44.1 kHz / 16-bit, whole path under 128 characters |
-| `generic_44k`, `generic_48k` | anything else | `NN_CATEGORY/family`, 16-bit stereo WAV; no limits claimed |
+| `generic_44k`, `generic_48k` | anything else | `NN_CATEGORY/family`, 16-bit stereo WAV, 128 files a folder; unverified defaults |
 | `generic_folder` | a folder for a DAW or a computer | `NN_CATEGORY/family`, 44.1 kHz / 24-bit WAV, no folder or name limits |
-| `generic_sd_card` | a sampler that reads WAV from an SD card | `/Fourier/NN_CATEGORY/family`, 44.1 kHz / 16-bit, 128 files a folder, plain-ASCII names; no limits claimed |
+| `generic_sd_card` | a sampler that reads WAV from an SD card | `/Fourier/NN_CATEGORY/family`, 44.1 kHz / 16-bit, 128 files a folder, plain-ASCII names; unverified defaults |
 
 Every value in a profile cites a page of the device's manual or says it's a convention or
 unverified. A test checks each quote against its page when the PDF is at hand.
@@ -232,12 +242,13 @@ an app update can break the reading. The only command that writes into a library
   undo one. A release never changes: `fourier publish` never overwrites one without `--force`,
   and never one a device uses. To roll a device back, render an earlier release.
 - **Network.** When you say yes, `fourier setup` installs PyTorch and Transformers from PyPI, or
-  from PyTorch's own index for the CPU-only build. It downloads the CLAP model once from
-  Hugging Face, pinned to one revision. If you skip that, the first build that needs the model
-  downloads it. After that the model loads from its folder with Hugging Face offline, so
-  analysis, builds and search make no request to Hugging Face. A local LLM (Ollama, on
-  `localhost`, never through a proxy) is used only if you turn folder descriptions on or run
-  `fourier tools audit`. Nothing else, and no telemetry.
+  from PyTorch's own index for the CPU-only build, and offers `uv self update` when uv is too
+  old for that. It downloads the CLAP model once from Hugging Face, pinned to one revision. If
+  you skip that, the first build that needs the model downloads it. After that the model loads
+  from its folder with Hugging Face offline, so analysis, builds and search make no request to
+  Hugging Face. A local LLM (Ollama, on `localhost`, never through a proxy) is used only if you
+  turn folder descriptions on or run `fourier tools audit`, and setup asks Ollama to download
+  its model only when you say yes. Nothing else, and no telemetry.
 - **Audio and licenses.** It reads open formats, doesn't circumvent copy protection and
   distributes no audio. Your master, renders and releases are copies of your samples, under
   their licenses. They're for your own use, so don't share or upload them. The `manifest.json`,
@@ -250,6 +261,7 @@ an app update can break the reading. The only command that writes into a library
   without Sononym or Live, and a synthetic library built and compared against a stored result.
   Both check that the library is unchanged afterward
   ([CONTRIBUTING.md](https://github.com/bvk7787/fourier-samples/blob/main/CONTRIBUTING.md)).
+  CI uses a stand-in for the CLAP model, so it never downloads it.
   Tested on hardware: macOS on Apple Silicon with a Digitakt 2 (OS 1.16) and an M8.
 - **Provided as is**, under Apache-2.0, without warranty. Keep backups of anything you can't
   replace.

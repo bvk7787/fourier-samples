@@ -1,6 +1,7 @@
 """fourier demo (fourier/demo.py): the pipeline on the synthetic library, in a sandbox folder
 that is the only place it reads or writes."""
 import os
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -154,6 +155,10 @@ def test_demo_builds_and_renders_inside_its_folder_only(tmp_path):
     for device in D.DEVICES:
         assert sum(1 for _ in (root / "renders" / device).rglob("*.wav")) > 200
     assert (root / "home" / "library.db").exists() and (root / "demo.log").stat().st_size
+    # README says verify runs "more than 100 checks": even the demo's small master gets them
+    m = re.search(r"verify: PASS -- (\d+) pass, (\d+) warn, (\d+) fail", (root / "demo.log").read_text())
+    assert m and sum(map(int, m.groups())) > 100, m
+    assert "`fourier verify` (more than 100 checks)" in " ".join((ROOT / "README.md").read_text().split())
     # nothing outside the demo folder: not the fake home (bar a library's own cache), not cwd
     ignore = lambda t: {k: v for k, v in t.items() if not k.startswith(".cache")}
     assert ignore(_tree(home)) == ignore(home_before)
