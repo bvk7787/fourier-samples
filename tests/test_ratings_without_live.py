@@ -207,3 +207,45 @@ def test_a_build_writes_no_live_sidecars_without_live(env, tmp_path, monkeypatch
     assert RT.writes_sidecars(str(m), str(live))
     B._post_build_ratings(str(m), str(live))
     assert _sidecars(m) == [f"KICKS/round/Ableton Folder Info/{LIVE_USER_XMP}"]
+
+
+@pytest.mark.parametrize("encoding, bom, newline", [
+    ("utf-8", b"", "\n"), ("utf-8", b"\xef\xbb\xbf", "\r\n"),       # Excel's "CSV UTF-8"
+    ("cp1252", b"", "\r\n"), ("latin-1", b"", "\n"),                # Excel's "CSV" on Windows
+    ("utf-16-le", b"\xff\xfe", "\r\n"), ("utf-16-be", b"\xfe\xff", "\n"),   # "Unicode text"
+    ("utf-8", b"", "\r")])                                          # old Mac line endings
+def test_import_reads_what_spreadsheets_save(env, tmp_path, encoding, bom, newline):
+    m, store = env
+    csv = tmp_path / "ratings.csv"
+    rows = ["path,rating,category,note", "Tone Kick 01,keep,,café crème",
+            "Tone Snare 01,misfiled,CLAPS,naïve"]
+    csv.write_bytes(bom + newline.join(rows).encode(encoding) + newline.encode(encoding))
+    r = _cli("import", str(csv), "--from", str(m))
+    assert r.exit_code == 0, r.output
+    assert "rated 2 files (1 keep, 0 drop, 1 misfiled)" in r.output, r.output
+    assert load_store(store)["ratings"][f"{LIB}/Tone Snare 01.wav"]["target"] == "CLAPS"
+
+
+def test_import_refuses_rows_that_disagree(env, tmp_path):
+    """Two rows that rate one file differently: which one is meant can't be told, so nothing is
+    rated and both lines are named. The same rating twice is fine."""
+    m, store = env
+    csv = tmp_path / "ratings.csv"
+    csv.write_text("path,rating,category\n"
+                   "Tone Kick 01,keep,\n"
+                   "\n"
+                   "KICKS/round/Tone_Kick_01.wav,keep,\n"
+                   "Tone Snare 01,keep,\n"
+                   "Tone Kick 01,drop,\n"
+                   "Tone Snare 01,misfiled,claps\n")
+    r = _cli("import", str(csv), "--from", str(m))
+    out = r.output
+    assert r.exit_code == 2, out
+    assert "rows rate the same file differently, so nothing was rated" in out
+    assert "KICKS/round/Tone_Kick_01.wav: line 2 keep, line 4 keep, line 6 drop" in out, out
+    assert "SNARES/tight/Tone_Snare_01.wav: line 5 keep, line 7 misfiled to CLAPS" in out, out
+    assert not os.path.exists(store)
+    csv.write_text("path,rating,category\nTone Kick 01,keep,\nKICKS/round/Tone_Kick_01.wav,KEEP,\n"
+                   "Tone Snare 01,misfiled,claps\nTone Snare 01,misfiled,CLAPS\n")
+    r = _cli("import", str(csv), "--from", str(m))
+    assert r.exit_code == 0 and "rated 2 files (1 keep, 0 drop, 1 misfiled)" in r.output, r.output

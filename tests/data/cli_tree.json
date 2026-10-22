@@ -1314,7 +1314,7 @@
  },
  "fourier review import": {
   "group": false,
-  "help": "Import ratings from a CSV file with a header row: `path` (or `name`: anything `review\nrate` takes), `rating` (keep, drop or misfiled), an optional `category` (for misfiled: the\ncategory it belongs in) and an optional `scope` (drop or misfiled: `set` for the file's\nwhole set, as `review rate --set`; else `file`). Rows that match no file, or several, are\nlisted and skipped (exit 1); the rest are stored as `review rate` stores them.\n\n\b\n  path,rating,category,scope\n  KICKS/punchy/Kick_01.wav,keep,,\n  Snare Tight 03,misfiled,CLAPS,\n  Pad C3,drop,,set",
+  "help": "Import ratings from a CSV file with a header row: `path` (or `name`: anything `review\nrate` takes), `rating` (keep, drop or misfiled), an optional `category` (for misfiled: the\ncategory it belongs in) and an optional `scope` (drop or misfiled: `set` for the file's\nwhole set, as `review rate --set`; else `file`). Rows that match no file, or several, are\nlisted and skipped (exit 1); the rest are stored as `review rate` stores them. Rows that\nrate one file differently stop the import, naming their lines (exit 2). UTF-8, UTF-16\nand Windows-1252 files all read.\n\n\b\n  path,rating,category,scope\n  KICKS/punchy/Kick_01.wav,keep,,\n  Snare Tight 03,misfiled,CLAPS,\n  Pad C3,drop,,set",
   "hidden": false,
   "params": [
    {

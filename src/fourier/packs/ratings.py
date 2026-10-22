@@ -956,14 +956,37 @@ CSV_CATEGORY = ("category", "to", "move_to")
 CSV_SCOPE = ("scope",)
 
 
+def _csv_text(csv_path) -> str:
+    """A CSV file's text, whichever encoding a spreadsheet saved it in: UTF-16 by its byte
+    order mark, else UTF-8 (a BOM dropped), else Windows-1252 (Excel's "CSV" on Windows),
+    else Latin-1, which reads any bytes. Line endings are left to the csv module."""
+    data = open(csv_path, "rb").read()
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        try:
+            return data.decode("utf-16")
+        except UnicodeDecodeError as e:
+            raise ValueError(f"{csv_path}: starts as UTF-16 but isn't ({e.reason} at byte "
+                             f"{e.start}); save it as CSV UTF-8") from None
+    for enc in ("utf-8-sig", "cp1252"):
+        try:
+            return data.decode(enc)
+        except UnicodeDecodeError:
+            pass
+    return data.decode("latin-1")
+
+
 def read_ratings_csv(csv_path, master_dir):
     """Rows of a ratings CSV matched to the master's files: (rated, skipped) where rated is
     [(target, verdict, move_to, scope)] and skipped [(line, value, why)]. Columns (a header
     row, any order, case aside): `path` or `name` (what `review rate` takes), `rating` (keep,
     drop or misfiled), an optional `category` (misfiled: the category it belongs in) and an
-    optional `scope` (drop or misfiled: `set` for the file's whole set, else `file`)."""
+    optional `scope` (drop or misfiled: `set` for the file's whole set, else `file`).
+    Saved as UTF-8 (with or without a BOM), UTF-16 or Windows-1252, with any line endings.
+    Rows that rate one file twice alike count once; rows that rate it differently are a
+    ValueError naming their lines, and nothing is rated."""
     import csv
-    with open(csv_path, newline="", encoding="utf-8-sig") as f:
+    import io
+    with io.StringIO(_csv_text(csv_path), newline="") as f:
         reader = csv.DictReader(f)
         cols = {(c or "").strip().lower(): c for c in (reader.fieldnames or [])}
         name_col = next((cols[c] for c in CSV_NAME if c in cols), None)
@@ -973,9 +996,12 @@ def read_ratings_csv(csv_path, master_dir):
         if not name_col or not rating_col:
             raise ValueError(f"{csv_path}: needs a header row with a path (or name) column and a "
                              f"rating column; found {reader.fieldnames}")
-        rows = [(i, r) for i, r in enumerate(reader, start=2)]
+        rows = []
+        for r in reader:
+            rows.append((reader.line_num, r))
     targets = rateable(master_dir)
     rated, skipped, seen = [], [], {}
+    lines: dict = {}                  # the lines that rated each file, and what they said
     for line, r in rows:
         q = (r.get(name_col) or "").strip()
         v = (r.get(rating_col) or "").strip().lower()
@@ -1007,11 +1033,21 @@ def read_ratings_csv(csv_path, master_dir):
                                      f"{', ...' if len(hits) > 3 else ''}); give its path"))
             continue
         key = (hits[0]["src"], hits[0]["category"])
-        if key in seen:                       # a later row for the same file wins
-            rated[seen[key]] = (hits[0], v, to or None, scope or None)
-        else:
+        said = (v, _category_named(to) if to else None, scope or "file")
+        lines.setdefault(key, []).append((line, said, hits[0]["path"]))
+        if key not in seen:                   # the same rating again counts once
             seen[key] = len(rated)
             rated.append((hits[0], v, to or None, scope or None))
+    clash = [ls for ls in lines.values() if len({said for _l, said, _p in ls}) > 1]
+    if clash:
+        def what(said):
+            v, to, scope = said
+            return v + (f" to {to}" if to else "") + (" (set)" if scope == "set" else "")
+        raise ValueError(f"{csv_path}: rows rate the same file differently, so nothing was "
+                         f"rated; keep one row for each and import again:\n" + "\n".join(
+                             f"  {ls[0][2]}: " + ", ".join(f"line {ln} {what(said)}"
+                                                           for ln, said, _p in ls)
+                             for ls in clash))
     return rated, skipped
 
 
