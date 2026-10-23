@@ -312,3 +312,27 @@ def test_a_file_moved_into_fx_by_a_rating_keeps_the_band_the_build_gave_it(tmp_p
     assert fx_band_fails({})
     src = f"{LIB}/V4/Pack/Qzv Drop.wav"
     assert not fx_band_fails({src: {"verdict": "misfiled", "category": "VOX", "target": "FX"}})
+
+
+def test_a_small_librarys_shortfalls_are_one_line():
+    """The warnings that the library ran short of candidates (under budget, a band short of
+    its share, validate's reachable budget) fold into one line naming the categories; any
+    other warning stays its own line, and `verify --detail` keeps each."""
+    from fourier.packs.verify import FAIL, PASS, WARN, Result, fold_short
+    res = [Result(PASS, "no category over budget"),
+           Result(WARN, "categories under budget (pool ran out)", "2: KICKS under its budget of 24; PADS (14, 24)",
+                  cats=("KICKS", "PADS")),
+           Result(WARN, "files without an event profile", "3"),
+           Result(WARN, "FX band shares and folder minimums hold", "downlifter (0)"),
+           Result(WARN, "validate: budget", "KICKS: under its budget of 24 (reachable: 1 fams x 120)"),
+           Result(WARN, "validate: budget", "SNARES: 12 < budget 24 (reachable: 1 fams x 120)"),
+           Result(FAIL, "validate: ceiling", "x")]
+    got = fold_short(res)
+    assert [r.check for r in got][0] == "no category over budget"
+    assert [r.level for r in got] == [PASS, WARN, WARN, FAIL]
+    one = got[1]
+    assert one.check == ("4 categories have fewer candidates than the budget or band shares ask for "
+                         "(KICKS, SNARES, PADS, FX): usual in a small library; "
+                         "`fourier verify --detail` lists each")
+    assert got[2].check == "files without an event profile"
+    assert fold_short([r for r in res if r.level != WARN]) == [r for r in res if r.level != WARN]

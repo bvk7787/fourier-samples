@@ -1015,6 +1015,23 @@ def read_ratings_csv(csv_path, master_dir):
     return rated, skipped
 
 
+def writes_sidecars(*masters) -> bool:
+    """Whether a build writes the stored ratings back into its master as Live sidecars
+    (apply_tags): when Live is one of the build's providers (its tags are in the database, or
+    fourier.toml names it), or one of these masters already holds sidecars (someone rates it
+    in Live's browser). Without Live a master gets none."""
+    try:
+        from ..db.session import db_exists, session_scope
+        from ..metadata.providers import ABLETON, active
+        if db_exists():
+            with session_scope() as s:
+                if ABLETON in active(s).names:
+                    return True
+    except Exception:  # noqa: BLE001 (no database or providers here: the masters decide)
+        pass
+    return any(m and os.path.isdir(m) and uses_live(m) for m in masters)
+
+
 def uses_live(master_dir):
     """True when the master holds Live sidecars (someone rates it in Live's browser)."""
     pattern = os.path.join(glob.escape(master_dir), "**", "Ableton Folder Info", "*.xmp")

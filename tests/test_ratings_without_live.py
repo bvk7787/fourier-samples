@@ -183,3 +183,27 @@ def test_clear_points_a_live_tagged_rating_to_live(env):
     r = _cli("rate", "Tone Kick 01", "clear", "--from", str(m))
     assert r.exit_code == 2 and "tag in Live's browser" in r.output
     assert load_store(store)["ratings"][f"{LIB}/Tone Kick 01.wav"]["verdict"] == "keep"
+
+
+def _sidecars(root):
+    return sorted(str(p.relative_to(root)) for p in root.rglob(LIVE_USER_XMP))
+
+
+def test_a_build_writes_no_live_sidecars_without_live(env, tmp_path, monkeypatch):
+    """A build puts the stored ratings back into its master as Live sidecars only when Live
+    is in use: a provider of the build, or sidecars already in the master it replaces."""
+    from fourier.cli import build as B
+    from fourier.packs import ratings as RT
+    m, store = env
+    assert _cli("rate", "Tone Kick 01", "keep", "--from", str(m)).exit_code == 0
+    monkeypatch.setattr(B, "_run_verify", lambda *a, **k: True)
+    monkeypatch.setattr(B, "_print_scorecard", lambda *a, **k: None)
+    live = _master(tmp_path / "live")
+    assert B._post_build_ratings(str(m)) is True
+    assert _sidecars(m) == []
+    # someone rates the master in Live's browser: its sidecars say so, and the next build writes
+    (live / "KICKS" / "round" / "Ableton Folder Info").mkdir()
+    (live / "KICKS" / "round" / "Ableton Folder Info" / LIVE_USER_XMP).write_text("")
+    assert RT.writes_sidecars(str(m), str(live))
+    B._post_build_ratings(str(m), str(live))
+    assert _sidecars(m) == [f"KICKS/round/Ableton Folder Info/{LIVE_USER_XMP}"]

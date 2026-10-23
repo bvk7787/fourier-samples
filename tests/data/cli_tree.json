@@ -451,12 +451,12 @@
  },
  "fourier config show": {
   "group": false,
-  "help": "The preset, the knobs the config files set, and each tunable that differs from the\ncode's default with the layer that set it (--all: every tunable).",
+  "help": "The preset, the settings (knobs) the config files set, and the advanced settings\nyour own files set directly, with where each came from (--all: every tunable, the ones\nthe style and the settings stand for included).",
   "hidden": false,
   "params": [
    {
     "default": "False",
-    "help": "Every tunable, not just the overridden ones",
+    "help": "Every tunable with its class, the style's and the settings' included",
     "hidden": false,
     "is_flag": true,
     "kind": "Option",
@@ -2993,6 +2993,22 @@
     "nargs": 1,
     "opts": [
      "--quick"
+    ],
+    "required": false,
+    "show_default": false,
+    "type": "boolean"
+   },
+   {
+    "default": "False",
+    "help": "Each category short of candidates on its own line (one line for them all otherwise)",
+    "hidden": false,
+    "is_flag": true,
+    "kind": "Option",
+    "multiple": false,
+    "name": "detail",
+    "nargs": 1,
+    "opts": [
+     "--detail"
     ],
     "required": false,
     "show_default": false,

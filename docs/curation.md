@@ -1090,8 +1090,8 @@ add_categories:
 | `presets` | {preset: off, on or a weight}: applied as the adding layer's `categories` knob when that preset is in the chain (presets can't name a category they don't know) |
 | Knobs | every later knob sees the category: `categories = { FIELD = "off" }`, `files`, `size` and `devices` include it |
 
-A later layer's entry of the same name replaces an earlier one. `fourier config show` lists
-`ADDED_CATEGORIES` with the layer that set it; `fourier config explain categories` lists the
+A later layer's entry of the same name replaces an earlier one. `fourier config show --all`
+lists `ADDED_CATEGORIES` with the layer that set it; `fourier config explain categories` lists the
 added categories with the others.
 
 ## 5. Naming
@@ -1298,7 +1298,7 @@ the file itself beats a sibling's Misfiled.
 | Hash rekey | before every build, a rating whose path left the library moves to the one existing file with the same hash (same name first); ambiguous ones are reported |
 | Moves | the library walk matches a file it no longer finds with one new to it of the same content (the first 8 KB and size, and every byte where both rows were hashed in full; same name first, one to one), or a file back where it was: the new row takes the old one's analysis, and the ratings, colors and automatic misfiles move with it (`ratings.rekey_paths`); the store's `moved` map gives a tag on an older master's copy to the new path |
 | Gone Keeps | a Keep whose source is gone (not on disk, or marked missing) can't be placed: the build and verify pass over it with a warning naming it (`ratings.missing_keeps`); `fourier review rate <name> clear` removes a rating given here or imported (a Live tag's is changed in Live) |
-| Write-back | `apply_tags`, after every build or `fourier review ratings --apply`: ratings and colors go into the new master's sidecars (`dc66a3fa-...xmp`); only `Fourier\|` keywords change, a sidecar with unknown fields is left alone, and a Misfiled isn't re-applied once the file moved |
+| Write-back | `apply_tags`, after a build when Live is in use (a provider, or sidecars already in the master: `ratings.writes_sidecars`) or `fourier review ratings --apply`: ratings and colors go into the new master's sidecars (`dc66a3fa-...xmp`); only `Fourier\|` keywords change, a sidecar with unknown fields is left alone, and a Misfiled isn't re-applied once the file moved |
 | Scorecard | after every build, `fourier review score`: per category files, rated, keep rate and change, drops, `back` (dropped earlier, kept now), `lost` (Keep gone), `misf` (Misfiled still there); saved in `~/.fourier/scorecards/` |
 | Review queue | `fourier review queue`: about 40 hard links in `_REVIEW/` named `CATEGORY - family - file.wav`: misfile suspects 25%, shaky votes 25%, Drop neighbors 15%, scattered sets 15%, random rest; at most 2 per folder, rated files and siblings skipped, reasons in `_review.json` |
 | Auto-misfile | `fourier review misfiles` (a command, not a build step): files whose CLAP vector is closer to another category's centroid by more than 0.4 (`AUTO_MISFILE_MARGIN`) are stored in `auto_misfiled` and act as Misfiled unless a human rated the file |
