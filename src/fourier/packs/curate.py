@@ -1952,6 +1952,76 @@ def _tempo_apart(a, b) -> bool:
     return bool(ta and tb and abs(float(ta) - float(tb)) > SAME_TEMPO_BPM)
 
 
+# two loops whose onset envelopes correlate under this play different patterns: CLAP hears
+# one kit, a producer hears two grooves (_grooves_apart)
+GROOVE_SAME_MIN = _tunable("GROOVE_SAME_MIN", 0.9)
+GROOVE_MAX_S = _tunable("GROOVE_MAX_S", 32.0)     # the seconds of each loop compared
+# the envelopes are compared at their best alignment within this much: a copy cut at another
+# start (lead silence) is the same groove; under a 16th at 200 BPM, so a pattern pushed a 16th isn't
+GROOVE_MAX_LAG_S = _tunable("GROOVE_MAX_LAG_S", 0.07)
+GROOVE_HOP = _tunable("GROOVE_HOP", 128)       # the envelope's hop, in samples at 22,050 Hz
+GROOVE_PAD = _tunable("GROOVE_PAD", 2048)      # silence before the file, in samples
+
+
+@lru_cache(maxsize=4096)
+def _onset_env_of(path, _stamp):
+    """A file's onset strength envelope (librosa, 22,050 Hz, GROOVE_HOP-sample hops, averaged
+    over 2 hops so a hit between two hops reads alike) over its first GROOVE_MAX_S seconds,
+    after GROOVE_PAD samples of silence so a hit at the file's very start counts as one; None
+    when it can't be read."""
+    try:
+        import librosa
+        from ..audioio import load as load_audio
+        y, sr = load_audio(path, sr=22050, mono=True, duration=GROOVE_MAX_S)
+        y = np.concatenate([np.zeros(GROOVE_PAD, dtype=y.dtype), y])
+        env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=GROOVE_HOP)
+        return np.convolve(env, np.ones(2) / 2.0, mode="same")
+    except Exception:
+        return None
+
+
+def _onset_env(path):
+    from .. import platforms
+    try:
+        st = os.stat(path)
+    except (OSError, TypeError, ValueError):
+        return None
+    if platforms.cloud_only(path):
+        return None
+    return _onset_env_of(str(path), (st.st_size, st.st_mtime_ns))
+
+
+def _grooves_apart(a, b) -> bool:
+    """Two loops (records) whose onset envelopes, over their common length and at their best
+    alignment within GROOVE_MAX_LAG_S, correlate under GROOVE_SAME_MIN: different patterns,
+    so neither is the other's near-duplicate however alike their sound. False when either
+    can't be read."""
+    ea, eb = _onset_env(a.get("path")), _onset_env(b.get("path"))
+    if ea is None or eb is None:
+        return False
+    lag = int(round(GROOVE_MAX_LAG_S * 22050 / GROOVE_HOP))
+    best = None
+    for k in range(-lag, lag + 1):
+        x, y = (ea[k:], eb) if k >= 0 else (ea, eb[-k:])
+        n = min(len(x), len(y))
+        if n < 4:
+            continue
+        x, y = x[:n], y[:n]
+        if float(x.std()) == 0.0 or float(y.std()) == 0.0:
+            continue
+        c = float(np.corrcoef(x, y)[0, 1])
+        best = c if best is None else max(best, c)
+    return best is not None and best < GROOVE_SAME_MIN
+
+
+def _loops_apart(fallback):
+    """The near-duplicate prune's `apart` for a loop category: other grooves (_grooves_apart),
+    and without Sononym other tempo folders too (_tempo_apart)."""
+    if fallback:
+        return lambda a, b: _tempo_apart(a, b) or _grooves_apart(a, b)
+    return _grooves_apart
+
+
 def _prune_near_dups(rec, emb_n, thr, keep=0, partners=None, apart=None):
     """Drop CLAP near-identical samples, keeping the higher-quality one of each
     group. Deterministic: candidates are visited in (quality desc, id asc) order and
@@ -5175,7 +5245,7 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
         _partners = {} if why is not None else None
         rec, pruned = _prune_near_dups(rec, emb_n, cfg.get("near_dup_cos", NEAR_DUP_COS), keep=_floor,
                                        partners=_partners,
-                                       apart=_tempo_apart if (fallback and cfg["kind"] == "loop") else None)
+                                       apart=_loops_apart(fallback) if cfg["kind"] == "loop" else None)
         if why is not None and _partners:
             why.setdefault("near_dup", {}).update(_partners)
         stats["near_dup"] = pruned

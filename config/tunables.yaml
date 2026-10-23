@@ -329,6 +329,11 @@ curate:
   QUAL_WEIGHT: engine
   FAVOR_WEIGHT: taste
   NEAR_DUP_COS: correctness
+  GROOVE_SAME_MIN: engine
+  GROOVE_MAX_S: engine
+  GROOVE_MAX_LAG_S: engine
+  GROOVE_HOP: engine
+  GROOVE_PAD: engine
   INSTRUMENT_COPY_COS: correctness
   CROSS_COPY_COS: correctness
   COPY_XCORR: correctness

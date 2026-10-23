@@ -514,3 +514,45 @@ def test_a_long_sustained_note_is_cut_to_the_instrument_cap(monkeypatch):
     y = np.sin(np.arange(sr * 40) * 0.05) * 0.5
     out = C._process_audio(y, sr, "instrument", False, False, "peak", dur_cap=30.0)
     assert len(out) <= 30 * sr and abs(out[-1]) < 1e-3
+
+
+def _groove(path, hits, gain=0.5, bpm=130, sr=22050, lead=0.0):
+    """One bar of the same noise bursts (one kit) on the given 16th notes, after `lead`
+    seconds of silence."""
+    import soundfile as sf
+    six = 15.0 / bpm
+    n = int(round(16 * six * sr))
+    rng = np.random.default_rng(0)
+    burst = rng.standard_normal(int(0.06 * sr)) * np.exp(-np.arange(int(0.06 * sr)) / (0.01 * sr))
+    y = np.zeros(n)
+    for k in hits:
+        i = int(round((k * six + lead) * sr))
+        if i >= n:
+            continue
+        m = min(len(burst), n - i)
+        y[i:i + m] += burst[:m]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(path), (gain * y / np.abs(y).max()).astype("float32"), sr, subtype="PCM_16")
+    return str(path)
+
+
+def test_near_duplicate_loops_must_play_the_same_groove(tmp_path):
+    """Two loops of one kit that CLAP hears as near-identical but whose onsets follow other
+    patterns are both kept; the same pattern at another level is still a duplicate."""
+    a = _groove(tmp_path / "Acme" / "Qzv Break 01.wav", [0, 4, 6, 10, 12])
+    b = _groove(tmp_path / "Acme" / "Qzv Break 02.wav", [0, 3, 8, 9, 14])
+    c = _groove(tmp_path / "Acme" / "Qzv Break 01 Quiet.wav", [0, 4, 6, 10, 12], gain=0.2)
+    rec = [dict(id=i, row=0, qual=1.0 - i / 10, path=p, bpm=130.0) for i, p in enumerate((a, b, c))]
+    E = np.ones((1, 4), dtype="float32") / 2.0                       # one embedding for all three
+    assert C._grooves_apart(rec[0], rec[1]) and not C._grooves_apart(rec[0], rec[2])
+    # the same pattern cut at another start (lead silence) is the same groove; one pushed a
+    # 16th later is another
+    for lead in (0.012, 0.023, 0.05):
+        d = _groove(tmp_path / "Acme" / f"Qzv Break 01 Wet {lead}.wav", [0, 4, 6, 10, 12], gain=0.3, lead=lead)
+        assert not C._grooves_apart(rec[0], dict(path=d)), lead
+    pushed = _groove(tmp_path / "Acme" / "Qzv Break 01 Pushed.wav", [1, 5, 7, 11, 13])
+    assert C._grooves_apart(rec[0], dict(path=pushed))
+    kept, pruned = C._prune_near_dups(rec, E, 0.99, apart=C._loops_apart(False))
+    assert [r["id"] for r in kept] == [0, 1] and pruned == 1
+    kept, _ = C._prune_near_dups(rec, E, 0.99, apart=C._loops_apart(True))
+    assert [r["id"] for r in kept] == [0, 1]
