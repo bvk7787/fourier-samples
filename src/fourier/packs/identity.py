@@ -18,8 +18,9 @@
 The set cap outside the drum categories also binds one named patch's numbered takes and
 variant letters ("Drop A 01".."Drop C 09", `patch_key`); in the drum categories
 (SIBLING_SETS_ONLY) only sets. Twins of one note and velocity that differ only by their round
-robin ("rr2", or a bare number right after a velocity in a name stating a note: "Qzv_C2_v3_2")
-are one sound (`rr_key`), and so are a kit's two takes of one drum (`take_name`).
+robin ("rr2", or a bare number right after a velocity in a name stating a note: "Qzv_C2_v3_2"),
+or that an SFZ map beside them plays as one key's round robins (`sfz_round_robins`), are one
+sound (`rr_key`), and so are a kit's two takes of one drum (`take_name`).
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ import os
 import re
 from bisect import bisect_left, bisect_right
 from collections import defaultdict
+from functools import lru_cache
 
 import numpy as np
 
@@ -329,22 +331,139 @@ def _bare_rr(path, toks):
 def rr_key(path):
     """(source folder, name less its round robin) of a file whose name numbers a round robin
     ("Qzv_C2_v3_rr2", or bare after a velocity: "Qzv_C2_v3_2"): its twins of the same note
-    and velocity share it. None otherwise."""
+    and velocity share it. Else the round robin an SFZ map beside it states (sfz_round_robins:
+    "<drum>41" to "<drum>45" as one key's random takes). None otherwise."""
     stem = os.path.splitext(os.path.basename(path or ""))[0].lower()
     toks = [t for t in _SPLIT.split(stem) if t]
     rest = toks[:-1] if _bare_rr(path, toks) else [t for t in toks if not _RR.match(t)]
     if len(rest) == len(toks) or not rest:
-        return None
+        got = sfz_round_robins(path)
+        return got[0] if got else None
     return _where(path)[2], " ".join(rest)
 
 
 def rr_number(path):
-    """A name's round robin number (0 when it has none)."""
+    """A name's round robin number, else its place in an SFZ map's round robin (0: none)."""
     stem = os.path.splitext(os.path.basename(path or ""))[0].lower()
     toks = [t for t in _SPLIT.split(stem) if t]
     if _bare_rr(path, toks):
         return int(toks[-1])
-    return next((int(t[2:]) for t in toks if _RR.match(t)), 0)
+    got = next((int(t[2:]) for t in toks if _RR.match(t)), None)
+    if got is not None:
+        return got
+    sfz = sfz_round_robins(path)
+    return sfz[1] if sfz else 0
+
+
+# --- SFZ maps beside the samples ------------------------------------------------------------------
+# An SFZ instrument file names its samples (sample=) in regions; regions of one key range and
+# velocity range told apart by lorand/hirand (random) or seq_position (in turn) are round robins.
+# Regions a controller, keyswitch, channel or trigger selects apart (a hat's closed and open
+# takes on one key by CC4, a snare's center and rim by keyswitch) are other sounds, and a
+# release-trigger region is a release take, not a round robin of the note.
+_SFZ_HEADER = re.compile(r"<(\w+)>")
+_SFZ_SELECTOR = re.compile(r"^(?:(?:lo|hi)(?:chan|bend|prog|bpm|timer|chanaft|polyaft|(?:hd|real)?cc\d+)"
+                           r"|sw_(?:last|lokey|hikey|down|up|previous|vel|lolast|hilast)|trigger)$")
+_SFZ_OPCODE = re.compile(r"(\w+)=(.*?)(?=\s+\w+=|\s*$)")
+
+
+def _sfz_sections(text):
+    """[(header, {opcode: value})] of an SFZ file's text, comments out."""
+    text = re.sub(r"//[^\n]*", "", text)
+    out, cur = [], None
+    pos = 0
+    for m in list(_SFZ_HEADER.finditer(text)) + [None]:
+        chunk = text[pos:m.start() if m else len(text)]
+        if cur is not None:
+            ops = {}
+            for line in chunk.splitlines():
+                for k, v in _SFZ_OPCODE.findall(line.strip()):
+                    ops[k.lower()] = v.strip()
+            out.append((cur, ops))
+        if m is None:
+            break
+        cur, pos = m.group(1).lower(), m.end()
+    return out
+
+
+def _sfz_rr(sfz_path):
+    """{absolute sample path: (key, place)} for the round robins one SFZ file maps: the key
+    is the file and the samples of one round robin, the place the take's order in it."""
+    try:
+        with open(sfz_path, encoding="utf-8", errors="replace") as f:
+            text = f.read(1 << 20)
+    except OSError:
+        return {}
+    base = os.path.dirname(sfz_path)
+    glob, group, default_path = {}, {}, ""
+    buckets = defaultdict(list)
+    for head, ops in _sfz_sections(text):
+        if head == "control":
+            default_path = ops.get("default_path", default_path)
+        elif head in ("global", "master"):
+            glob, group = {**glob, **ops}, {}
+        elif head == "group":
+            group = {**glob, **ops}
+        elif head == "region":
+            r = {**group, **ops}
+            smp = r.get("sample")
+            if not smp or r.get("trigger", "").lower() in ("release", "release_key"):
+                continue
+            if "lorand" in r or "hirand" in r:
+                order = float(r.get("lorand", 0) or 0)
+            elif "seq_position" in r:
+                order = float(r.get("seq_position", 0) or 0)
+            else:
+                continue
+            key = r.get("key")
+            keys = (key, key) if key else (r.get("lokey"), r.get("hikey"))
+            where = (keys, r.get("lovel"), r.get("hivel"), r.get("seq_length"),
+                     tuple(sorted((k, v) for k, v in r.items() if _SFZ_SELECTOR.match(k))))
+            full = os.path.normpath(os.path.join(base, default_path, smp.replace("\\", "/")))
+            buckets[where].append((order, full))
+    out = {}
+    for regions in buckets.values():
+        files = sorted({f for _o, f in regions})
+        if len(files) < 2:
+            continue
+        key = ("sfz", os.path.normpath(sfz_path), tuple(files))
+        for place, (_o, f) in enumerate(sorted(regions), start=1):
+            out.setdefault(f, (key, place))
+    return out
+
+
+@lru_cache(maxsize=16384)
+def _sfz_maps(folder):
+    """{absolute sample path: (key, place)} from the SFZ files in a folder ({} for none). Read
+    once a run (a build doesn't see a map change under it)."""
+    try:
+        names = sorted(n for n in os.listdir(folder) if n.lower().endswith(".sfz"))
+    except OSError:
+        return {}
+    if not names:
+        return {}
+    from .. import platforms
+    got: dict = {}
+    for n in names:
+        p = os.path.join(folder, n)
+        if os.path.isfile(p) and not platforms.cloud_only(p):     # never starts a download
+            for f, v in _sfz_rr(p).items():
+                got.setdefault(f, v)
+    return got
+
+
+def sfz_round_robins(path):
+    """(key, place) of a sample an SFZ map in its folder or the one above names as a round
+    robin (_sfz_rr), else None."""
+    if not path:
+        return None
+    full = os.path.normpath(os.path.abspath(path))
+    here = os.path.dirname(full)
+    for folder in (here, os.path.dirname(here)):
+        got = _sfz_maps(folder).get(full)
+        if got:
+            return got
+    return None
 
 
 def take_name(stem):

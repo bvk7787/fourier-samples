@@ -482,3 +482,71 @@ def test_a_pyin_fill_an_octave_off_takes_the_octave_its_number_names(monkeypatch
     monkeypatch.setattr(C, "_detect_pitch", lambda q: heard.get(q.rsplit("/", 1)[-1]))
     assert C._fill_roots("SYNTH", list(range(len(rec))), rec) == 0
     assert rec[4]["retune"] is None                    # its C is taken: it keeps its pitch
+
+
+def test_round_robins_an_sfz_map_beside_the_samples_states(tmp_path):
+    """Takes an SFZ map in the samples' folder (or the one above) plays as one key's random or
+    sequenced round robins are one sound: one stays, the first take first. Velocity layers
+    and samples of other keys stay apart, and without a map numbered hits are a series."""
+    kit = tmp_path / "Acme Zorbl" / "Zorbl Bd 4"
+    kit.mkdir(parents=True)
+    names = [f"zorbl_bd4{i}.wav" for i in range(1, 6)] + ["zorbl_sd1.wav", "zorbl_sd2.wav"]
+    for n in names:
+        (kit / n).write_bytes(b"")
+    (kit / "zorbl_bd4.sfz").write_text(
+        "// a kick and a snare\n<group> volume=-7 key=36 loop_mode=one_shot\n"
+        + "".join(f"<region> sample=zorbl_bd4{i}.wav lorand={(i - 1) / 5:.1f} hirand={i / 5:.1f}\n"
+                  for i in (2, 1, 3, 4, 5))
+        + "<group> key=38\n<region> sample=zorbl_sd1.wav lovel=0 hivel=63\n"
+        + "<region> sample=zorbl_sd2.wav lovel=64 hivel=127\n")
+    rec = [dict(path=str(kit / n)) for n in names]
+    keys = [I.rr_key(r["path"]) for r in rec]
+    assert keys[0] is not None and len(set(keys[:5])) == 1
+    assert keys[5] is None and keys[6] is None                       # velocity layers
+    assert [I.rr_number(r["path"]) for r in rec[:5]] == [1, 2, 3, 4, 5]
+    assert C._one_per_round_robin([[0, 1, 2], [3, 4, 5, 6]], rec) == ([[0], [5, 6]], 4)
+    # a map one folder up, with a samples folder below it
+    up = tmp_path / "Acme Zorbl Two"
+    (up / "samples").mkdir(parents=True)
+    for i in (1, 2):
+        (up / "samples" / f"qzv_tom{i}.wav").write_bytes(b"")
+    (up / "qzv_tom.sfz").write_text("<control> default_path=samples/\n<group> key=45\n"
+                                    "<region> sample=qzv_tom1.wav seq_position=1\n"
+                                    "<region> sample=qzv_tom2.wav seq_position=2\n")
+    assert I.rr_key(str(up / "samples" / "qzv_tom1.wav")) == I.rr_key(str(up / "samples" / "qzv_tom2.wav")) is not None
+    alone = tmp_path / "Acme Zorbl Three"
+    alone.mkdir()
+    (alone / "zorbl_bd41.wav").write_bytes(b"")
+    assert I.rr_key(str(alone / "zorbl_bd41.wav")) is None
+
+
+def test_sfz_regions_a_controller_keyswitch_or_trigger_selects_are_other_sounds(tmp_path):
+    """Round robins share every selector of their regions: a hat's closed and open takes on
+    one key told apart by CC4, a snare's center and rim takes by keyswitch, and a note's
+    release-trigger takes are other sounds, each with its own round robins (or none)."""
+    kit = tmp_path / "Acme Zorbl"
+    kit.mkdir()
+    names = ["hat_cl1", "hat_cl2", "hat_op1", "hat_op2", "zq_ctr1", "zq_ctr2", "zq_edge1", "zq_edge2",
+             "pno_c4_1", "pno_c4_2", "pno_rel1", "pno_rel2"]
+    for n in names:
+        (kit / f"{n}.wav").write_bytes(b"")
+    (kit / "kit.sfz").write_text(
+        "<group> key=42 locc4=0 hicc4=63 seq_length=2\n"
+        "<region> sample=hat_cl1.wav seq_position=1\n<region> sample=hat_cl2.wav seq_position=2\n"
+        "<group> key=42 locc4=64 hicc4=127 seq_length=2\n"
+        "<region> sample=hat_op1.wav seq_position=1\n<region> sample=hat_op2.wav seq_position=2\n"
+        "<group> key=38 sw_last=24 lorand=0 hirand=1\n"
+        "<region> sample=zq_ctr1.wav lorand=0 hirand=0.5\n<region> sample=zq_ctr2.wav lorand=0.5 hirand=1\n"
+        "<group> key=38 sw_last=25\n"
+        "<region> sample=zq_edge1.wav lorand=0 hirand=0.5\n<region> sample=zq_edge2.wav lorand=0.5 hirand=1\n"
+        "<group> key=60 seq_length=2\n"
+        "<region> sample=pno_c4_1.wav seq_position=1\n<region> sample=pno_c4_2.wav seq_position=2\n"
+        "<region> sample=pno_rel1.wav seq_position=1 trigger=release\n"
+        "<region> sample=pno_rel2.wav seq_position=2 trigger=release\n")
+    key = {n: I.rr_key(str(kit / f"{n}.wav")) for n in names}
+    for a, b in (("hat_cl1", "hat_cl2"), ("hat_op1", "hat_op2"), ("zq_ctr1", "zq_ctr2"),
+                 ("zq_edge1", "zq_edge2"), ("pno_c4_1", "pno_c4_2")):
+        assert key[a] is not None and key[a] == key[b], (a, b)
+    assert len({key[n] for n in ("hat_cl1", "hat_op1", "zq_ctr1", "zq_edge1", "pno_c4_1")}) == 5
+    assert key["pno_rel1"] != key["pno_c4_1"] and key["pno_rel2"] != key["pno_c4_1"]
+    assert [I.rr_number(str(kit / f"{n}.wav")) for n in ("hat_op1", "hat_op2", "pno_c4_2")] == [1, 2, 2]
