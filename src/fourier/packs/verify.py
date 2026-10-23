@@ -992,7 +992,7 @@ def check_routing(ctx):
     # there is exempt, as in the build)
     from .curate_config import KEY_NOISE_CATS
     kn = [(c, e["out"]) for c, e in ctx.entries if c in KEY_NOISE_CATS and not ctx.pinned(c, e)
-          and C._key_noise_named(os.path.basename(e["src"])) and C._name_override(os.path.basename(e["src"])) != c]
+          and C._key_noise_named(os.path.basename(e["src"]), library_rel(e["src"])) and C._name_override(os.path.basename(e["src"])) != c]
     yield Result(FAIL if kn else PASS, "no key or pedal noises in the tonal categories", _fmt(kn))
     # chord stabs live in STABS: a short single-hit one-shot named as a chord
     from .curate_config import STAB_CHORD_FROM

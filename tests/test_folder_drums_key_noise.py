@@ -119,6 +119,68 @@ def test_the_tonal_categories_leave_a_key_noise(monkeypatch):
     assert "TOMS" in describe("drum_folder", "TOMS", {"category": "ACOUSTIC"})
 
 
+@pytest.mark.parametrize("fn, rel, noise", [
+    # release and pedal takes in a folder that holds them
+    ("Qzv_rel_rr1_B3.wav", "Acme/Upright Qzv/Releases/Qzv_rel_rr1_B3.wav", True),
+    ("Qzv Rel A5.wav", "Acme/Qzv Keys/Rel/Qzv Rel A5.wav", True),
+    ("Qzv_rel_rr2_B3.wav", "Acme/Upright Qzv/Mechanical/Qzv_rel_rr2_B3.wav", True),
+    # a "Pedal" or "Noise" folder alone doesn't say: an organ's pedal notes, a synth's noise
+    # patch, and a piano's pedal takes (measured against the notes beside the folder instead)
+    ("Ped_Subbass16_C2.wav", "Acme/Qzv Organ/Pedal/Ped_Subbass16_C2.wav", False),
+    ("Pedal Bourdon C2.wav", "Acme/Qzv Organ/Pedal/Pedal Bourdon C2.wav", False),
+    ("Noise Lead C4.wav", "Acme/Qzv Synth/Noise/Noise Lead C4.wav", False),
+    ("Qzv_PedOff_002.wav", "Acme/Upright Qzv/Pedal/Off/Qzv_PedOff_002.wav", False),
+    # beside the notes, a note's release take stays a note; a note in a "Releases" folder too
+    ("Qzv Rel A5.wav", "Acme/Qzv Keys/Qzv Rel A5.wav", False),
+    ("Vqx Ocarina G4 rel.wav", "Acme/Ocarina/Vqx Ocarina G4 rel.wav", False),
+    ("Qzv_vl1_rr1_B3.wav", "Acme/Upright Qzv/Releases/Qzv_vl1_rr1_B3.wav", False),
+])
+def test_release_takes_in_their_folder_are_key_noise(fn, rel, noise):
+    assert C._key_noise_named(fn, rel) is noise, rel
+
+
+def test_a_release_take_far_under_its_folders_notes_is_key_noise(monkeypatch):
+    """Beside the notes, a release take 20 dB or more under its folder's notes is the key's
+    or damper's noise and stays out of PIANO; one at the notes' level is a note."""
+    monkeypatch.setattr(C, "embed_text", lambda t: np.ones(512, dtype="float32"))
+    notes = [_srow(id=i, rel_path=f"Acme/Qzv/Qzv_vl1_{n}.wav", path=f"/lib/Acme/Qzv/Qzv_vl1_{n}.wav",
+                   filename=f"Qzv_vl1_{n}.wav", rms_mean=0.1, classes=["OneShot"], categories=[],
+                   canonical=["class.oneshot"], ableton_tags=["Piano"], n_events=1, duration_s=2.0)
+             for i, n in enumerate(("C3", "E3", "G3"), start=1)]
+    quiet = _srow(id=4, rel_path="Acme/Qzv/Qzv_rel_B3.wav", path="/lib/Acme/Qzv/Qzv_rel_B3.wav",
+                  filename="Qzv_rel_B3.wav", rms_mean=0.005, classes=["OneShot"], categories=[],
+                  canonical=["class.oneshot"], ableton_tags=["Piano"], n_events=1, duration_s=2.0)
+    loud = _srow(**{**vars(quiet), "id": 5, "rms_mean": 0.08, "filename": "Qzv_rel_D3.wav",
+                    "path": "/lib/Acme/Qzv/Qzv_rel_D3.wav", "rel_path": "Acme/Qzv/Qzv_rel_D3.wav"})
+    rows = notes + [quiet, loud]
+    E = np.ones((5, 512), dtype="float32") / np.sqrt(512)
+    why = {}
+    C._select_records(rows, CATEGORIES["PIANO"], E, {i: i - 1 for i in range(1, 6)}, category="PIANO", why=why)
+    assert why.get("key_noise") == {4: None}, why
+
+
+def test_pedal_and_noise_folders_go_by_the_notes_beside_them(monkeypatch):
+    """A take in a "Pedal" or "Noise" folder is key noise only when it's far under the notes
+    of the folders beside that one: a piano's pedal noises leave PIANO, an organ's pedal
+    notes (as loud as its manual's) and a synth's noise patch stay."""
+    monkeypatch.setattr(C, "embed_text", lambda t: np.ones(512, dtype="float32"))
+
+    def row(i, rel, rms):
+        return _srow(id=i, rel_path=rel, path=f"/lib/{rel}", filename=rel.rsplit("/", 1)[1],
+                     rms_mean=rms, classes=["OneShot"], categories=[], canonical=["class.oneshot"],
+                     ableton_tags=["Piano"], n_events=1, duration_s=2.0)
+    rows = [row(i, f"Acme/Upright Qzv/Sustain/Qzv_vl1_{n}.wav", 0.1) for i, n in enumerate(("C3", "E3", "G3"), 1)]
+    rows += [row(4, "Acme/Upright Qzv/Pedal/Off/Qzv_PedOff_002.wav", 0.004)]
+    rows += [row(i, f"Acme/Qzv Organ/Great/Qzv Great {n}.wav", 0.1) for i, n in zip((5, 6, 7), ("C3", "E3", "G3"))]
+    rows += [row(8, "Acme/Qzv Organ/Pedal/Ped_Subbass16_C2.wav", 0.12)]
+    rows += [row(i, f"Acme/Qzv Synth/Lead/Qzv Lead {n}.wav", 0.1) for i, n in zip((9, 10, 11), ("C3", "E3", "G3"))]
+    rows += [row(12, "Acme/Qzv Synth/Noise/Noise Lead C4.wav", 0.09)]
+    E = np.ones((len(rows), 512), dtype="float32") / np.sqrt(512)
+    why = {}
+    C._select_records(rows, CATEGORIES["PIANO"], E, {r.id: r.id - 1 for r in rows}, category="PIANO", why=why)
+    assert why.get("key_noise") == {4: None}, why
+
+
 KEY_CHECK = "no key or pedal noises in the tonal categories"
 
 

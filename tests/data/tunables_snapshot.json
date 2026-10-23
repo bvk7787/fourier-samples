@@ -8598,6 +8598,10 @@
   "type": "float",
   "value": 0.8
  },
+ "curate.RELEASE_QUIET_DB": {
+  "type": "float",
+  "value": 20.0
+ },
  "curate.ANON_LOOP_ONSET_MIN_HZ": {
   "type": "float",
   "value": 2.0

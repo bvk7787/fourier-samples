@@ -101,7 +101,7 @@ from .rules import (  # noqa: F401  (re-exported: verify, why, tests and callers
     _acoustic_band, _is_plucked, _is_synth_tagged, _is_mallet_named, _is_acoustic_named, _is_organ_named,
     _is_wind_named, _perc_sourced, _orch_path, _acoustic_reserved, _plucked_label, _is_keys,
     _is_chord, _is_stab, _stab_named, _is_named_stab, _scratch_named, _drum_named, _drum_named_in,
-    _drum_name_wins, _drum_folder_wins, _key_noise_named, _not_drum_loop, _style_excluded, _fx_folder_veto,
+    _drum_name_wins, _drum_folder_wins, _key_noise_named, _pedal_noise_dir, _release_worded, _not_drum_loop, _style_excluded, _fx_folder_veto,
     _fx_transition_shaped,
     _keys_candidates, _acoustic_label, _is_ir, _is_preview, _name_reserved, _is_loop_row,
 )
@@ -4559,6 +4559,45 @@ def _readmit_gated(rec, held, floor, category, support, id2row, seen_hash, seen_
             gate[r.id] = gate[r.id][:2] + [1]
 
 
+# a release take this far under its folder's notes (mean RMS) is a key's or damper's noise
+RELEASE_QUIET_DB = _tunable("RELEASE_QUIET_DB", 20.0)
+
+
+def _folder_note_rms(rows) -> dict:
+    """{folder: median mean RMS of its files without a release word}, for folders with 3 or
+    more such files (_quiet_release)."""
+    by = defaultdict(list)
+    for r in rows:
+        v = getattr(r, "rms_mean", None)
+        if v and v > 0 and not _release_worded(r.filename):
+            by[os.path.dirname(r.path or "")].append(float(v))
+    return {k: float(np.median(v)) for k, v in by.items() if len(v) >= 3}
+
+
+def _quiet_release(r, note_rms, rel=None) -> bool:
+    """A release, pedal or noise take (_release_worded) RELEASE_QUIET_DB or more under the
+    notes of its own folder, or, in a "Pedal" or "Noise" folder (rules._pedal_noise_dir, with
+    its library path `rel`), under the notes of the folders beside that one: the key's or
+    damper's noise, however its name states a note. An organ's pedal notes and a synth's noise
+    patches are as loud as the notes beside them, so they stay notes."""
+    if not note_rms or not _release_worded(r.filename):
+        return False
+    here = os.path.dirname(r.path or "")
+    ref, v = note_rms.get(here), getattr(r, "rms_mean", None)
+    if not ref and rel:
+        up = _pedal_noise_dir(rel)
+        if up:
+            folder = here
+            for _ in range(up):
+                folder = os.path.dirname(folder)
+            inside = os.path.join(folder, os.path.relpath(here, folder).split(os.sep)[0])
+            near = [x for k, x in note_rms.items()
+                    if (k == folder or k.startswith(folder + os.sep))
+                    and k != inside and not k.startswith(inside + os.sep)]
+            ref = float(np.median(near)) if near else None
+    return bool(ref and v is not None and (v <= 0 or 20.0 * np.log10(v / ref) <= -RELEASE_QUIET_DB))
+
+
 def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category=None,
                     exclude_ids=None, routed_ids=None, wave_hashes=None, mirrors=None,
                     floor=0, why=None, gate=None, fallback=False, clap_homed=None, rehomed=None,
@@ -4635,6 +4674,8 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
     # claim the dedup slot and knock the pinned file out (stable: order otherwise kept)
     if category and pins:
         rows = sorted(rows, key=lambda r: pins.get(r.path) != category)
+    # each folder's median level of its notes (no release word), for the release-take rule
+    _note_rms = _folder_note_rms(rows) if category in KEY_NOISE_CATS else {}
     # the loudest source peak of each multisample set, for the soft-layer rule
     _soft = cfg["kind"] in ("oneshot", "gated", "instrument")
     set_peak = {}
@@ -4874,8 +4915,9 @@ def _select_records(rows, cfg, emb_n, id2row, homes=None, support=None, category
             stats["bpm_named"] = stats.get("bpm_named", 0) + 1
             _out(r, "bpm_named")
             continue
-        # a key or pedal noise recorded beside an instrument's notes is no note (KEY_NOISE_NAME_RE)
-        if category in KEY_NOISE_CATS and _key_noise_named(r.filename):
+        # a key or pedal noise recorded beside an instrument's notes is no note (KEY_NOISE_NAME_RE,
+        # a release take in a "Releases" folder, or one far quieter than its folder's notes)
+        if category in KEY_NOISE_CATS and (_key_noise_named(r.filename, rel) or _quiet_release(r, _note_rms, rel)):
             stats["key_noise"] = stats.get("key_noise", 0) + 1
             _out(r, "key_noise")
             continue

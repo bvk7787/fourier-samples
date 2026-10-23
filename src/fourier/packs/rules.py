@@ -529,14 +529,52 @@ def _drum_folder_wins(name, canon, ab_tags, rel=None):
     return max(sorted(drums), key=lambda c: ((c in son) + (c in ab), c in son))
 
 
-def _key_noise_named(name) -> bool:
+# a release, pedal or noise take's word in a name ("Qzv_rel_rr1_B3", "Qzv_PedOff_002"); a
+# folder that holds only such takes ("Releases", "Rel", "Key Off", "Mechanical Noises"); and a
+# folder that may hold them or notes ("Pedal": an organ's pedal division; "Noise": a synth's
+# noise patches), whose takes are noises only when far under the notes beside it
+# (curate._quiet_release)
+_RELEASE_WORD_RE = re.compile(r"(?<![a-z])(?:rel|releases?|ped|pedals?|key ?offs?|noises?)(?![a-z])", re.I)
+_RELEASE_DIR_RE = re.compile(r"^(?:key ?)?(?:rels?|releases?|release samples|key ?offs?|mech(?:anical)?"
+                             r"(?: noises?)?)$", re.I)
+_PEDAL_NOISE_DIR_RE = re.compile(r"^(?:key ?)?(?:peds?|pedals?|noises?)$", re.I)
+
+
+def _key_stem(name) -> str:
+    stem = os.path.splitext(os.path.basename(name or ""))[0]
+    return re.sub(r"[_-]+", " ", re.sub(r"(?<=[a-z])(?=[A-Z])", " ", stem))
+
+
+def _release_worded(name) -> bool:
+    """The name has a release, pedal or noise word (_RELEASE_WORD_RE), read as _key_noise_named does."""
+    return bool(_RELEASE_WORD_RE.search(_key_stem(name)))
+
+
+def _pedal_noise_dir(rel):
+    """How many folders up from a file of `rel` its nearest "Pedal" or "Noise" folder is
+    (_PEDAL_NOISE_DIR_RE: 1 for its own folder), or None: the folder above that one holds the
+    notes a take in it is measured against (curate._quiet_release)."""
+    parts = str(rel or "").replace("\\", "/").split("/")[:-1]
+    for i in range(len(parts) - 1, -1, -1):
+        if _PEDAL_NOISE_DIR_RE.match(parts[i].strip()):
+            return len(parts) - i
+    return None
+
+
+def _key_noise_named(name, rel=None) -> bool:
     """Named as a key or pedal noise a sampled instrument records beside its notes
     (KEY_NOISE_NAME_RE: "Key Release", "Key Press", a pedal's noise), read with CamelCase and
-    "_" / "-" as spaces."""
+    "_" / "-" as spaces; or, with its library path `rel`, a release, pedal or noise take
+    (_release_worded: "Qzv_rel_rr1_B3") in a folder that holds only such takes ("Releases",
+    "Key Off"). A note's release take beside the notes ("Vqx G4 rel") stays a note, and so
+    does a take in a "Pedal" or "Noise" folder (an organ's pedal notes, a synth's noise
+    patch) unless it's far under the notes beside that folder (curate._quiet_release)."""
     from .curate_config import KEY_NOISE_NAME_RE
-    stem = os.path.splitext(os.path.basename(name or ""))[0]
-    stem = re.sub(r"[_-]+", " ", re.sub(r"(?<=[a-z])(?=[A-Z])", " ", stem))
-    return bool(KEY_NOISE_NAME_RE.search(stem))
+    if KEY_NOISE_NAME_RE.search(_key_stem(name)):
+        return True
+    if rel and _release_worded(name):
+        return any(_RELEASE_DIR_RE.match(f.strip()) for f in str(rel).replace("\\", "/").split("/")[:-1])
+    return False
 
 
 _SHAKEN_RE = re.compile(r"(?<![a-z])(?:shaker|tambourine|tamb|cabasa|maraca)s?(?![a-z])", re.I)
