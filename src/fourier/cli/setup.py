@@ -1772,8 +1772,7 @@ def _counts(s, loop_trim: bool = False) -> dict:
     from ..metadata.resolve import KEY_CANDIDATE_SQL
     from .enrich import EVENTS_MAX_S
     # the steps every sample (or every one up to a length) goes through, by the column each fills
-    every = (("events", "events_computed_at", f"s.duration_s IS NULL OR s.duration_s <= {EVENTS_MAX_S}"),
-             ("quality", "is_clipped", "1 = 1"))
+    every = (("events", "events_computed_at", f"s.duration_s IS NULL OR s.duration_s <= {EVENTS_MAX_S}"),)
     total = s.execute(text("SELECT COUNT(*) FROM samples")).scalar() or 0
     one = lambda sql: s.execute(text(sql)).scalar() or 0
     out = {}
@@ -1786,6 +1785,15 @@ def _counts(s, loop_trim: bool = False) -> dict:
     joined = "FROM samples s LEFT JOIN sample_features f ON f.sample_id = s.id WHERE "
     for step, col, where in every:
         out[step] = one(f"SELECT COUNT(*) {joined}({where}) AND f.{col} IS NULL")
+    # every sample the quality step's rule hasn't measured (librosa_features.CLIP_RULE): new
+    # ones, and once after an update that changes the rule, all of them but those a walk
+    # marked missing (the step can't read them, so they'd be pending forever)
+    from ..analysis.librosa_features import CLIP_RULE
+    try:
+        out["quality"] = one(f"SELECT COUNT(*) {joined}(f.clip_rule IS NULL OR f.clip_rule < {CLIP_RULE}) "
+                             "AND NOT (f.is_clipped IS NOT NULL AND s.id IN (SELECT sample_id FROM missing_files))")
+    except Exception:
+        out["quality"] = one(f"SELECT COUNT(*) {joined}f.is_clipped IS NULL")
     from .enrich import own_pending           # a share of the library: its own count
     out["own"] = own_pending(s)
     out["key"] = one(f"SELECT COUNT(*) {joined}{KEY_CANDIDATE_SQL} AND f.key_confidence IS NULL")

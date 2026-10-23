@@ -43,27 +43,55 @@ _MAX_DURATION_S = 30.0
 _MIN_DURATION_FOR_HPSS = 0.05
 
 
-CLIP_RUN = 3            # samples in a row at full scale: a flat top (a peak that touches full scale is one or two)
+CLIP_RUN = 3            # equal samples in a row at a channel's extreme: a flat top (a natural peak is one or two)
 CLIP_SHARE = 0.001      # a file clips when more than this share of its samples sit in such runs
-FULL_SCALE = 0.999
+CLIP_STEP = 0.002       # ...and the wave steps onto (or off) the flat top by this share of the peak at least
+SQUARE_RUN = 8          # a run this long that the wave jumps onto from its other side is a square wave's top
+CLIP_RULE = 2           # the quality step's rule; a row measured by an older one is measured again
+                        # (1: runs at 0.999 of full scale; 2: flat_top_share)
 
 
-def full_scale_share(data) -> float:
+def flat_top_share(data) -> float:
     """The share of a signal's samples (frames x channels, read at the file's own rate) that
-    sit in runs of CLIP_RUN or more at full scale: the flat tops clipping leaves. Read the file
-    as it is: a resampled copy rings over full scale at a sharp transient that never got there."""
+    sit in the flat tops clipping leaves: runs of CLIP_RUN or more samples equal to their
+    channel's highest (or lowest) value, wherever the file peaks, so a file clipped and then
+    normalized under full scale counts and a float file running over 1.0 with no flat top
+    doesn't. A run counts when the wave steps onto or off it by CLIP_STEP of the peak or
+    three steps of the file's resolution at least (a slow tone rounds its peak to two or
+    three equal samples in a 16- or 8-bit file), and, when SQUARE_RUN samples or longer,
+    reaches it from its own side (a square wave jumps from the other side: its flat tops are
+    its shape). Read the file as it is: a resampled copy rings over a sharp transient and
+    flattens nothing."""
     import numpy as np
     a = np.asarray(data, dtype="float32")
     a = a[:, None] if a.ndim == 1 else a
     if not a.size:
         return 0.0
-    full = np.abs(a) >= FULL_SCALE
+    peak = float(np.max(np.abs(a)))
+    if not peak or not np.isfinite(peak):
+        return 0.0
     n = 0
-    for ch in full.T:
-        d = np.diff(np.concatenate(([0], ch.astype(np.int8), [0])))
-        lens = np.flatnonzero(d == -1) - np.flatnonzero(d == 1)
-        n += int(lens[lens >= CLIP_RUN].sum())
-    return n / full.size
+    for ch in a.T:
+        q = None
+        for x in (ch, -ch):
+            ext = float(x.max())
+            if ext < 0.5 * peak:
+                continue
+            d = np.diff(np.concatenate(([0], (x == ext).astype(np.int8), [0])))
+            starts, ends = np.flatnonzero(d == 1), np.flatnonzero(d == -1)
+            runs = [(s0, e0) for s0, e0 in zip(starts, ends) if e0 - s0 >= CLIP_RUN]
+            if not runs:
+                continue
+            if q is None:           # the channel's resolution: its smallest step between values
+                u = np.unique(ch)
+                q = float(np.min(np.diff(u))) if len(u) > 1 else 0.0
+            step = max(CLIP_STEP * peak, 3 * q)
+            for s0, e0 in runs:
+                side = [float(x[k]) for k in (s0 - 1, e0) if 0 <= k < len(x)]
+                if side and (e0 - s0 < SQUARE_RUN or all(v > 0 for v in side)) \
+                        and max(ext - v for v in side) >= step:
+                    n += int(e0 - s0)
+    return n / a.size
 
 
 def compute_features(path: str | Path, sr: int = _SR) -> dict:
@@ -252,7 +280,7 @@ def compute_features(path: str | Path, sr: int = _SR) -> dict:
 
     # ── Quality gate: DC offset ─────────────────────────────────────────────
     # dc_offset_ratio: |mean(y)| — should be ~0 for clean audio; >0.02 is audible. Clipping is
-    # the quality step's (full_scale_share, on the file at its own rate).
+    # the quality step's (flat_top_share, on the file at its own rate).
     try:
         result["dc_offset_ratio"] = round(float(abs(np.mean(y))), 6)
     except Exception as exc:

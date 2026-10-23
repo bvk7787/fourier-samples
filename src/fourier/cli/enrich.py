@@ -627,8 +627,10 @@ def enrich_quality(workers, force):
     Check all samples for clipping and DC offset (fast, no heavy DSP).
 
     Populates clip_share, is_clipped and dc_offset_ratio in sample_features: clipping is read
-    on the file at its own rate, each channel (librosa_features.full_scale_share). A database
-    measured before clip_share is measured again. Much faster than a full librosa pass.
+    on the file at its own rate, each channel (librosa_features.flat_top_share). A row an
+    older rule measured (clip_rule under CLIP_RULE) is measured again, once. A file that is
+    there and can't be read is marked measured with no reading, so it isn't read again on
+    every build. Much faster than a full librosa pass.
 
     After running, clipped or DC-offset samples are automatically penalised
     during pack building (is_clipped → -2.0 score; dc_offset > 0.02 → -0.5).
@@ -644,6 +646,8 @@ def enrich_quality(workers, force):
     from fourier.db.models import Sample, SampleFeatures
     from fourier.db.session import get_session
 
+    from fourier.analysis.librosa_features import CLIP_RULE
+
     def _check_quality(item):
         sample_id, path = item
         if not os.path.exists(path):
@@ -652,7 +656,7 @@ def enrich_quality(workers, force):
             import soundfile as sf
 
             from fourier.analysis.clap_features import read_seconds
-            from fourier.analysis.librosa_features import CLIP_SHARE, full_scale_share
+            from fourier.analysis.librosa_features import CLIP_SHARE, flat_top_share
             cap = read_seconds(path)            # a very long file: its start
             if cap is None:
                 data, _ = sf.read(path, always_2d=True, dtype="float32")
@@ -661,15 +665,15 @@ def enrich_quality(workers, force):
                                   frames=int(cap * sf.info(path).samplerate))
             y = data.mean(axis=1)
             if len(y) == 0:
-                return sample_id, None
-            share = full_scale_share(data)
+                return sample_id, {"unreadable": True}
+            share = flat_top_share(data)
             return sample_id, {
                 "clip_share": round(share, 6),
                 "is_clipped": int(share > CLIP_SHARE),
                 "dc_offset_ratio": round(float(abs(np.mean(y))), 6),
             }
         except Exception:
-            return sample_id, None
+            return sample_id, None if not os.path.exists(path) else {"unreadable": True}
 
     session = get_session()
     try:
@@ -688,7 +692,8 @@ def enrich_quality(workers, force):
                 q.outerjoin(SampleFeatures, Sample.id == SampleFeatures.sample_id)
                 .filter(
                     (SampleFeatures.id == None)  # noqa: E711
-                    | (SampleFeatures.clip_share == None)  # noqa: E711
+                    | (SampleFeatures.clip_rule == None)  # noqa: E711
+                    | (SampleFeatures.clip_rule < CLIP_RULE)
                 )
             )
         samples = q.all()
@@ -706,7 +711,7 @@ def enrich_quality(workers, force):
         # file that's gone or only in the cloud isn't read, so it isn't counted)
         again = 0 if force else sum(
             1 for (i,) in session.query(SampleFeatures.sample_id)
-            .filter(SampleFeatures.clip_share == None,  # noqa: E711
+            .filter((SampleFeatures.clip_rule == None) | (SampleFeatures.clip_rule < CLIP_RULE),  # noqa: E711
                     SampleFeatures.is_clipped != None)  # noqa: E711
             if i in where and os.path.isfile(where[i]))
         if again:
@@ -729,7 +734,10 @@ def enrich_quality(workers, force):
                                batch_session)
                 with _keep_on_stop(batch.save, "quality"):
                     for sample_id, result in _results(_check_quality, paths, workers):
-                        if result is not None:
+                        if result is not None and result.get("unreadable"):
+                            batch.add((sample_id, result))      # marked: not read again
+                            n_err += 1
+                        elif result is not None:
                             batch.add((sample_id, result))
                             n_ok += 1
                             if result["is_clipped"]:
@@ -750,7 +758,7 @@ def enrich_quality(workers, force):
             f"[green]✓ Checked {n_ok:,} samples in {elapsed:.0f}s[/green]"
             + (f" — [yellow]{n_clipped} clipped[/yellow]" if n_clipped else "")
             + (f", [yellow]{n_dc} with DC offset[/yellow]" if n_dc else "")
-            + (f" [dim]({n_err} skipped)[/dim]" if n_err else "")
+            + (f" [dim]({n_err} unreadable)[/dim]" if n_err else "")
         )
         _say_missing(n_gone)
     finally:
@@ -758,6 +766,9 @@ def enrich_quality(workers, force):
 
 
 def _upsert_quality_batch(session, batch: list[tuple[int, dict]]) -> None:
+    """Store quality readings; an {"unreadable": True} result marks the row measured by the
+    current rule with no reading (clip_share NULL), so the file isn't read again."""
+    from fourier.analysis.librosa_features import CLIP_RULE
     from fourier.db.models import SampleFeatures
     for sample_id, result in batch:
         feat = (
@@ -768,6 +779,9 @@ def _upsert_quality_batch(session, batch: list[tuple[int, dict]]) -> None:
         if feat is None:
             feat = SampleFeatures(sample_id=sample_id)
             session.add(feat)
+        feat.clip_rule = CLIP_RULE
+        if result.get("unreadable"):
+            continue
         feat.clip_share = result["clip_share"]
         feat.is_clipped = result["is_clipped"]
         feat.dc_offset_ratio = result["dc_offset_ratio"]
