@@ -349,6 +349,76 @@ def _index_path() -> Path:
     return path
 
 
+_INDEX_SQL = ("SELECT sf.sample_id, sf.clap_embedding FROM sample_features sf "
+              "WHERE sf.clap_embedding IS NOT NULL")
+_INDEX_CHUNK = 4096
+
+
+def _index_rows(session):
+    """(sample_id, blob) of every stored embedding, a chunk at a time (nothing is written on
+    the session while they're read)."""
+    from sqlalchemy import text
+    result = session.execute(text(_INDEX_SQL))
+    while True:
+        rows = result.fetchmany(_INDEX_CHUNK)
+        if not rows:
+            break
+        for sample_id, blob in rows:
+            if blob is not None:
+                yield sample_id, blob
+
+
+def _rows_digest(session) -> tuple[str, int, int]:
+    """(a digest of every stored (sample id, embedding) in the database's order, how many,
+    the embedding's length), read a chunk at a time: what the index was last built from, if
+    it matches the digest kept beside it."""
+    import hashlib
+    h, n, dim = hashlib.sha256(), 0, 0
+    for sample_id, blob in _index_rows(session):
+        h.update(int(sample_id).to_bytes(8, "little", signed=True))
+        h.update(blob)
+        n += 1
+        dim = dim or len(blob) // 4
+    return h.hexdigest(), n, dim
+
+
+def _digest_path(path: Path) -> Path:
+    return path.with_suffix(".digest.json")
+
+
+def _index_stat(path: Path) -> list[int] | None:
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    return [st.st_size, st.st_mtime_ns]
+
+
+def _digest_matches(path: Path, digest: str) -> bool:
+    """The digest kept beside the index is this one, and the index files are the ones it was
+    written with (an older version that rewrote them leaves no matching digest)."""
+    import json
+    try:
+        kept = json.loads(_digest_path(path).read_text())
+    except (OSError, ValueError):
+        return False
+    files = [path, *_fast_paths(path)]
+    return (kept.get("digest") == digest
+            and kept.get("files") == [_index_stat(p) for p in files]
+            and all(st is not None for st in kept.get("files") or [None]))
+
+
+def _write_digest(path: Path, digest: str) -> None:
+    import json
+    files = [path, *_fast_paths(path)]
+    tmp = _digest_path(path).with_name(f".{_digest_path(path).name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(json.dumps({"digest": digest, "files": [_index_stat(p) for p in files]}))
+        os.replace(tmp, _digest_path(path))
+    except OSError:
+        pass
+
+
 def build_index(session) -> Path:
     """
     Build (or rebuild) the cosine search index from all stored CLAP embeddings.
@@ -356,62 +426,88 @@ def build_index(session) -> Path:
     Reads (sample_id, clap_embedding) from the DB, stacks into a (N, 512) float32
     matrix, and saves to ~/.fourier/clap_index.npz.
 
+    The embeddings are read a chunk at a time, first only to compare a digest of them with
+    the one kept beside the index: when they're the ones it holds, nothing more is read or
+    written. Otherwise they're read again into one matrix made once.
+
     Returns the path to the written index file.
     """
-    from sqlalchemy import text
-
-    rows = session.execute(
-        text("SELECT sf.sample_id, sf.clap_embedding FROM sample_features sf "
-             "WHERE sf.clap_embedding IS NOT NULL")
-    ).fetchall()
-
-    if not rows:
-        raise RuntimeError("No CLAP embeddings found. Run `fourier build` (or `fourier tools analyze --only clap`) first.")
-
-    ids = []
-    embeddings = []
-    for sample_id, blob in rows:
-        if blob is None:
-            continue
-        ids.append(sample_id)
-        embeddings.append(bytes_to_embedding(blob))
-
-    ids_arr = np.array(ids, dtype=np.int64)
-    emb_arr = np.stack(embeddings, axis=0).astype(np.float32)  # (N, 512)
-
     path = _index_path()
+    digest, n, dim = _rows_digest(session)
+    if not n:
+        raise RuntimeError("No CLAP embeddings found. Run `fourier build` (or `fourier tools analyze --only clap`) first.")
+    if _digest_matches(path, digest):
+        build_index.wrote = False            # type: ignore[attr-defined] # nothing changed: the files stay as they are
+        logger.info("CLAP index unchanged: %s (%d embeddings)", path, n)
+        return path
+
+    ids_arr = np.empty(n, dtype=np.int64)
+    emb_arr = np.empty((n, dim), dtype=np.float32)  # (N, 512)
+    k = 0
+    for sample_id, blob in _index_rows(session):
+        if k == n:                 # more rows than the first read counted: grow
+            ids_arr = np.concatenate([ids_arr, np.empty(n, dtype=np.int64)])
+            emb_arr = np.concatenate([emb_arr, np.empty((n, dim), dtype=np.float32)])
+            n *= 2
+        ids_arr[k] = sample_id
+        emb_arr[k] = bytes_to_embedding(blob)
+        k += 1
+    ids_arr, emb_arr = ids_arr[:k], emb_arr[:k]
+
     if _same_index(path, ids_arr, emb_arr):
         build_index.wrote = False            # type: ignore[attr-defined] # nothing changed: the files stay as they are
-        logger.info("CLAP index unchanged: %s (%d embeddings)", path, len(ids))
+        _write_digest(path, digest)
+        logger.info("CLAP index unchanged: %s (%d embeddings)", path, k)
         return path
+    try:
+        _digest_path(path).unlink()
+    except OSError:
+        pass
     np.savez_compressed(path, ids=ids_arr, embeddings=emb_arr)
     _write_fast_index(path, ids_arr, emb_arr)
+    _write_digest(path, digest)
     build_index.wrote = True  # type: ignore[attr-defined]
-    logger.info("CLAP index written: %s (%d embeddings)", path, len(ids))
+    logger.info("CLAP index written: %s (%d embeddings)", path, k)
     return path
 
 
 build_index.wrote = None     # type: ignore[attr-defined] # whether the last build_index() wrote the files (False: identical)
 
+_COMPARE_ROWS = 8192
+
 
 def _same_index(path: Path, ids_arr, emb_arr) -> bool:
     """Whether the index on disk holds exactly these embeddings (the same ids, each with the
-    same vector, in any order), read from its .npz and its fast copies alike."""
+    same vector, in any order), read from its .npz and its fast copies alike. The vectors are
+    compared a block at a time (each side's sorted copy of the whole matrix doubled the peak)."""
     if not path.exists():
         return False
     try:
         old_ids, old_emb = load_index_fast()
-        if len(old_ids) != len(ids_arr):
+        if len(old_ids) != len(ids_arr) or old_emb.shape != emb_arr.shape:
             return False
         a, b = np.argsort(old_ids, kind="stable"), np.argsort(ids_arr, kind="stable")
-        return bool(np.array_equal(old_ids[a], ids_arr[b])
-                    and np.array_equal(np.asarray(old_emb)[a], emb_arr[b]))
+        if not np.array_equal(old_ids[a], ids_arr[b]):
+            return False
+        return all(np.array_equal(np.asarray(old_emb[a[i:i + _COMPARE_ROWS]]), emb_arr[b[i:i + _COMPARE_ROWS]])
+                   for i in range(0, len(a), _COMPARE_ROWS))
     except Exception:            # unreadable: write it again
         return False
 
 
 def _fast_paths(path: Path) -> tuple[Path, Path]:
     return path.with_suffix(".ids.npy"), path.with_suffix(".emb.npy")
+
+
+def _unit_path(path: Path, ident: str) -> Path:
+    """The unit rows' file for the index matrix file whose identity is `ident` (_file_ident):
+    a matrix written again gets another file, so a file from an older matrix is never read."""
+    return path.with_name(f"{path.stem}.unit.{ident}.npy")
+
+
+def _file_ident(p: Path) -> str:
+    st = p.stat()
+    return f"{st.st_ino}-{st.st_size}-{st.st_mtime_ns}"
 
 
 def _write_fast_index(path: Path, ids_arr, emb_arr) -> None:
@@ -421,6 +517,51 @@ def _write_fast_index(path: Path, ids_arr, emb_arr) -> None:
         tmp = p.with_name(f".{p.name}.{os.getpid()}.tmp.npy")
         np.save(tmp, a)
         os.replace(tmp, p)
+
+
+def unit_rows(emb) -> np.ndarray:
+    """emb's rows as unit vectors, emb / (norm + 1e-9) in float32 as curation computes them.
+    For the index's own memory-mapped matrix (load_index_fast) they're kept in a file beside
+    it, written the first time and memory-mapped after that: build workers then share one
+    copy through the page cache where each made its own."""
+    got = _unit_index(emb) if isinstance(emb, np.memmap) else None
+    if got is not None:
+        return got
+    return _unit(np.asarray(emb, dtype=np.float32))
+
+
+def _unit(emb: np.ndarray) -> np.ndarray:
+    return emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-9)
+
+
+def _unit_index(emb: np.memmap) -> np.ndarray | None:
+    """unit_rows for the fast index matrix emb, from the file for the very matrix file it
+    maps (load_index_fast records that file's identity on it; written the first time), or
+    None when emb isn't that matrix, its identity isn't known, or the file can't be written
+    or read."""
+    try:
+        ident = getattr(emb, "_fourier_ident", None)
+        src = Path(str(emb.filename))
+        path = _index_path()
+        if not ident or src.resolve() != _fast_paths(path)[1].resolve() or emb.dtype != np.float32:
+            return None
+        unit = _unit_path(path, ident)
+        if unit.exists():
+            got = np.load(unit, mmap_mode="r")
+            if got.shape == emb.shape and got.dtype == np.float32:
+                return got
+        tmp = unit.with_name(f".{unit.name}.{os.getpid()}.tmp.npy")
+        np.save(tmp, _unit(np.asarray(emb)))
+        os.replace(tmp, unit)
+        for old in unit.parent.glob(f"{path.stem}.unit.*.npy"):    # an older matrix's
+            if old != unit:
+                try:
+                    old.unlink()
+                except OSError:
+                    pass
+        return np.load(unit, mmap_mode="r")
+    except (OSError, ValueError, AttributeError, TypeError):
+        return None
 
 
 def load_index_fast(ids_only: bool = False):
@@ -444,7 +585,17 @@ def load_index_fast(ids_only: bool = False):
         except OSError:
             return ids_arr, (None if ids_only else emb_arr)
     ids = np.load(pi)
-    return ids, (None if ids_only else np.load(pe, mmap_mode="r"))
+    if ids_only:
+        return ids, None
+    # the identity of the file mapped (unchanged while it was mapped), for its unit rows
+    try:
+        before = _file_ident(pe)
+        emb = np.load(pe, mmap_mode="r")
+        if _file_ident(pe) == before:
+            emb._fourier_ident = before        # type: ignore[attr-defined]
+    except OSError:
+        emb = np.load(pe, mmap_mode="r")
+    return ids, emb
 
 
 def load_index() -> tuple[np.ndarray, np.ndarray]:
