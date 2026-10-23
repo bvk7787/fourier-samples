@@ -1731,7 +1731,8 @@ def analyze(ctx, only, workers, force, status, download):
         console.print(REAL_ONLY.format(what="analyzing audio"), markup=False, highlight=False,
                       soft_wrap=True)
         raise SystemExit(1)
-    from ._app import stop_note
+    from ._app import hold_home, stop_note
+    hold_home(ctx)
     stop_note("The analysis finished so far is kept: `fourier tools analyze` (or `fourier "
               "build`) carries on from there.")
     run_analysis(ctx, only, workers, force, download)

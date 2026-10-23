@@ -120,6 +120,9 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
     if dry_run:                     # reads only: no resolved config left in the home either
         from ._app import read_only_config
         read_only_config(ctx)
+    else:
+        from ._app import hold_home
+        hold_home(ctx)
     from ..packs.curate import build_taxonomy
     from ..packs.curate_config import CATEGORIES, DESCRIBE
     no_describe = not (DESCRIBE if describe is None else describe)
