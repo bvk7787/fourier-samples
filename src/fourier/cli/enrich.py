@@ -352,6 +352,11 @@ def enrich_derived(limit, force):
                 )
             metas = q.limit(limit).all() if limit else q.all()
             todo = [(m.sample_id, m, m.sample) for m in metas]
+        elif not force and not session.query(SononymMeta.sample_id).first():
+            # no Sononym rows: nothing to compute (the columns are Sononym's). Every sample is
+            # marked done, with its header facts filled in, in a few statements
+            _derived_none(session, limit)
+            return
         else:
             # the built-in providers classify: every sample, with its Sononym row when it has one
             q = (session.query(Sample, SononymMeta)
@@ -421,6 +426,47 @@ def enrich_derived(limit, force):
 
     finally:
         session.close()
+
+
+def _derived_none(session, limit: int = 0) -> None:
+    """The derived step on a database without Sononym rows: its columns stay empty, so it
+    computes nothing. It fills in the header facts of samples that lack them (fill_file_info)
+    and marks every sample done (a sample_features row with derived_computed_at), as the
+    per-sample path did, in a few statements."""
+    from datetime import datetime
+
+    from sqlalchemy import text
+
+    from fourier.db.models import Sample
+    lim = f" LIMIT {int(limit)}" if limit else ""
+    todo = [int(i) for (i,) in session.execute(text(
+        "SELECT s.id FROM samples s LEFT JOIN sample_features f ON f.sample_id = s.id "
+        f"WHERE f.id IS NULL OR f.derived_computed_at IS NULL ORDER BY s.id{lim}"))]
+    if not todo:
+        console.print("[green]All samples already have derived features.[/green]")
+        return
+    keep = set(todo)
+    blank = [int(i) for (i,) in session.execute(text(
+        "SELECT id FROM samples WHERE duration_s IS NULL ORDER BY id")) if int(i) in keep]
+    if blank:
+        fill_file_info(session, [smp for k in range(0, len(blank), 1000)
+                                 for smp in session.query(Sample).filter(Sample.id.in_(blank[k:k + 1000]))
+                                 .order_by(Sample.id)])
+    now = datetime.utcnow()
+    have = {int(i) for (i,) in session.execute(text("SELECT sample_id FROM sample_features"))}
+    new = [i for i in todo if i not in have]
+    old = [i for i in todo if i in have]
+    for k in range(0, len(new), 5000):
+        session.execute(text("INSERT INTO sample_features (sample_id, derived_computed_at) "
+                             "SELECT id, :now FROM samples WHERE id IN (" + ",".join(map(str, new[k:k + 5000]))
+                             + ") ORDER BY id"), {"now": now})
+    for k in range(0, len(old), 5000):
+        session.execute(text("UPDATE sample_features SET derived_computed_at = :now WHERE sample_id IN ("
+                             + ",".join(map(str, old[k:k + 5000])) + ")"), {"now": now})
+    session.commit()
+    console.print(f"Derived features: none to compute without Sononym (they come from its analysis); "
+                  f"{len(todo):,} samples marked done ({len(new):,} new rows).",
+                  markup=False, highlight=False)
 
 
 def fold_tempo(bpm: float, lo: float = 60.0, hi: float = 200.0) -> float:
@@ -765,20 +811,31 @@ def enrich_quality(workers, force):
         session.close()
 
 
+def feature_rows(session, ids) -> dict:
+    """{sample id: its SampleFeatures row} for a batch of ids, a new row added for each that
+    has none: one query a thousand ids (one query a sample searched the table once for
+    every sample)."""
+    from fourier.db.models import SampleFeatures
+    want = list(dict.fromkeys(int(i) for i in ids))
+    got: dict = {}
+    with session.no_autoflush:
+        for k in range(0, len(want), 1000):
+            for f in session.query(SampleFeatures).filter(SampleFeatures.sample_id.in_(want[k:k + 1000])):
+                got.setdefault(f.sample_id, f)
+        for sid in want:
+            if sid not in got:
+                got[sid] = SampleFeatures(sample_id=sid)
+                session.add(got[sid])
+    return got
+
+
 def _upsert_quality_batch(session, batch: list[tuple[int, dict]]) -> None:
     """Store quality readings; an {"unreadable": True} result marks the row measured by the
     current rule with no reading (clip_share NULL), so the file isn't read again."""
     from fourier.analysis.librosa_features import CLIP_RULE
-    from fourier.db.models import SampleFeatures
+    rows = feature_rows(session, [sid for sid, _r in batch])
     for sample_id, result in batch:
-        feat = (
-            session.query(SampleFeatures)
-            .filter(SampleFeatures.sample_id == sample_id)
-            .first()
-        )
-        if feat is None:
-            feat = SampleFeatures(sample_id=sample_id)
-            session.add(feat)
+        feat = rows[sample_id]
         feat.clip_rule = CLIP_RULE
         if result.get("unreadable"):
             continue
@@ -790,17 +847,9 @@ def _upsert_quality_batch(session, batch: list[tuple[int, dict]]) -> None:
 
 def _upsert_loop_trim_batch(session, batch: list[tuple[int, dict]]) -> None:
     """Insert or update loop-trim metadata for a batch of (sample_id, result) pairs."""
-    from fourier.db.models import SampleFeatures
-
+    rows = feature_rows(session, [sid for sid, _r in batch])
     for sample_id, result in batch:
-        feat = (
-            session.query(SampleFeatures)
-            .filter(SampleFeatures.sample_id == sample_id)
-            .first()
-        )
-        if feat is None:
-            feat = SampleFeatures(sample_id=sample_id)
-            session.add(feat)
+        feat = rows[sample_id]
         feat.trim_end_s = result.get("trim_end_s")            # None is valid
         feat.trim_computed_at = result.get("trim_computed_at")
     session.commit()
@@ -810,20 +859,10 @@ def _upsert_librosa_batch(session, batch: list[tuple[int, dict]]) -> None:
     """Insert or update librosa features for a batch of (sample_id, feats) pairs."""
     from datetime import datetime
 
-    from fourier.db.models import SampleFeatures
-
     now = datetime.utcnow()
+    rows = feature_rows(session, [sid for sid, _f in batch])
     for sample_id, feats in batch:
-        existing = (
-            session.query(SampleFeatures)
-            .filter(SampleFeatures.sample_id == sample_id)
-            .first()
-        )
-        if existing is None:
-            feat = SampleFeatures(sample_id=sample_id)
-            session.add(feat)
-        else:
-            feat = existing
+        feat = rows[sample_id]
 
         if "mfcc_mean" in feats:
             feat.mfcc_mean = feats["mfcc_mean"]
@@ -1011,20 +1050,11 @@ def _write_index(session, build_index) -> None:
 
 def _upsert_clap_batch(session, batch: list[tuple[int, bytes]], model_id: str) -> None:
     """Insert or update CLAP embeddings for a batch of (sample_id, blob) pairs."""
-    from fourier.db.models import SampleFeatures
-
+    rows = feature_rows(session, [sid for sid, _b in batch])
     for sample_id, blob in batch:
-        existing = (
-            session.query(SampleFeatures)
-            .filter(SampleFeatures.sample_id == sample_id)
-            .first()
-        )
-        if existing is None:
-            feat = SampleFeatures(sample_id=sample_id, clap_embedding=blob, clap_model=model_id)
-            session.add(feat)
-        else:
-            existing.clap_embedding = blob
-            existing.clap_model = model_id
+        feat = rows[sample_id]
+        feat.clap_embedding = blob
+        feat.clap_model = model_id
     session.commit()
 
 
@@ -1288,7 +1318,6 @@ def _read_keys(paths, workers) -> None:
     import time
 
     from fourier.analysis.key_detection import estimate_key
-    from fourier.db.models import SampleFeatures
     from fourier.db.session import session_scope
 
     console.print(f"[cyan]Key detection: {len(paths):,} samples, {workers} workers[/cyan]")
@@ -1305,11 +1334,9 @@ def _read_keys(paths, workers) -> None:
 
     def _flush(b):
         with session_scope() as s:
+            rows = feature_rows(s, [sid for sid, _r in b])
             for sid, result in b:
-                feat = s.query(SampleFeatures).filter_by(sample_id=sid).first()
-                if feat is None:
-                    feat = SampleFeatures(sample_id=sid)
-                    s.add(feat)
+                feat = rows[sid]
                 feat.detected_key   = result.get("detected_key")
                 feat.key_confidence = result.get("key_confidence")
 

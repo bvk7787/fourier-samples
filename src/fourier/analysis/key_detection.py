@@ -76,6 +76,8 @@ def estimate_key(
     from ..audioio import load as load_audio
     y, _ = load_audio(path, sr=sr, mono=True, duration=max_duration_s)
 
+    from .librosa_features import keep_cqt_filters
+    keep_cqt_filters()
     try:
         chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
     except Exception as exc:
