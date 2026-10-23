@@ -116,6 +116,7 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
     """`fourier build` itself (build() decides whether its Build and Verify stages print
     everything or a summary, QUIET_KEY)."""
     import os as _os
+    from ._app import stop_note
     if dry_run:                     # reads only: no resolved config left in the home either
         from ._app import read_only_config
         read_only_config(ctx)
@@ -176,7 +177,10 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
     ctx.meta[STAGES_KEY] = (["Build", "Verify"] if no_scan else
                             ["Scan the library", "Analyze what's new", "Build", "Verify"])
     if not no_scan:
+        stop_note(f"Nothing in {out_dir} changed. The analysis finished so far is kept: "
+                  f"`fourier build` carries on from there.")
         _scan_and_analyze(ctx, out_dir, allow_missing, jobs)
+        stop_note(None)
     _stage("Build")
     _q = ctx.meta.get(QUIET_KEY)
     if _q is not None:                  # the detail from here on goes to the log
@@ -272,7 +276,9 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
             console.print(f"[red]verify failed: the master at {out_dir} is unchanged; the additive "
                           f"build is in {build_dir}.[/red]")
             raise SystemExit(1)
+        stop_note(None)                 # the swap says what a stop there leaves
         prev = _swap_in(build_dir, out_dir)
+        stop_note(f"The new master is in place at {out_dir}.")
         archive_build(out_dir)
         console.print(f"Additive build on {base} in place at {out_dir}{_kept_note(prev, out_dir)}. "
                       f"Preview: fourier publish --dry-run --base {base}", style="green", markup=False,
@@ -302,6 +308,9 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
         with session_scope() as _s:
             progress = Progress(build_dir, fingerprint(_s, cats, opts))
         done = progress.start(resume, log=lambda m: console.print(m))
+        stop_note(lambda: f"Nothing in {out_dir} changed. " + (
+            f"The categories built so far are kept in {build_dir}: `fourier build --resume` "
+            f"continues from there." if _built_any(build_dir) else "`fourier build` starts again."))
         failed, empty = [], []
         try:
             if jobs > 1 and len(cats) > 1:
@@ -364,7 +373,9 @@ def _build(ctx, category, out_dir, per_family, clap_z, no_transcode, describe, d
                 console.print(f"[red]ratings harvest before the swap failed: {e}[/red]\n"
                               f"The new build stays in {build_dir}; the master is unchanged.")
                 raise SystemExit(1)
+        stop_note(None)                 # the swap says what a stop there leaves
         prev = _swap_in(build_dir, out_dir)
+        stop_note(f"The new master is in place at {out_dir}.")
         archive_build(out_dir)
         if not done:                    # a resumed build's wall time says little
             from ..timings import record_build
