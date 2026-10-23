@@ -41,7 +41,7 @@ def test_same_rows_as_the_hand_written_selects(db):
     new = R.sample_select(*R.HOME_FIELDS)
     a = db.execute(old.order_by(Sample.id)).all()
     b = R.fetch(db, new.order_by(Sample.id))            # builds labels/descriptors on first use
-    assert [tuple(r) for r in a] == [tuple(r)[:-3] for r in b] and len(b) == 3     # not id 4 (nor canonical, acid_*)
+    assert [tuple(r) for r in a] == [tuple(r)[:-4] for r in b] and len(b) == 3     # not id 4 (nor canonical, acid_*, own_root_midi)
     assert b[0].canonical == ["class.oneshot", "kick"]           # ...plus the canonical labels
     assert list(b[0]._fields) == list(R.HOME_FIELDS)
     assert b[1].n_events is None and b[1].bpm == 240.0                        # outer join on features

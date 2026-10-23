@@ -1039,7 +1039,8 @@ def compute_homes(session, emb_n, id2row, log=print):
         # picks between several candidates
         if snd and cand and not ab_cats and r.id in snd and _weak_path(r):
             _s = _sound_home(snd[r.id], is_oneshot and not is_loop, is_loop and not is_oneshot,
-                             misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s), SOUND_MODEL_OVERRIDE_MIN)
+                             misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s), SOUND_MODEL_OVERRIDE_MIN,
+                             pitched=getattr(r, "own_root_midi", None) is not None)
             if _s and (_s not in cand or len(cand) > 1) and _name_reserved(_fn) in (None, _s):
                 homes[r.id] = _s
                 support[(r.id, _s)] = 1
@@ -1055,7 +1056,8 @@ def compute_homes(session, emb_n, id2row, log=print):
                 _hl = is_loop and not is_oneshot and bool(snd) and _held_loop(r)
                 _s = _sound_home(snd.get(r.id), (is_oneshot and not is_loop) or _hl,
                                  is_loop and not is_oneshot and not _hl,
-                                 misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s)) if snd else None
+                                 misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s),
+                                 pitched=getattr(r, "own_root_midi", None) is not None) if snd else None
                 if _s and _name_reserved(_fn) in (None, _s):
                     homes[r.id] = _s
                     support[(r.id, _s)] = 1
@@ -1071,7 +1073,8 @@ def compute_homes(session, emb_n, id2row, log=print):
                                 (is_oneshot and not is_loop) or (not is_oneshot and not is_loop and _held(r))
                                 or _hl,
                                 is_loop and not is_oneshot and not _hl,
-                                misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s))
+                                misfiled.categories(r.path, file_hash=r.file_hash, dur=r.duration_s),
+                                pitched=getattr(r, "own_root_midi", None) is not None)
                 if _c:
                     homes[r.id] = _c
                     support[(r.id, _c)] = 1
@@ -1369,13 +1372,19 @@ def _held_loop(r) -> bool:
     return got.value is None or got.source in (_resolve.AUDIO, _resolve.LENGTH)
 
 
-def _clap_home(v, anchors, oneshot, loop, misfiled=frozenset()):
+# the drum categories of noise: a sample with one clear pitch (pYIN's root) is no hat, cymbal,
+# clap or snare, however CLAP hears a short bright note (_clap_home)
+_NOISE_DRUM_CATS = ("HATS", "CYMBALS", "CLAPS", "SNARES")
+
+
+def _clap_home(v, anchors, oneshot, loop, misfiled=frozenset(), pitched=False):
     """The category the CLAP fallback homes an unrecognized sample in, or None: the nearest
-    anchor of its shape's categories (one-shot: kind oneshot, named-only STABS left out;
-    loop: the drum-loop categories), when the score clears that category's gate (break_min,
-    else CLAP_FALLBACK_MIN, plus CLAP_FALLBACK_MARGIN; above its anti-prompts by the margin)
-    and the runner-up by the margin. Categories switched off or rated Misfiled for it aren't
-    offered."""
+    anchor of its shape's categories (one-shot: kind oneshot, named-only STABS left out; loop:
+    the drum-loop categories), when the score clears that category's gate (break_min, else
+    CLAP_FALLBACK_MIN, plus CLAP_FALLBACK_MARGIN; above its anti-prompts by the margin) and
+    the runner-up by the margin. Categories switched off or rated Misfiled for it aren't
+    offered. With `pitched` (a clear pYIN root) a noise drum (_NOISE_DRUM_CATS) is never the
+    answer, and the sample stays out rather than take CLAP's second guess."""
     from .curate_config import CATEGORIES_OFF
     if oneshot:
         cats = [c for c, cfg in CATEGORIES.items() if cfg["kind"] == "oneshot" and c in anchors
@@ -1395,7 +1404,9 @@ def _clap_home(v, anchors, oneshot, loop, misfiled=frozenset()):
     pref = CLAP_FALLBACK_PREFER.get(c1)
     if pref and len(scores) > 1 and scores[1][1] == pref and s1 - s2 < CLAP_FALLBACK_PREFER_MARGIN \
             and s2 >= float(CATEGORIES[pref].get("break_min", CLAP_FALLBACK_MIN)) + CLAP_FALLBACK_MARGIN:
-        return pref
+        return None if pitched and pref in _NOISE_DRUM_CATS else pref
+    if pitched and c1 in _NOISE_DRUM_CATS:
+        return None
     gate = float(CATEGORIES[c1].get("break_min", CLAP_FALLBACK_MIN))
     anti = _clap_anti(c1)
     if s1 < gate + CLAP_FALLBACK_MARGIN or s1 - s2 < CLAP_FALLBACK_MARGIN:
@@ -1414,12 +1425,13 @@ def _sound_labels(session) -> dict:
     return sound.current(session)
 
 
-def _sound_home(got, oneshot, loop, misfiled=frozenset(), minimum=None):
+def _sound_home(got, oneshot, loop, misfiled=frozenset(), minimum=None, pitched=False):
     """The category the sound model homes a sample in (SOUND_MODEL_MIN, or `minimum`), or
     None: its category clears the threshold, is a one-shot category or a drum-loop one
     (PHRASES holds producer-marked phrases only) that is on, not STABS (named stabs only),
-    not rated Misfiled for it, and fits the sample's shape (oneshot / loop: its own;
-    neither: the model's loop probability)."""
+    not rated Misfiled for it, not a noise drum (_NOISE_DRUM_CATS) for a sample with a clear
+    pYIN root (`pitched`), and fits the sample's shape (oneshot / loop: its own; neither: the
+    model's loop probability)."""
     from .curate_config import CATEGORIES_OFF
     if not got:
         return None
@@ -1428,7 +1440,7 @@ def _sound_home(got, oneshot, loop, misfiled=frozenset(), minimum=None):
         return None
     cfg = CATEGORIES.get(cat)
     if cfg is None or cat in CATEGORIES_OFF or cat in misfiled or cfg["kind"] not in ("oneshot", "loop") \
-            or cfg.get("stab_names") or cfg.get("scratch_names"):
+            or cfg.get("stab_names") or cfg.get("scratch_names") or (pitched and cat in _NOISE_DRUM_CATS):
         return None
     if oneshot == loop:                  # no shape of its own (or both): the model's
         if p_loop is None:
