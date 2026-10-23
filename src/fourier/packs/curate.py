@@ -2814,8 +2814,9 @@ def _fallback_tempos(r) -> list:
     """[(bpm, source, explicit)] a loop's own metadata states beyond what _resolve_tempo
     reads (without Sononym only; tried when the usual chain finds nothing): the name's
     "bpm120" (explicit) and "Groove96" / "T116" (whole beats), the WAV's ACID chunk (its tempo
-    as stated, else beats over the length), and a folder named only by a number ("Loops/174/",
-    whole bars or whole beats within NAME_TEMPO_TOL_MS). Each 60-200 BPM."""
+    as stated, else beats over the length), a folder named only by a number ("Loops/174/",
+    whole bars or whole beats within NAME_TEMPO_TOL_MS), and last the tempo its length implies
+    (_length_tempo, else a drum loop's _grid_tempo). Each 60-200 BPM."""
     out = []
     fn = getattr(r, "filename", None) or os.path.basename(getattr(r, "path", None) or "")
     stem = os.path.splitext(os.path.basename(fn))[0]
@@ -2839,6 +2840,8 @@ def _fallback_tempos(r) -> list:
         if m:
             add(m.group(1), "folder", False)
     got = _length_tempo(dur, getattr(r, "tempo_bpm", None) or getattr(r, "bpm", None))
+    if got is None:
+        got = _grid_tempo(r)
     if got:
         add(got, "length", True)
     return out
@@ -2870,6 +2873,86 @@ def _length_tempo(dur, measured):
             if d <= TEMPO_DERIVE_TOL and (best is None or (k, d) < best[0]):
                 best = ((k, d), round(t, 2))
     return best[1] if best else None
+
+
+# Without Sononym, after _length_tempo: a drum loop whose analyzer read a tempo no whole bar
+# count agrees with (a beat tracker on a one-bar break often lands a third off: 184.6 for a
+# bar at 140) takes the tempo at which its length is DERIVED_BAR_COUNTS whole bars when its
+# onsets sit on that tempo's 16th notes. Only percussive loops (harmonic share under
+# GRID_MAX_HARMONIC) with GRID_MIN_ONSETS_PER_BAR onsets a bar or more: a sparse riff of 1.5
+# or 3 bars sits on the 16ths of a wrong whole-bar tempo as well as on its own.
+GRID_MAX_HARMONIC = _tunable("GRID_MAX_HARMONIC", 0.5)
+GRID_MIN_ONSETS_PER_BAR = _tunable("GRID_MIN_ONSETS_PER_BAR", 4)
+GRID_FIT_MIN = _tunable("GRID_FIT_MIN", 0.75)      # the share of the onsets' strength within GRID_TOL of a 16th note
+GRID_TOL = _tunable("GRID_TOL", 0.15)          # of a 16th note, either way
+GRID_LAG_MAX_S = _tunable("GRID_LAG_MAX_S", 0.04)    # the onset detector reports a hit up to this late: the grid may start that late
+GRID_MAX_S = _tunable("GRID_MAX_S", 32.0)
+
+
+@lru_cache(maxsize=4096)
+def _onsets_of(path, _stamp):
+    """(onset times in seconds, their strengths) of an audio file's first GRID_MAX_S seconds;
+    ((), ()) when it can't be read."""
+    try:
+        import librosa
+        from ..audioio import load as load_audio
+        y, sr = load_audio(path, sr=22050, mono=True, duration=GRID_MAX_S)
+        env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=128)
+        pk = librosa.onset.onset_detect(onset_envelope=env, sr=sr, hop_length=128, units="frames")
+    except Exception:
+        return (), ()
+    return (tuple(float(t) for t in librosa.frames_to_time(pk, sr=sr, hop_length=128)),
+            tuple(float(env[k]) for k in pk))
+
+
+def _grid_fit(times, strengths, bpm) -> float:
+    """The share of the onsets' strength on the 16th notes of `bpm` counted from the file's
+    start (within GRID_TOL of one), the grid starting up to GRID_LAG_MAX_S late (the best)."""
+    t, s = np.asarray(times, dtype="float64"), np.asarray(strengths, dtype="float64")
+    tot = float(s.sum())
+    if not len(t) or tot <= 0:
+        return 0.0
+    six = 15.0 / bpm
+    best = 0.0
+    for lag in np.arange(0.0, GRID_LAG_MAX_S + 1e-9, 0.002):
+        u = (t - lag) / six
+        best = max(best, float(s[np.abs(u - np.round(u)) <= GRID_TOL].sum()) / tot)
+    return best
+
+
+def _grid_tempo(r):
+    """The whole-bar tempo a percussive loop's onsets agree with (see GRID_MAX_HARMONIC), or
+    None: of the tempos at which its length is DERIVED_BAR_COUNTS bars (TEMPO_MIN to
+    TEMPO_MAX) with GRID_MIN_ONSETS_PER_BAR onsets a bar, those GRID_FIT_MIN or more of its
+    onsets' strength sits on (_grid_fit); of those within 0.05 of the best fit, the nearest
+    the analyzer's tempo (octaves apart), else the slowest."""
+    dur, path = getattr(r, "duration_s", None), getattr(r, "path", None)
+    har = getattr(r, "harmonicity", None)
+    if not dur or not path or dur > GRID_MAX_S or har is None or har >= GRID_MAX_HARMONIC:
+        return None
+    cands = [(bars, bars * 240.0 / dur) for bars in DERIVED_BAR_COUNTS
+             if TEMPO_MIN <= bars * 240.0 / dur <= TEMPO_MAX]
+    if not cands:
+        return None
+    from .. import platforms
+    try:
+        st = os.stat(path)
+    except (OSError, TypeError, ValueError):
+        return None
+    if platforms.cloud_only(path):
+        return None
+    times, strengths = _onsets_of(str(path), (st.st_size, st.st_mtime_ns))
+    fits = [(_grid_fit(times, strengths, t), t) for bars, t in cands
+            if len(times) >= GRID_MIN_ONSETS_PER_BAR * bars]
+    fits = [(f, t) for f, t in fits if f >= GRID_FIT_MIN]
+    if not fits:
+        return None
+    top = max(f for f, _t in fits)
+    near = sorted(t for f, t in fits if f >= top - 0.05)
+    measured = getattr(r, "tempo_bpm", None)
+    if measured and measured > 0:
+        near.sort(key=lambda t: (abs(np.log2(t / measured)), t))
+    return round(near[0], 2)
 
 
 # a folder that states a tempo with "BPM" ("126_BPM", "Loops (126BPM)", "BPM 96"), and isn't

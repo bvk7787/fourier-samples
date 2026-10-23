@@ -375,6 +375,12 @@ curate:
   LOOP_SILENT_DB: correctness
   DERIVED_BAR_COUNTS: correctness
   TEMPO_DERIVE_TOL: correctness
+  GRID_MAX_HARMONIC: correctness
+  GRID_MIN_ONSETS_PER_BAR: correctness
+  GRID_FIT_MIN: correctness
+  GRID_TOL: correctness
+  GRID_LAG_MAX_S: correctness
+  GRID_MAX_S: correctness
   STICKY_SHARE: engine
   SIBLING_COS: engine
 
