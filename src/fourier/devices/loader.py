@@ -311,10 +311,20 @@ class DeviceLoader:
 
     @staticmethod
     def _read(p: Path):
+        return DeviceLoader._read_why(p)[0]
+
+    @staticmethod
+    def _read_why(p: Path):
+        """(the YAML document, or None; why it couldn't be read, or None)."""
         try:
-            return yaml.safe_load(p.read_text()) or {}
-        except Exception:
-            return None
+            text = p.read_text()
+        except (OSError, UnicodeDecodeError) as e:
+            return None, f"can't be read ({e})"
+        try:
+            return yaml.safe_load(text) or {}, None
+        except yaml.YAMLError as e:
+            from ..layers import plain_error
+            return None, f"isn't valid YAML: {plain_error(e, text)}"
 
     def _index(self) -> tuple[dict[str, tuple[Path, str]], list[tuple[Path, str]]]:
         """({id: (yaml path, "package" | "user")}, [(yaml path, problem)])."""
@@ -328,9 +338,9 @@ class DeviceLoader:
         mine: dict[str, Path] = {}
         for folder in self.user_dirs:
             for p in self._yaml_files(folder):
-                raw = self._read(p)
+                raw, why = self._read_why(p)
                 if not isinstance(raw, dict):
-                    problems.append((p, "not a YAML mapping (a device profile)"))
+                    problems.append((p, why or "not a YAML mapping (a device profile)"))
                     continue
                 did = raw.get("id") or p.stem
                 if did in mine:
@@ -355,6 +365,10 @@ class DeviceLoader:
 
     def _raw(self, device_id: str, index, seen=()) -> tuple[dict, Path, str, str | None]:
         if device_id not in index:
+            for p, why in self._index()[1]:      # a profile of yours by that name that won't load
+                if p.stem == device_id:
+                    raise DeviceProfileError(f"{p}: {why}. Fix it there (`fourier devices show "
+                                             f"{device_id}` checks it again).")
             raise ValueError(f"No device profile {device_id!r}. The profiles: {', '.join(index)}; "
                              f"`fourier devices list` describes them, and `fourier devices new` "
                              f"makes one for your sampler.")
