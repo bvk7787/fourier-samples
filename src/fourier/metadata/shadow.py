@@ -322,13 +322,16 @@ def rules_version(provider: str) -> float:
     the shape rules for audio. The "analysed" marker carries it, so a change of rules
     rebuilds the labels (ensure_current), not only a change in the sample count."""
     import hashlib
+    from ..packs.curate_config import PHRASE_LOOP_DIR_RE, PHRASE_ONESHOT_DIR_RE
+    # the settable rules the shape labels read (a user's [advanced] change relabels)
+    shape = tuple((rx.pattern, rx.flags) for rx in (PHRASE_LOOP_DIR_RE, PHRASE_ONESHOT_DIR_RE))
     if provider == PATH:
         src = (PROVIDERS_DIR / "path.yaml").read_bytes() + repr(
-            (_PATH_RULES, sorted(_GENERIC_WORDS), sorted(DRUM_HIT_LABELS), path_words())).encode()
+            (_PATH_RULES, sorted(_GENERIC_WORDS), sorted(DRUM_HIT_LABELS), path_words(), shape)).encode()
     elif provider == AUDIO:
         src = repr((_AUDIO_RULES, LOOP_MIN_S, LOOP_MIN_EVENTS, ONESHOT_MAX_S, ONSET_LOOP_MIN_S,
                     ONSET_LOOP_MIN_HZ, SUSTAINED_HPR, SUSTAINED_MAX_HZ, sorted(SOUND_LABELS),
-                    path_words())).encode() + (
+                    path_words(), shape, GRID_TOL_S, GRID_MIN_BEATS)).encode() + (
             PROVIDERS_DIR / "path.yaml").read_bytes()
     else:
         raise KeyError(provider)
@@ -337,25 +340,85 @@ def rules_version(provider: str) -> float:
     return float(int(hashlib.sha1(src).hexdigest()[:6], 16))
 
 
+def _sql_value(v) -> str:
+    if v is None:
+        return "NULL"
+    if isinstance(v, bool):
+        return "TRUE" if v else "FALSE"
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float):
+        return f"CAST('{v!r}' AS DOUBLE)"          # the same double a bound parameter is
+    return "'" + str(v).replace("'", "''") + "'"
+
+
+def _insert(session, model, rows: list) -> None:
+    """rows into model's table. On DuckDB as multi-row VALUES statements: its driver binds an
+    executemany one row at a time, many times slower for the tens of thousands of rows a
+    first labelling writes."""
+    if session.get_bind().dialect.name != "duckdb":
+        session.execute(insert(model), rows)
+        return
+    cols = list(rows[0])
+    conn = session.connection()
+    for k in range(0, len(rows), 2000):
+        values = ",".join("(" + ",".join(_sql_value(r[c]) for c in cols) + ")" for r in rows[k:k + 2000])
+        conn.exec_driver_sql(f"INSERT INTO {model.__tablename__} ({', '.join(cols)}) VALUES {values}")
+
+
 def _flush(session, labels, descs):
     if labels:
-        session.execute(insert(Label), labels)
+        _insert(session, Label, labels)
         labels.clear()
     if descs:
-        session.execute(insert(Descriptor), descs)
+        _insert(session, Descriptor, descs)
         descs.clear()
 
 
-def rebuild(session, provider: str, log=lambda m: None) -> dict:
-    """Replace one built-in provider's labels and descriptors."""
-    p = {"p": provider}
-    session.execute(text("DELETE FROM labels WHERE provider = :p"), p)
-    session.execute(text("DELETE FROM descriptors WHERE provider = :p"), p)
-    labels, descs = [], []
-    version = rules_version(provider)
+# Each labelled sample's "inputs" descriptor stamps the rules version and what its labels
+# were read from (stamp): a sample is labelled again when its stamp changes (a new file, a
+# file analyzed again, a path filled in, new rules), the others keep theirs.
+INPUTS = "inputs"
 
-    def add(sid, labs, **values):
+
+def _source_sql(provider: str) -> str:
+    if provider == PATH:
+        return "SELECT id, rel_path, path FROM samples"
+    if provider == AUDIO:
+        return ("SELECT s.id, s.duration_s, f.n_events, f.harmonic_percussive_ratio, f.onset_rate_hz, "
+                "s.rel_path, s.path FROM samples s JOIN sample_features f ON f.sample_id = s.id")
+    raise KeyError(provider)
+
+
+def _label(provider: str, row) -> tuple[set, dict]:
+    """(labels, descriptor values) for one source row."""
+    if provider == PATH:
+        _sid, rel, path = row
+        rel = rel or path or ""
+        return path_labels(rel), {"bpm": path_bpm(rel)}
+    _sid, dur, n_ev, hpr, onsets, rel, path = row
+    cls = audio_label(rel or path or "", dur, n_ev, onsets, hpr)
+    return ({cls} if cls else set()), {"duration_s": dur, "harmonicity": hpr}
+
+
+def stamp(version: float, row) -> float:
+    """A number for the rules version and a source row's values (all but its id): six hex
+    digits, exact in a 32-bit float as rules_version is."""
+    import hashlib
+    return float(int(hashlib.blake2b(repr((version, tuple(row[1:]))).encode(),
+                                      digest_size=3).hexdigest(), 16))
+
+
+def _add_rows(session, provider: str, rows, version: float) -> None:
+    """Write the labels, the "analysed" marker, the stamp and the descriptors of these source
+    rows, in chunks."""
+    labels: list = []
+    descs: list = []
+    for row in rows:
+        sid = row[0]
+        labs, values = _label(provider, row)
         descs.append(dict(sample_id=sid, provider=provider, name=ANALYSED, value=version))
+        descs.append(dict(sample_id=sid, provider=provider, name=INPUTS, value=stamp(version, row)))
         for i, lab in enumerate(sorted(labs)):
             labels.append(dict(sample_id=sid, provider=provider, kind=CANONICAL_KIND, label=lab,
                                rank=i, confidence=None))
@@ -364,27 +427,85 @@ def rebuild(session, provider: str, log=lambda m: None) -> dict:
                 descs.append(dict(sample_id=sid, provider=provider, name=name, value=float(v)))
         if len(descs) >= _CHUNK:
             _flush(session, labels, descs)
-
-    # Each SELECT is read whole before the loop: add() writes on the same connection, and on
-    # DuckDB a write ends a result that is still being read.
-    if provider == PATH:
-        for sid, rel, path in session.execute(text("SELECT id, rel_path, path FROM samples")).all():
-            rel = rel or path or ""
-            add(sid, path_labels(rel), bpm=path_bpm(rel))
-    elif provider == AUDIO:
-        for sid, dur, n_ev, hpr, onsets, rel, path in session.execute(text(
-                "SELECT s.id, s.duration_s, f.n_events, "
-                "f.harmonic_percussive_ratio, f.onset_rate_hz, s.rel_path, s.path FROM samples s "
-                "JOIN sample_features f ON f.sample_id = s.id")).all():
-            cls = audio_label(rel or path or "", dur, n_ev, onsets, hpr)
-            add(sid, {cls} if cls else set(), duration_s=dur, harmonicity=hpr)
-    else:
-        raise KeyError(provider)
     _flush(session, labels, descs)
+
+
+def _counts(session, provider: str, log) -> dict:
+    p = {"p": provider}
     n_lab = session.execute(text("SELECT count(*) FROM labels WHERE provider = :p"), p).scalar()
     n_des = session.execute(text("SELECT count(*) FROM descriptors WHERE provider = :p"), p).scalar()
     log(f"{provider} metadata: {n_lab:,} labels, {n_des:,} descriptors")
     return {"labels": n_lab, "descriptors": n_des}
+
+
+def rebuild(session, provider: str, log=lambda m: None) -> dict:
+    """Replace one built-in provider's labels and descriptors."""
+    p = {"p": provider}
+    # Each SELECT is read whole before the writes: on DuckDB a write ends a result that is
+    # still being read.
+    rows = session.execute(text(_source_sql(provider))).all()
+    session.execute(text("DELETE FROM labels WHERE provider = :p"), p)
+    session.execute(text("DELETE FROM descriptors WHERE provider = :p"), p)
+    _add_rows(session, provider, rows, rules_version(provider))
+    return _counts(session, provider, log)
+
+
+class Plan:
+    """What update() does for a provider: the source rows to label (new or changed: no stamp,
+    or another), and the samples labelled before that its source no longer has."""
+
+    def __init__(self, provider: str, need: int, todo: list, gone: list):
+        self.provider, self.need, self.todo, self.gone = provider, need, todo, gone
+
+    def __bool__(self) -> bool:
+        return bool(self.todo or self.gone)
+
+    def said(self) -> str:
+        """The build's line for it."""
+        parts = []
+        if self.todo:
+            parts.append(f"{len(self.todo):,} of {self.need:,} samples new or changed")
+        if self.gone:
+            parts.append(f"{len(self.gone):,} sample{'s' if len(self.gone) != 1 else ''} gone")
+        return f"metadata: updating the {self.provider} labels ({'; '.join(parts)})"
+
+
+def plan(session, provider: str) -> Plan:
+    """The samples whose labels are missing or out of date (stamp), and those gone."""
+    version = rules_version(provider)
+    rows = session.execute(text(_source_sql(provider))).all()
+    p = {"p": provider}
+    stamps = {int(i): v for i, v in session.execute(text(
+        "SELECT sample_id, value FROM descriptors WHERE provider = :p AND name = :n"),
+        {**p, "n": INPUTS})}
+    marked = {int(i) for (i,) in session.execute(text(
+        "SELECT sample_id FROM descriptors WHERE provider = :p AND name = :n AND value = :v"),
+        {**p, "n": ANALYSED, "v": version})}
+    todo = [r for r in rows if int(r[0]) not in marked or stamps.get(int(r[0])) != stamp(version, r)]
+    have = {int(r[0]) for r in rows}
+    held = {int(i) for (i,) in session.execute(text(
+        "SELECT DISTINCT sample_id FROM descriptors WHERE provider = :p "
+        "UNION SELECT DISTINCT sample_id FROM labels WHERE provider = :p"), p)}
+    return Plan(provider, len(rows), todo, sorted(held - have))
+
+
+def update(session, provider: str, the_plan: Plan | None = None, log=lambda m: None) -> dict:
+    """Label the samples plan() finds new or changed, and drop the rows of those gone; the
+    rest keep theirs. Labelling every sample is a rebuild()."""
+    pl = the_plan if the_plan is not None else plan(session, provider)
+    if len(pl.todo) == pl.need:
+        p = {"p": provider}
+        session.execute(text("DELETE FROM labels WHERE provider = :p"), p)
+        session.execute(text("DELETE FROM descriptors WHERE provider = :p"), p)
+    else:
+        ids = sorted({int(r[0]) for r in pl.todo} | set(pl.gone))
+        for k in range(0, len(ids), 1000):
+            chunk = ",".join(str(i) for i in ids[k:k + 1000])
+            for table in ("labels", "descriptors"):
+                session.execute(text(f"DELETE FROM {table} WHERE provider = :p AND sample_id IN ({chunk})"),
+                                {"p": provider})
+    _add_rows(session, provider, pl.todo, rules_version(provider))
+    return _counts(session, provider, log)
 
 
 def covered_count(session, provider: str) -> tuple[int, int]:
@@ -399,13 +520,14 @@ def covered_count(session, provider: str) -> tuple[int, int]:
 
 
 def ensure_current(session, log=lambda m: None) -> list[str]:
-    """Rebuild the built-in providers whose sample counts drifted or whose rules changed.
-    Returns the rebuilt ones."""
+    """Label again the samples of the built-in providers that are new or changed, or whose
+    rules changed (plan). Returns the providers it updated."""
     out = []
     for prov in SHADOW:
-        need, have = covered_count(session, prov)
-        if need != have:
-            rebuild(session, prov, log=log)
+        pl = plan(session, prov)
+        if pl:
+            log(pl.said())
+            update(session, prov, pl, log=log)
             session.commit()
             out.append(prov)
     return out

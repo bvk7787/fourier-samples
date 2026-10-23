@@ -175,7 +175,7 @@ def test_the_audio_provider_has_no_tempo_of_sononyms(db):
     with S.session_scope() as s:
         shadow.rebuild(s, shadow.AUDIO)
         names = {n for (n,) in s.execute(text("SELECT name FROM descriptors WHERE provider = 'audio'"))}
-    assert names == {"analysed", "duration_s", "harmonicity"}
+    assert names == {"analysed", "inputs", "duration_s", "harmonicity"}      # (inputs: the stamp)
 
 
 # --- Fourier's own analysis, with Sononym there ---
