@@ -424,7 +424,8 @@ def test_a_finish_that_keeps_failing_names_the_error_to_fix(env, monkeypatch):
             continue
         res = _run(env, "build", "KICKS", "--out", str(m), "--no-scan")
         out = _flat(res.output)
-        assert res.exit_code == 1 and "Permission denied" in out and "Fix that first" in out, out
+        assert res.exit_code == 1 and f"can't write in {m / 'KICKS' / 'fam'}" in out, out
+        assert "Make that folder writable for you, then run `fourier build`" in out, out
         assert "The next `fourier build` finishes" not in out, out
     monkeypatch.setattr(os, "replace", real)                   # fixed: the next build finishes it
     from fourier.cli.build import _check_build_target
@@ -1076,3 +1077,74 @@ def test_prune_asks_before_removing_much_of_the_library(env):
     _db(env, 0, 2)                                              # a few: removed as before
     res = _run(env, "tools", "db-stats", "--missing", "--prune")
     assert res.exit_code == 0 and "Removed 2 samples" in res.output, res.output
+
+
+# ---------------------------------------------------------------------------
+# folders Fourier can't write in
+# ---------------------------------------------------------------------------
+def _as_a_user(monkeypatch):
+    """Removing an entry needs its folder writable, as for any user but root (the tests may
+    run as root, who may remove anything)."""
+    import stat
+    real_unlink, real_rmdir = os.unlink, os.rmdir
+
+    def guard(real):
+        def f(path, *a, dir_fd=None, **k):
+            parent = os.stat(dir_fd) if dir_fd is not None else \
+                os.stat(os.path.dirname(os.path.abspath(path)))
+            if not parent.st_mode & stat.S_IWUSR:
+                raise PermissionError(13, "Permission denied", path)
+            return real(path, *a, dir_fd=dir_fd, **k)
+        return f
+    monkeypatch.setattr(os, "unlink", guard(real_unlink))
+    monkeypatch.setattr(os, "remove", guard(real_unlink))
+    monkeypatch.setattr(os, "rmdir", guard(real_rmdir))
+
+
+def test_a_read_only_masters_snapshot_never_stops_a_later_build(env, monkeypatch):
+    """The snapshot at .prev keeps the modes of the master it copied: a master whose folders
+    were read-only left a .prev no later swap could replace, and every build stopped."""
+    import shutil
+    from fourier.cli.build import _swap_in
+    m, nxt, old, new = _old_and_new(env)
+    prev = Path(str(m) + ".prev")
+    shutil.copytree(m, prev)                   # what an earlier swap left: folders read-only
+    for d in (prev, *[p for p in prev.rglob("*") if p.is_dir()]):
+        d.chmod(0o555)
+    _as_a_user(monkeypatch)
+    _swap_in(str(nxt), str(m))
+    assert _files(m) == new and _files(prev) == old and not nxt.exists()
+
+
+def test_publish_to_a_folder_it_cant_write_in_names_it_and_what_to_do(env, monkeypatch):
+    m = _master(env.master)
+    env.pub.mkdir()
+    real = os.mkdir
+
+    def mkdir(path, *a, **k):
+        if Path(path).parent == env.pub:
+            raise PermissionError(13, "Permission denied", str(path))
+        return real(path, *a, **k)
+    monkeypatch.setattr(os, "mkdir", mkdir)
+    res = _run(env, "publish", "--from", str(m), "--no-verify")
+    out = _flat(res.output)
+    assert res.exit_code == 1, out
+    assert f"fourier publish stopped: Fourier can't write in {env.pub}: you don't have " \
+           f"permission." in out, out
+    assert "Make it writable for you, or choose another folder, then run this again." in out, out
+    assert "bug report" not in out and "doctor" not in out and "Errno" not in out, out
+    assert not list((env.tmp / "fourier-home").glob("logs/error-*"))
+
+
+@pytest.mark.parametrize("err, says", [
+    (PermissionError(13, "Permission denied"), "can't write in {where}: you don't have permission"),
+    (OSError(30, "Read-only file system"), "{where} is on a drive that's read-only"),
+])
+def test_an_unwritable_place_is_named_by_the_nearest_folder_there(tmp_path, err, says):
+    from fourier.safety import unwritable
+    (tmp_path / "card").mkdir()
+    err.filename = str(tmp_path / "card" / "Samples" / "Fourier")
+    assert says.format(where=tmp_path / "card") in unwritable(err)[0]
+    err.filename = "Kick.wav"                  # no folder to name: the error as it is
+    assert unwritable(err) is None
+    assert unwritable(OSError(28, "No space left on device", str(tmp_path))) is None

@@ -260,12 +260,28 @@ def said(ctx, e: Exception) -> None:
         console.print("`fourier config edit` opens it to fix.", markup=False, highlight=False)
 
 
+def say_unwritable(cmd: str, e: BaseException) -> bool:
+    """For a permission error or a read-only drive: one plain line naming the folder, and what
+    to do (safety.unwritable). False, saying nothing, for any other error."""
+    from ..safety import unwritable
+    plain = unwritable(e)
+    if not plain:
+        return False
+    console.print(f"{cmd} stopped: {plain[0]}.", style="red", markup=False, highlight=False,
+                  soft_wrap=True)
+    console.print(f"{plain[1]}, then run this again.", markup=False, highlight=False,
+                  soft_wrap=True)
+    return True
+
+
 def unhandled(ctx, e: Exception) -> None:
     """One plain line for an error no command handled, the traceback kept in a file for a
     bug report."""
     import traceback
     from datetime import datetime
     cmd = _command(ctx, e)
+    if say_unwritable(cmd, e):            # a folder of the user's: nothing for a bug report
+        return
     if isinstance(e, FileNotFoundError) and e.filename:
         what = f"{e.filename} doesn't exist"
     else:
