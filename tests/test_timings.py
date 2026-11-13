@@ -27,6 +27,24 @@ def test_estimates_from_defaults_then_from_this_machine(tmp_path, monkeypatch):
     assert T.human(120) == "about 2 min" and T.human(3 * 3600) == "about 3.0 h"
 
 
+def test_a_rate_from_a_few_samples_isnt_trusted(tmp_path, monkeypatch):
+    """A run over one sample is almost all start-up: 427 s for one file read as 427 s a file
+    turned 10,500 new files into an estimate of hundreds of hours. A rate from fewer than
+    MIN_RATE_SAMPLES samples gives way to the default, and never replaces a rate measured
+    over more."""
+    monkeypatch.setenv("FOURIER_HOME", str(tmp_path))
+    monkeypatch.setattr(T, "clap_on_cpu", lambda: False)
+    default, basis = T.estimate_analyze({"librosa": 10_500}, workers=1)
+    assert basis == T.DEFAULTS_SOURCE
+    T.record_analyze("librosa", 427.0, 1, workers=1)
+    assert T.estimate_analyze({"librosa": 10_500}, workers=1) == (default, basis)
+    T.record_analyze("librosa", 200.0, 2000, workers=1)        # 0.1 s a sample, trusted
+    T.record_analyze("librosa", 50.0, 3, workers=1)            # a small run after it
+    secs, basis = T.estimate_analyze({"librosa": 10_500}, workers=1)
+    assert secs == pytest.approx(T.DEFAULTS["analyze_fixed_s"] + 10_500 * 0.1)
+    assert "this machine" in basis
+
+
 def test_clap_on_the_cpu_has_its_own_rate(tmp_path, monkeypatch):
     """Where PyTorch has only the CPU, CLAP is several times slower a file than on a graphics
     chip, and the estimate says which rates it used."""

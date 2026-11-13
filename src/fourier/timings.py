@@ -63,6 +63,10 @@ DEFAULTS: dict[str, Any] = {
     # single file much faster
     "clap_cpu_s_per_sample": 0.3,
 }
+# an analysis step's measured rate counts only from a run over this many samples: a small
+# run's time is mostly its start-up (workers, compiling, loading a model), which spread over a
+# few samples reads as a very slow rate
+MIN_RATE_SAMPLES = 200
 DEFAULTS_SOURCE = "rough defaults"
 CPU_SOURCE = "rough defaults for CLAP on the CPU"
 KEEP = 5
@@ -111,9 +115,13 @@ def parallel(step: str, workers: int) -> int:
 
 
 def record_analyze(step: str, seconds: float, samples: int, workers: int) -> None:
+    """A step's time per sample. A run under MIN_RATE_SAMPLES never replaces one over it."""
     if samples <= 0:
         return
     doc = load()
+    had = (doc.get("analyze") or {}).get(step) or {}
+    if samples < MIN_RATE_SAMPLES and _trusted(had):
+        return
     doc.setdefault("analyze", {})[step] = dict(at=time.strftime("%Y-%m-%dT%H:%M:%S"),
                                               s_per_sample=seconds * parallel(step, workers) / samples,
                                               samples=samples, workers=workers)
@@ -204,16 +212,24 @@ def default_rates() -> tuple[dict, str]:
     return rates, DEFAULTS_SOURCE
 
 
+def _trusted(measured: dict) -> bool:
+    """A recorded rate an estimate may use: measured over MIN_RATE_SAMPLES samples or more."""
+    return measured.get("s_per_sample") is not None and \
+        int(measured.get("samples") or 0) >= MIN_RATE_SAMPLES
+
+
 def estimate_analyze(pending: dict, workers: int | dict) -> tuple[float, str]:
     """(seconds, basis) to analyze the samples each step still has to do ({step: count}),
-    with the start-up any analysis spends (analyze_fixed_s). workers: each step's workers
+    with the start-up any analysis spends (analyze_fixed_s). A step's measured rate is used
+    when it came from MIN_RATE_SAMPLES samples or more, else its default. workers: each step's workers
     ({step: n}, as the steps run them), or one number for all."""
     measured = load().get("analyze") or {}
     defaults, source = default_rates()
     total = DEFAULTS["analyze_fixed_s"] if any(pending.values()) else 0.0
     own = 0
     for step, n in pending.items():
-        rate = (measured.get(step) or {}).get("s_per_sample")
+        got = measured.get(step) or {}
+        rate = got.get("s_per_sample") if _trusted(got) else None
         own += rate is not None
         rate = rate if rate is not None else defaults.get(step, 0.05)
         w = workers.get(step, 1) if isinstance(workers, dict) else workers
