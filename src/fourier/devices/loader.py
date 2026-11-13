@@ -79,6 +79,11 @@ SAMPLE_RATE_RANGE = (8000, 192000)       # Hz: what a profile may set
 COMMON_SAMPLE_RATES = (8000, 11025, 16000, 22050, 24000, 32000, 44100, 48000, 88200, 96000,
                        176400, 192000)
 WRITABLE_FORMATS = ("wav", "aiff", "aif")     # what a render can write (packs/render.py)
+# characters: the longest path a profile may set past its card folder (a folder and a short
+# name; doctor and build check the room the master's names need), and the most any file
+# system takes; a file or folder name, from what a name needs to what a file system takes
+PATH_ROOM_MIN, PATH_LENGTH_MAX = 24, 4096
+NAME_LENGTH_RANGE = (8, 255)
 TOP_KEYS = {"id", "name", "description", "manual", "load", "sample_refs", "status", "paths",
             "audio", "storage_mb", "citations", "override", "extends"}
 MANUAL_KEYS = ("title", "version", "url", "sha256")
@@ -143,12 +148,14 @@ class DeviceProfile:
 
     @classmethod
     def from_dict(cls, raw: dict, path: Path | None = None) -> DeviceProfile:
-        where = path.name if path else raw.get("id", "profile")
+        # the package's own profiles by name; one of yours by its whole path, to open and fix
+        where = (path.name if path.parent == DEFAULT_DEVICES_DIR else str(path)) if path \
+            else raw.get("id", "profile")
         if not isinstance(raw, dict) or not raw.get("id"):
             raise DeviceProfileError(f"{where}: a profile needs an id")
         unknown = set(raw) - TOP_KEYS
         if unknown:
-            raise DeviceProfileError(f"{where}: unknown keys {sorted(unknown)}")
+            raise DeviceProfileError(f"{where}: {_unknown(unknown, TOP_KEYS)}")
         if raw.get("load", "copy") not in LOADS:
             raise DeviceProfileError(f"{where}: load {raw.get('load')!r} (one of {', '.join(LOADS)})")
         if raw.get("sample_refs", "path") not in SAMPLE_REFS:
@@ -170,7 +177,7 @@ class DeviceProfile:
             if section is not None:
                 extra = set(block) - set(keys)
                 if extra:
-                    raise DeviceProfileError(f"{where}: {section}: unknown keys {sorted(extra)}")
+                    raise DeviceProfileError(f"{where}: {section}: {_unknown(extra, keys)}")
             for key, (attr, _default) in keys.items():
                 if key not in block:
                     continue
@@ -219,16 +226,28 @@ class DeviceProfile:
         if not isinstance(fmts, list) or not any(str(f).lower() in WRITABLE_FORMATS for f in fmts):
             raise DeviceProfileError(f"{where}: audio.formats must list wav or aiff "
                                      f"(what a render writes)")
-        for key in ("max_name_length", "max_path_length", "files_per_folder", "max_slices"):
-            v = kw.get(key)
-            if v is not None and (not isinstance(v, int) or isinstance(v, bool) or v < 1):
-                raise DeviceProfileError(f"{where}: {key} must be a whole number above 0 (or null)")
-        if kw.get("max_name_length") is not None and kw["max_name_length"] < 8:
-            raise DeviceProfileError(f"{where}: max_name_length under 8 leaves no room for a name")
+        prefix = "/".join(x for x in (str(kw.get("card_dir") or "").rstrip("/"),
+                                      str(kw.get("root") or "").strip("/")) if x)
+        ranges: dict[str, tuple[int, int | None, str]] = {
+                  "paths.max_path_length": (len(prefix) + 1 + PATH_ROOM_MIN,
+                                            PATH_LENGTH_MAX, "characters"),
+                  "paths.max_name_length": (*NAME_LENGTH_RANGE, "characters"),
+                  "paths.files_per_folder": (1, None, "files"),
+                  "audio.max_slices": (1, None, "slices")}
+        for name, (lo, top, unit) in ranges.items():
+            v = kw.get(name.split(".")[1])
+            if v is not None and (not isinstance(v, int) or isinstance(v, bool)
+                                  or v < lo or (top is not None and v > top)):
+                span = f"from {lo:,} to {top:,}" if top is not None else f", {lo:,} or more"
+                why = (f" ({prefix} and a \"/\" take {len(prefix) + 1} of them, and a folder "
+                       f"and a name need {PATH_ROOM_MIN} more)"
+                       if name == "paths.max_path_length" and prefix else "")
+                raise DeviceProfileError(f"{where}: {name} {v!r}: a whole number of {unit}"
+                                         f"{'' if span[0] == ',' else ' '}{span}, or null for no limit{why}")
         v = kw.get("max_duration_s")
         if v is not None and (isinstance(v, bool) or not isinstance(v, (int, float)) or v <= 0):
-            raise DeviceProfileError(f"{where}: max_duration_s must be a number of seconds above 0 "
-                                     f"(or null)")
+            raise DeviceProfileError(f"{where}: audio.max_duration_s {v!r}: a number of seconds "
+                                     f"above 0, or null for no limit")
         if kw.get("ascii_names") is not None and not isinstance(kw["ascii_names"], bool):
             raise DeviceProfileError(f"{where}: paths.ascii_names must be true or false")
         if "extends" in raw:
@@ -274,6 +293,18 @@ class DeviceProfile:
             lines.append(fmt(f"audio.{key}", getattr(self, attr)))
         lines.append(fmt("storage_mb", self.storage_mb, " MB").replace("    storage_mb", "  storage_mb  ", 1))
         return "\n".join(lines)
+
+
+def _unknown(keys, known) -> str:
+    """Keys a profile (or a section of one) doesn't take: each with the one it resembles,
+    then the keys it takes."""
+    import difflib
+    said = []
+    for k in sorted(map(str, keys)):
+        close = difflib.get_close_matches(k, list(known), n=1, cutoff=0.6)
+        said.append(f"{k!r}" + (f" (did you mean {close[0]}?)" if close else ""))
+    return (f"unknown key{'s' if len(said) > 1 else ''} {', '.join(said)}; the keys here: "
+            f"{', '.join(sorted(known))}")
 
 
 def _merge(base: dict, child: dict) -> dict:
