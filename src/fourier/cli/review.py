@@ -178,7 +178,9 @@ def import_ratings(csv_path, master_dir, dry_run):
     rate` takes), `rating` (keep, drop or misfiled), an optional `category` (for misfiled: the
     category it belongs in) and an optional `scope` (drop or misfiled: `set` for the file's
     whole set, as `review rate --set`; else `file`). Rows that match no file, or several, are
-    listed and skipped (exit 1); the rest are stored as `review rate` stores them.
+    listed and skipped (exit 1); the rest are stored as `review rate` stores them. Rows that
+    rate one file differently stop the import, naming their lines (exit 2). UTF-8, UTF-16
+    and Windows-1252 files all read.
 
     \b
       path,rating,category,scope
@@ -187,7 +189,7 @@ def import_ratings(csv_path, master_dir, dry_run):
       Pad C3,drop,,set
     """
     from ..packs.ratings import apply_tags, harvest, read_ratings_csv, set_ratings, uses_live
-    say = lambda m: console.print(m, markup=False, highlight=False)
+    say = lambda m: console.print(m, markup=False, highlight=False, soft_wrap=True)
     master_dir = _master_or_stop(master_dir)
     try:
         rated, skipped = read_ratings_csv(csv_path, master_dir)
