@@ -288,7 +288,10 @@ def embed_audio_file(path: str | Path) -> np.ndarray:
         y, _ = load_audio(path, sr=CLAP_SAMPLE_RATE, mono=True, duration=CLAP_WINDOW_S)
         y = y[:CLAP_WINDOW]           # resampling can leave a sample over: the extractor would crop it
     except Exception as exc:
-        logger.warning("CLAP: could not load %s: %s", path, exc)
+        from ..audioio import NotFinite
+        # a damaged file: the CLAP step names it once (enrich._leave_out_damaged)
+        (logger.debug if isinstance(exc, NotFinite) else logger.warning)(
+            "CLAP: could not load %s: %s", path, exc)
         return np.zeros(CLAP_EMBEDDING_DIM, dtype=np.float32)
 
     model, processor, device = _load_model_and_processor()

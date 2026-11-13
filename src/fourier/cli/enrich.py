@@ -630,6 +630,7 @@ def enrich_librosa(limit, workers, force, category_filter):
 
         paths = _on_this_machine([(s.id, s.path) for s in samples])
         where = dict(paths)
+        damaged: list = []
         n_ok = n_err = n_gone = 0
         t0 = time.monotonic()
 
@@ -659,6 +660,8 @@ def enrich_librosa(limit, workers, force, category_filter):
                             n_ok += 1
                         elif _gone(where.get(sample_id)):
                             n_gone += 1
+                        elif _damaged(where.get(sample_id)):
+                            damaged.append((sample_id, where[sample_id]))
                         else:
                             n_err += 1
                         progress.advance(task)
@@ -672,6 +675,7 @@ def enrich_librosa(limit, workers, force, category_filter):
             f"[dim]({n_err} skipped/errored) in {elapsed:.0f}s[/dim]"
         )
         _say_missing(n_gone)
+        _leave_out_damaged(session, damaged)
 
     finally:
         session.close()
@@ -997,12 +1001,15 @@ def enrich_clap(limit, category_filter, workers, force, build_index_flag):
         paths = _on_this_machine([(s.id, s.path) for s in samples])
         where = dict(paths)
         n_ok = n_err = n_gone = 0
+        damaged: list = []
         t0 = time.monotonic()
 
         def embed_one(item):
             sample_id, path = item
             vec = embed_audio_file(path)
             return sample_id, vec
+
+        from ..audioio import not_finite
 
         batch_session = get_session()
         try:
@@ -1024,12 +1031,15 @@ def enrich_clap(limit, category_filter, workers, force, build_index_flag):
                             n_ok += 1
                         elif _gone(where.get(sample_id)):
                             n_gone += 1
+                        elif not_finite(where.get(sample_id)):
+                            damaged.append((sample_id, where.get(sample_id)))
                         else:
                             n_err += 1
                         progress.advance(task)
                 batch.save()
         finally:
             batch_session.close()
+        _leave_out_damaged(session, damaged)
 
         elapsed = time.monotonic() - t0
         console.print(
@@ -1043,6 +1053,30 @@ def enrich_clap(limit, category_filter, workers, force, build_index_flag):
 
     finally:
         session.close()
+
+
+def _damaged(path) -> bool:
+    """A file a step couldn't read holds NaN or infinite values (audioio.not_finite)."""
+    from ..audioio import not_finite
+    return bool(path) and not_finite(path)
+
+
+def _leave_out_damaged(session, items) -> None:
+    """Files an analysis step (CLAP, librosa, loop trim, Fourier's own) found holding NaN or
+    infinite values (scanned before Fourier checked for them): left out as unreadable, so no
+    step reads them again and no note waits on them, and said once, with each file."""
+    if not items:
+        return
+    from ..audioio import NOT_FINITE
+    from ..ingest.importer import leave_out_unreadable
+    leave_out_unreadable(session, items, NOT_FINITE)
+    console.print(f"{len(items):,} file(s) left out: each {NOT_FINITE}. Replace it with a good "
+                  f"copy to use it:", style="yellow", markup=False, highlight=False, soft_wrap=True)
+    for _sid, path in items[:10]:
+        console.print(f"  {path}", style="yellow", markup=False, highlight=False, soft_wrap=True)
+    if len(items) > 10:
+        console.print(f"  ... and {len(items) - 10:,} more", style="yellow", markup=False,
+                      highlight=False)
 
 
 def _write_index(session, build_index) -> None:
@@ -1167,6 +1201,7 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
         )
         paths = _on_this_machine([(s.id, s.path) for s in samples])
         where = dict(paths)
+        damaged: list = []
         t0 = time.monotonic()
         n_trimmed = n_skipped = n_err = n_gone = 0
 
@@ -1192,6 +1227,8 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
                                 n_skipped += 1
                         elif _gone(where.get(sample_id)):
                             n_gone += 1
+                        elif _damaged(where.get(sample_id)):
+                            damaged.append((sample_id, where[sample_id]))
                         else:
                             n_err += 1
                         progress.advance(task)
@@ -1206,6 +1243,7 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
             f"[dim]{n_skipped:,} no silence . {n_err} errors[/dim]"
         )
         _say_missing(n_gone)
+        _leave_out_damaged(session, damaged)
     finally:
         session.close()
 
@@ -1502,6 +1540,7 @@ def enrich_own(workers, force, limit):
             t0 = time.monotonic()
             n_pitched = n_err = n_gone = 0
             where = dict(items)
+            damaged: list = []
 
             def store(rows):
                 now = datetime.utcnow()
@@ -1525,6 +1564,8 @@ def enrich_own(workers, force, limit):
                             batch.add((sid, midi))
                         elif _gone(where.get(sid)):
                             n_gone += 1
+                        elif _damaged(where.get(sid)):
+                            damaged.append((sid, where[sid]))
                         else:
                             n_err += 1          # unreadable: tried again next time
                         progress.advance(task)
@@ -1532,6 +1573,7 @@ def enrich_own(workers, force, limit):
             console.print(f"[green]Done: {len(items):,} samples in {time.monotonic() - t0:.0f}s[/green]"
                           f" -- {n_pitched:,} with one clear pitch, {n_err} unreadable")
             _say_missing(n_gone)
+            _leave_out_damaged(session, damaged)
         keys = _on_this_machine(_key_items(session))
     finally:
         session.close()
