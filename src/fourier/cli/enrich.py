@@ -203,7 +203,8 @@ def sononym_classifies(session) -> bool:
 
 def _candidates(session, Sample, SononymMeta, category_filter=None):
     """The samples an audio step covers (before its own "not done yet" filter): those with
-    a Sononym row when Sononym classifies, else every sample, in id order. --category
+    a Sononym row when Sononym classifies, else every sample, in id order, less the ones
+    marked missing (present). --category
     matches Sononym's categories, so it narrows to samples Sononym analyzed either way."""
     from sqlalchemy import String, cast
     if sononym_classifies(session):
@@ -215,7 +216,16 @@ def _candidates(session, Sample, SononymMeta, category_filter=None):
         q = q.order_by(Sample.id)
     if category_filter:
         q = q.filter(cast(SononymMeta.categories, String).like(f"%{category_filter}%"))
-    return q
+    return present(q)
+
+
+def present(q, id_col: str = "samples.id"):
+    """q without the samples a library walk marked missing: their files aren't there to read
+    (a walk that finds one again unmarks it)."""
+    from sqlalchemy import text
+
+    from ..metadata.rows import not_missing
+    return q.filter(text(not_missing(id_col)))
 
 
 def require_samples(session) -> None:
@@ -341,7 +351,8 @@ def enrich_derived(limit, force):
         # meta.sample.duration_s for attack_class and drum_subtype computation.
         from sqlalchemy.orm import joinedload as _joinedload
         if sononym_classifies(session):
-            q = session.query(SononymMeta).options(_joinedload(SononymMeta.sample))
+            q = present(session.query(SononymMeta).options(_joinedload(SononymMeta.sample)),
+                        "sononym_meta.sample_id")
             if not force:
                 q = (
                     q.outerjoin(SampleFeatures, SononymMeta.sample_id == SampleFeatures.sample_id)
@@ -359,8 +370,8 @@ def enrich_derived(limit, force):
             return
         else:
             # the built-in providers classify: every sample, with its Sononym row when it has one
-            q = (session.query(Sample, SononymMeta)
-                 .outerjoin(SononymMeta, SononymMeta.sample_id == Sample.id))
+            q = present(session.query(Sample, SononymMeta)
+                        .outerjoin(SononymMeta, SononymMeta.sample_id == Sample.id))
             if not force:
                 q = (q.outerjoin(SampleFeatures, Sample.id == SampleFeatures.sample_id)
                      .filter((SampleFeatures.id == None)  # noqa: E711
@@ -446,8 +457,10 @@ def _derived_none(session, limit: int = 0) -> None:
         console.print("[green]All samples already have derived features.[/green]")
         return
     keep = set(todo)
-    blank = [int(i) for (i,) in session.execute(text(
-        "SELECT id FROM samples WHERE duration_s IS NULL ORDER BY id")) if int(i) in keep]
+    from fourier.metadata.rows import not_missing
+    blank = [int(i) for (i,) in session.execute(text(     # a file marked missing isn't read
+        f"SELECT s.id FROM samples s WHERE s.duration_s IS NULL AND {not_missing('s.id')} ORDER BY s.id"))
+        if int(i) in keep]
     if blank:
         fill_file_info(session, [smp for k in range(0, len(blank), 1000)
                                  for smp in session.query(Sample).filter(Sample.id.in_(blank[k:k + 1000]))
@@ -732,7 +745,7 @@ def enrich_quality(workers, force):
                 session.execute(text(f"ALTER TABLE sample_features ADD COLUMN {col} {typ}"))
         session.commit()
 
-        q = session.query(Sample)
+        q = present(session.query(Sample))
         if not force:
             q = (
                 q.outerjoin(SampleFeatures, Sample.id == SampleFeatures.sample_id)
@@ -1122,11 +1135,11 @@ def enrich_loop_trim(workers, force, limit, threshold_db, min_silence_s, all_cla
         if fallback:
             # the built-in providers' call: a loop by its name or folder, or by its length
             # and event count (events runs before this step)
-            q = session.query(Sample).order_by(Sample.id)
+            q = present(session.query(Sample)).order_by(Sample.id)
         else:
-            q = session.query(Sample).join(
+            q = present(session.query(Sample).join(
                 SononymMeta, Sample.id == SononymMeta.sample_id
-            )
+            ))
             if not all_classes:
                 q = q.filter(SononymMeta.classes.like('%Loop%'))
         if not force:
@@ -1237,8 +1250,8 @@ def enrich_events(workers, force, limit, max_dur):
     session = get_session()
     try:
         require_samples(session)
-        q = session.query(Sample.id, Sample.path).filter(
-            (Sample.duration_s == None) | (Sample.duration_s <= max_dur))  # noqa: E711
+        q = present(session.query(Sample.id, Sample.path).filter(
+            (Sample.duration_s == None) | (Sample.duration_s <= max_dur)))  # noqa: E711
         if not force:
             q = q.outerjoin(SampleFeatures, Sample.id == SampleFeatures.sample_id).filter(
                 (SampleFeatures.id == None) | (SampleFeatures.events_computed_at == None))  # noqa: E711
@@ -1304,7 +1317,8 @@ def _key_items(session, all_classes=False, force=False, limit=0) -> list:
     from sqlalchemy import text
 
     from ..metadata.resolve import KEY_CANDIDATE_SQL
-    where = ["1 = 1" if all_classes else KEY_CANDIDATE_SQL]
+    from ..metadata.rows import not_missing
+    where = ["1 = 1" if all_classes else KEY_CANDIDATE_SQL, not_missing("s.id")]
     if not force:
         where.append("f.key_confidence IS NULL")
     sql = ("SELECT s.id, s.path FROM samples s JOIN sample_features f ON f.sample_id = s.id "
@@ -1431,10 +1445,12 @@ def own_pending(session) -> int:
     from sqlalchemy import text
 
     from ..metadata.resolve import ROOT_CANDIDATE_SQL
+    from ..metadata.rows import not_missing
     try:
         return session.execute(text(
             "SELECT COUNT(*) FROM samples s JOIN sample_features f ON f.sample_id = s.id "
-            f"WHERE {ROOT_CANDIDATE_SQL} AND f.own_root_at IS NULL")).scalar() or 0
+            f"WHERE {ROOT_CANDIDATE_SQL} AND {not_missing('s.id')} AND f.own_root_at IS NULL"
+        )).scalar() or 0
     except Exception:
         return 0
 
@@ -1472,8 +1488,10 @@ def enrich_own(workers, force, limit):
     session = get_session()
     try:
         require_samples(session)
+        from ..metadata.rows import not_missing
         sql = ("SELECT s.id, s.path FROM samples s JOIN sample_features f ON f.sample_id = s.id "
-               f"WHERE {ROOT_CANDIDATE_SQL}" + ("" if force else " AND f.own_root_at IS NULL")
+               f"WHERE {ROOT_CANDIDATE_SQL} AND {not_missing('s.id')}"
+               + ("" if force else " AND f.own_root_at IS NULL")
                + " ORDER BY s.id" + (f" LIMIT {int(limit)}" if limit else ""))
         items = _on_this_machine([(i, p) for i, p in session.execute(text(sql))])
         workers = _workers(workers, WORKER_CAPS["own"])
