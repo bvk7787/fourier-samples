@@ -104,11 +104,10 @@ _FORKS = """
 import os, sys, time
 from fourier import homelock
 homelock.hold("fourier build")
-pid = os.fork()                     # a pool worker, forked while the run holds the lock
-if pid == 0:
+if os.fork() == 0:                  # a pool worker, forked while the run holds the lock
+    print(os.getpid(), flush=True)  # (said once it runs: its fork handlers have run)
     time.sleep(60)
     os._exit(0)
-print(pid, flush=True)
 sys.stdin.read()
 """
 
