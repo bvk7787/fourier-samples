@@ -95,6 +95,9 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning:audioread.*",
 ]
+# a test still running after 10 minutes (the longest take about 5 on CI) prints every thread's
+# stack: a hung run names its test and where it waits, before the job's timeout cancels it
+faulthandler_timeout = 600
 
 [tool.ruff]
 line-length = 100
