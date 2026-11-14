@@ -909,6 +909,35 @@ def _under_walk(w, exts, known: dict) -> dict:
 _MOVED_SAMPLE_FIELDS = ("is_favorite", "is_hidden", "user_tags")
 
 
+def _stored_at_target(session, w, f, known: dict, link_moves: dict) -> int | None:
+    """A file symlink pointing out of the library that an earlier walk stored at its target
+    (outside the library, so curation left it out): its row moves to where the link puts it,
+    its analysis kept, and link_moves gets {old path: new path} for its rating. Returns the
+    row's id, or None."""
+    try:
+        if not os.path.islink(f.path):
+            return None
+        old = os.path.realpath(f.path)
+    except (OSError, ValueError):
+        return None
+    hit = known.get(old)
+    real_root = w.real_root.rstrip(os.sep) + os.sep
+    if hit is None or old == f.key or old.startswith(real_root):
+        return None
+    from ..places import library_root_of
+    if library_root_of(old) is not None:      # another library folder's own file: its row stays
+        return None
+    sample = session.get(Sample, hit[0])
+    # only the row an earlier walk stored for this link (its library path is the link's):
+    # a row another config's library keeps in a shared database stays where it is
+    if sample is None or sample.rel_path != f.rel:
+        return None
+    sample.path, sample.rel_path = f.key, f.rel
+    known[f.key] = known.pop(old)
+    link_moves[old] = f.key
+    return hit[0]
+
+
 def _match_moves(session, w, exts, seen_ids: set, known: dict, created: list) -> dict:
     """Files the walk found moved: a sample under the folder it didn't find, and a file new
     to it with the same content (quick hash and size, and the content hash where both rows
@@ -1082,6 +1111,7 @@ def scan_filesystem(
         unchunked = _unchunked(session)
         seen_ids: set = set()
         created: list = []
+        link_moves: dict = {}
         for i, f in enumerate(w.files):
             if progress_cb:
                 progress_cb(i, f.path)
@@ -1094,6 +1124,11 @@ def scan_filesystem(
                 if hit is not None:
                     sid, no_rel, no_dur = hit
                     counts["skipped"] += 1
+                    if f.key in w.link_targets:                 # a link inside the library once
+                        s_ = session.get(Sample, sid)           # named it: its own path now
+                        if s_ is not None and s_.rel_path not in (None, f.rel):
+                            s_.rel_path = f.rel
+                            counts["renamed"] = counts.get("renamed", 0) + 1
                     # a known file left out as damaged (NaN or infinite values), unchanged since:
                     # not read again; any other failure is read again (it may have been mid-copy)
                     was = bad_before.get(f.path) or bad_before.get(f.key)
@@ -1119,6 +1154,11 @@ def scan_filesystem(
                             counts["changed"] = counts.get("changed", 0) + 1
                         elif sid in unchunked and _fill_chunks(session.get(Sample, sid), f.path):  # type: ignore[arg-type]
                             counts["chunks"] = counts.get("chunks", 0) + 1
+                    seen_ids.add(sid)
+                    continue
+                sid = _stored_at_target(session, w, f, known, link_moves)
+                if sid is not None:
+                    counts["skipped"] += 1
                     seen_ids.add(sid)
                     continue
                 st = os.stat(f.path)
@@ -1163,6 +1203,7 @@ def scan_filesystem(
         counts["read_in_full"] = settle_hashes(session, counts=counts, ids=todo) if todo else 0
         moves = _match_moves(session, w, set(exts), seen_ids, known, created)
         counts["moved"] = len(moves)
+        moves.update(link_moves)
         _record_missing(session, w, set(exts), seen_ids, known, counts, moves)
         _save_walk_cache(session, w, cache)
     if moves:                     # ratings follow the files (packs/ratings.py)

@@ -143,6 +143,70 @@ def test_folder_symlinks_out_of_the_library_are_followed_once(lib, tmp_path):
     assert c["links_followed"] == 1 and c["links_inside"] == 1 and c["loops"] == 1
 
 
+def test_a_file_symlink_is_stored_as_a_folder_symlink_is(lib, tmp_path):
+    """A file symlink out of the library is the library's own file, at the link's path (it was
+    stored at its target, outside the library, and every build left it out); one pointing at
+    a file of the library leaves that file its own path (it took the link's name)."""
+    elsewhere = _wav(tmp_path / "Elsewhere" / "kick.wav")
+    snare = _wav(lib / "Acme" / "Snare 01.wav")
+    os.symlink(elsewhere, lib / "Acme" / "Jorbl Link Out.wav")
+    os.symlink(snare, lib / "Acme" / "A Snare Link.wav")             # sorts before its target
+    os.symlink(tmp_path / "Elsewhere" / "gone.wav", lib / "Acme" / "Gone.wav")
+    c = IMP.scan_filesystem(lib)
+    real = os.path.realpath(lib)
+    assert sorted(_rows(tmp_path, "SELECT path, rel_path FROM samples")) == [
+        (os.path.join(real, "Acme", "Jorbl Link Out.wav"), "Acme/Jorbl Link Out.wav"),
+        (os.path.realpath(snare), "Acme/Snare 01.wav")]
+    assert all(places.in_library(p) for (p,) in _rows(tmp_path, "SELECT path FROM samples"))
+    assert c["created"] == 2 and c["errors"] == 0
+
+
+def test_a_file_symlink_into_another_library_folder_leaves_its_row_there(lib, tmp_path, monkeypatch):
+    """A file symlink pointing into another configured library folder, or at a file another
+    config's library keeps in a shared database, is that file: its row (analysis, rating) stays
+    where it is."""
+    other = tmp_path / "Zorbl Lib"
+    real = _wav(other / "Qzv" / "Qzv Kick.wav")
+    shared = _wav(tmp_path / "Shared Lib" / "Qzv" / "Qzv Snare.wav")
+    os.symlink(real, lib / "Kick Link.wav")
+    os.symlink(shared, lib / "Snare Link.wav")
+    monkeypatch.setenv("FOURIER_LIBRARY", os.pathsep.join([str(lib), str(other)]))
+    places.reset()
+    assert IMP.scan_filesystem(other)["created"] == 1
+    from fourier.db.models import Sample
+    with S.session_scope() as s:                     # another config's file, in the same database
+        row = Sample(path=os.path.realpath(shared), rel_path="Qzv/Qzv Snare.wav", filename="Qzv Snare.wav")
+        IMP._fill_scanned(row, Path(row.path), row.rel_path)
+        s.add(row)
+    IMP.scan_filesystem(lib)
+    paths = {p for (p,) in _rows(tmp_path, "SELECT path FROM samples")}
+    assert os.path.realpath(real) in paths and os.path.realpath(shared) in paths
+    assert IMP.scan_filesystem(other)["created"] == 0          # its file kept its row
+
+
+def test_a_file_symlink_an_earlier_walk_stored_at_its_target_keeps_its_row(lib, tmp_path):
+    from fourier.db.models import Sample, SampleFeatures
+    elsewhere = _wav(tmp_path / "Elsewhere" / "kick.wav")
+    snare = _wav(lib / "Acme" / "Snare 01.wav")
+    os.symlink(elsewhere, lib / "Acme" / "Jorbl Link Out.wav")
+    os.symlink(snare, lib / "Acme" / "A Snare Link.wav")
+    with S.session_scope() as s:                                       # as an earlier walk left them
+        for path, rel in ((os.path.realpath(elsewhere), "Acme/Jorbl Link Out.wav"),
+                          (os.path.realpath(snare), "Acme/A Snare Link.wav")):
+            row = Sample(path=path, rel_path=rel, filename=os.path.basename(rel))
+            IMP._fill_scanned(row, Path(path), rel)
+            s.add(row)
+            s.flush()
+            s.add(SampleFeatures(sample_id=row.id, tempo_bpm=120.0))
+    c = IMP.scan_filesystem(lib)
+    real = os.path.realpath(lib)
+    assert sorted(_rows(tmp_path, "SELECT id, path, rel_path FROM samples")) == [
+        (1, os.path.join(real, "Acme", "Jorbl Link Out.wav"), "Acme/Jorbl Link Out.wav"),
+        (2, os.path.realpath(snare), "Acme/Snare 01.wav")]
+    assert c["created"] == 0 and _missing(tmp_path) == []
+    assert len(_rows(tmp_path, "SELECT sample_id FROM sample_features")) == 2   # analysis kept
+
+
 def test_a_symlinked_library_folder_gives_the_same_library_paths(tmp_path, monkeypatch):
     real = tmp_path / "Drive" / "SampleLibrary"
     _wav(real / "Acme" / "Kick 01.wav")

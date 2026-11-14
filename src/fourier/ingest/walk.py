@@ -12,7 +12,10 @@ Sononym doesn't index the library (or with `--walk`, beside it).
   marked missing and the scan says so, as for a missing library folder. One that points inside it
   is left to the walk of its target, so a file is one sample. Every real folder is listed
   once (by device and inode), so a link back up the tree can't loop. A file symlink is
-  stored at its target, as a walk always stored it.
+  treated the same way: one pointing outside the library folder is the library's own file,
+  stored where the link puts it; one pointing at a file the walk finds anyway is left to that
+  file, which keeps its own path (a link whose target the walk doesn't reach, in a dot
+  folder say, is stored where the link puts it).
 - A folder whose modification time is what it was at the last walk isn't listed again: its
   listing is reused (table walked_dirs), on file systems that change a folder's time
   whenever an entry is added, removed or renamed (platforms.dir_mtimes_reliable). A folder
@@ -58,6 +61,9 @@ class Walk:
     skipped: Counter = field(default_factory=Counter)      # extension -> files not read
     links_followed: int = 0         # folder symlinks followed out of the library folder
     links_inside: int = 0           # ...pointing inside it (walked at their target)
+    # stored paths of files a file symlink inside the library points at: each is one sample,
+    # at its own library path, whatever the link is called
+    link_targets: set = field(default_factory=set)
     loops: int = 0                  # folders reached a second time (a link back up the tree)
     broken_links: int = 0
     # folder symlinks whose target isn't there (a drive that isn't plugged in): (the key
@@ -146,6 +152,7 @@ def walk(root, exts, *, cache: dict | None = None, own: set | None = None,
     w = Walk(root=root_s, real_root=real_root)
     exts = {e.lower() for e in exts}
     visited: set = set()
+    inside_links: list = []         # (target, Found) of file symlinks pointing inside the library
     trust_root = reliable(real_root)
     stack = [(root_s, "", trust_root, False)]
     while stack:
@@ -203,7 +210,15 @@ def walk(root, exts, *, cache: dict | None = None, own: set | None = None,
                 w.skipped[ext] += 1
                 continue
             p = os.path.join(here, name)
-            w.files.append(Found(key=os.path.realpath(p), rel=sub + name, path=p))
+            found = Found(key=_join(real_root, sub + name), rel=sub + name, path=p)
+            try:
+                target = os.path.realpath(p)
+            except (OSError, ValueError):
+                target = None
+            if target and (target == real_root or target.startswith(real_root.rstrip(os.sep) + os.sep)):
+                inside_links.append((target, found))
+            else:
+                w.files.append(found)
         for name in reversed(listing.get("d", ())):
             stack.append((os.path.join(here, name), sub + name, trust, False))
         # folder links, and links that weren't there when the folder was listed (a drive
@@ -222,8 +237,15 @@ def walk(root, exts, *, cache: dict | None = None, own: set | None = None,
                 w.links_inside += 1
                 continue
             stack.append((p, sub + name, reliable(target), True))
-    # one sample per stored path (a file symlink beside its target), in path order: new
-    # samples get their ids in this order, whatever order the file system lists them in
+    # a file symlink inside the library: its target's own entry stores the file
+    walked = {f.key for f in w.files}
+    for target, found in inside_links:
+        if target in walked:
+            w.link_targets.add(target)
+        else:
+            w.files.append(found)
+    # one sample per stored path, in path order: new samples get their ids in this order,
+    # whatever order the file system lists them in
     seen, files = set(), []
     for f in sorted(w.files, key=lambda f: _sort_key(f.rel)):
         if f.key not in seen:
