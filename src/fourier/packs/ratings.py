@@ -617,20 +617,24 @@ def rekey_by_hash(session, store_path=None, log=print):
     rating / color / auto-misfile records its source's file hash (Sample.file_hash); one
     whose source path is gone from the library moves to the one existing file with that
     hash (the same file name first). A hash stored before files were hashed in full (of the
-    first 8 KB, Sample.quick_hash) moves it only to a file of the same name. Returns
-    {"hashed", "moved", "orphaned"}."""
+    first 8 KB, Sample.quick_hash) moves it only to a file of the same name. A rated file
+    whose audio was replaced at its path (its hash is neither of the file's now) keeps its
+    rating, and the log names it once, to listen to again. Returns {"hashed", "moved",
+    "orphaned", "changed"}."""
     from sqlalchemy import select
     from ..db.models import Sample
     store = load_store(store_path)
-    by_path, by_hash, by_quick = {}, defaultdict(list), defaultdict(list)
+    by_path, by_hash, by_quick, quick_of = {}, defaultdict(list), defaultdict(list), {}
     for row in session.execute(select(Sample.path, Sample.file_hash, Sample.quick_hash)).all():
         p, h, q = (*row, None)[:3]
         by_path[p] = h
+        quick_of[p] = q
         if h:
             by_hash[h].append(p)
         if q and q != h:
             by_quick[q].append(p)        # (a rating stored before its file was hashed in full)
-    s = dict(hashed=0, moved=0, orphaned=0)
+    s = dict(hashed=0, moved=0, orphaned=0, changed=0)
+    replaced = []
     for sect in ("ratings", "colors", "auto_misfiled"):
         D = store[sect]
         for src, r in list(D.items()):
@@ -638,6 +642,8 @@ def rekey_by_hash(session, store_path=None, log=print):
                 continue
             if src in by_path and os.path.exists(src):
                 if by_path[src] and r.get("hash") != by_path[src]:
+                    if sect == "ratings" and r.get("hash") and r["hash"] != quick_of.get(src):
+                        replaced.append(src)        # other audio at the rated path
                     r["hash"] = by_path[src]
                     s["hashed"] += 1
                 continue
@@ -654,9 +660,19 @@ def rekey_by_hash(session, store_path=None, log=print):
             elif src not in by_path:
                 s["orphaned"] += 1
     save_store(store, store_path)
+    s["hashed"] -= len(replaced)
+    s["changed"] = len(replaced)
     if s["hashed"] or s["moved"] or s["orphaned"]:
         log(f"ratings: {s['hashed']} hashed, {s['moved']} followed a moved file, "
             f"{s['orphaned']} point at files no longer in the library")
+    if replaced:
+        log(f"ratings: {len(replaced):,} rated file(s) changed since you rated them (other "
+            f"audio, or edited, at the same path). Each rating was kept; listen again, and rate "
+            f"again (`fourier review rate`) where it no longer fits:")
+        for src in sorted(replaced)[:10]:
+            log(f"  {src} ({store['ratings'][src].get('verdict', '?')})")
+        if len(replaced) > 10:
+            log(f"  ... and {len(replaced) - 10:,} more")
     return s
 
 

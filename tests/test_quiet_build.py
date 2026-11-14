@@ -43,6 +43,9 @@ def test_the_detail_goes_to_the_log_and_the_summary_reads_it(tmp_path, monkeypat
     print("Homes: 12 samples routed")                    # what a build says
     print("1 category left empty: too few samples the rules recognize for them (WAVES).")
     print("40 samples no rule recognized (top folders: Acme (40)).")
+    print("ratings: 1 rated file(s) changed since you rated them (other audio, or edited, at the "
+          "same path). Each rating was kept; listen again:")
+    print("  /l/Acme/Qzv Kick.wav (keep)")
     for i in range(7):
         print(f"WARN  check {i}  -- detail")
     print("verify: PASS -- 100 pass, 7 warn, 0 fail")
@@ -58,6 +61,8 @@ def test_the_detail_goes_to_the_log_and_the_summary_reads_it(tmp_path, monkeypat
     assert "plus KITS (1 files), drawn from the categories" in out[2]
     assert "1 category left empty: too few samples the rules recognize for them (WAVES)." in out
     assert "40 samples no rule recognized: `fourier why --unrecognized` lists them." in out
+    rated = out.index(next(ln for ln in out if ln.startswith("1 rated file(s) changed")))
+    assert out[rated + 1] == "  /l/Acme/Qzv Kick.wav (keep)"
     assert "verify: PASS -- 100 pass, 7 warn, 0 fail" in out
     assert sum(1 for ln in out if ln.startswith("  WARN")) == Q.WARN_SHOWN
     assert any("2 more warnings in the log" in ln for ln in out)
@@ -111,3 +116,5 @@ def test_the_lines_the_summary_reads_are_still_printed():
                    " left empty: ", "verify: PASS", "verify: FAIL"):
         assert marker in src, marker
     assert 'log(f"{r.level}  {r.check}"' in Path(V.__file__).read_text()   # "WARN  <check>"
+    import fourier.packs.ratings as RT
+    assert Q.RATED_CHANGED in Path(RT.__file__).read_text()
