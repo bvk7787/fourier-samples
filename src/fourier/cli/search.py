@@ -87,6 +87,7 @@ def search(query, cls, categories, min_dur, max_dur, brightness_min, brightness_
 
     session = get_session()
     try:
+        has_sononym = session.execute(sql_text("SELECT 1 FROM sononym_meta LIMIT 1")).first() is not None
         # --- Timbral filter pass (always run; may be the only pass) ---
         has_timbral_filters = any([
             cls, categories, min_dur, max_dur, brightness_min, brightness_max,
@@ -276,6 +277,20 @@ def search(query, cls, categories, min_dur, max_dur, brightness_min, brightness_
         console.print(f"[green]{total:,}[/green] candidates found, showing top {min(top, len(samples_ordered))}\n")
 
     if not samples_ordered:
+        sononym_only = [f for f, v in (
+            ("--class", cls), ("--categories", categories),
+            ("--brightness-min", brightness_min), ("--brightness-max", brightness_max),
+            ("--noisiness-min", noisiness_min), ("--noisiness-max", noisiness_max),
+            ("--harmonicity-min", harmonicity_min), ("--harmonicity-max", harmonicity_max),
+            ("--peak-min", peak_min)) if v is not None]
+        if sononym_only and not has_sononym:
+            console.print(f"No samples found: {', '.join(sononym_only)} "
+                          f"{'reads' if len(sononym_only) == 1 else 'read'} Sononym's analysis, "
+                          f"and this library has none. Leave {'it' if len(sononym_only) == 1 else 'them'} "
+                          f"out; duration, BPM, favorites and a description (`fourier search "
+                          f"dark kick`) work without it.", style="yellow", markup=False,
+                          highlight=False, soft_wrap=True)
+            return
         console.print("[yellow]No samples found. Try relaxing your filters.[/yellow]")
         console.print("  Hint: `fourier tools db-stats` shows what's in your library.")
         return

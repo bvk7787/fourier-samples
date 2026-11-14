@@ -1010,7 +1010,9 @@ def setup(ctx, library, devices, preset, master, renders, publish, path, force, 
     from .. import places
     places.reset()
     _clap_step(w, clap)
-    _sound_model_note(sound_model, target if target.exists() else None, shown)
+    from .enrich import clap_extra_missing
+    _sound_model_note(sound_model, target if target.exists() else None, shown,
+                      clap_ready=not clap_extra_missing())
     _llm_step(w, llm, target if target.exists() else None)
     _check_step(ctx, w, build, target if path else None)
 
@@ -1349,10 +1351,12 @@ def _clap_step(w: _Wizard, clap) -> None:
         _model_ready(cached)
 
 
-def _sound_model_note(sound_model, config: Path | None, shown: str) -> None:
+def _sound_model_note(sound_model, config: Path | None, shown: str,
+                      clap_ready: bool = True) -> None:
     """After the CLAP step: what the first build does with it, the sound model (without
     Sononym: trained on the library's own names, metadata/train.maybe_train), and
-    --no-sound-model / --sound-model writing SOUND_TRAIN to the config."""
+    --no-sound-model / --sound-model writing SOUND_TRAIN to the config. With CLAP skipped
+    (not clap_ready), no word on what a build does with it: the step said a build needs it."""
     import tomllib
     off = False
     if config is not None:
@@ -1370,6 +1374,8 @@ def _sound_model_note(sound_model, config: Path | None, shown: str) -> None:
     if off:
         _say(f"The sound model is off (SOUND_TRAIN = false in {shown}; `fourier setup "
              f"--sound-model` turns it on).")
+        return
+    if not clap_ready:
         return
     from ..packs.curate_config import SOUND_TRAIN_MIN_LABELS
     _say(f"Without Sononym, the first build also trains a sound model on CLAP and your library's "

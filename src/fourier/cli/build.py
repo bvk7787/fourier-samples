@@ -730,9 +730,12 @@ def _scan_and_analyze(ctx, out_dir=None, allow_missing=False, jobs=None) -> None
     from .ingest import run_scan
     from .setup import pending_estimate
     if clap_extra_missing():
-        console.print("The CLAP model a build needs isn't installed: run `fourier setup` (or "
-                      "build from the database as it is with --no-scan).",
-                      style="red", markup=False, highlight=False)
+        from ..db.session import peek
+        # --no-scan builds from what's analyzed already: only a database with CLAP embeddings
+        analyzed = peek("SELECT 1 FROM sample_features WHERE clap_embedding IS NOT NULL LIMIT 1")
+        console.print("The CLAP model a build needs isn't installed: run `fourier setup`"
+                      + (" (or build from the database as it is with --no-scan)." if analyzed
+                         else "."), style="red", markup=False, highlight=False)
         raise SystemExit(1)
     _stage("Scan the library")
     run_scan(allow_missing=True)
