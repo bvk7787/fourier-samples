@@ -341,8 +341,38 @@ def room_note(base: Path) -> str:
             f"elsewhere, then render again.")
 
 
-def start_render_folder(base: Path, label: str) -> Path:
-    """A clean hidden folder beside base to render into, marked unfinished."""
+def recover_render(base, act: bool = True) -> str | None:
+    """Undo what a stop between put_render_in_place's two renames left: base missing, the
+    previous render moved aside ("old") and the new one beside it ("partial"). The new one
+    is moved in when its marker says it finished and its files match it, else the previous
+    one is put back. Returns one line saying what was done (with act=False, what would be),
+    or None when there's nothing to recover."""
+    base = Path(base)
+    if base.exists() or base.is_symlink():
+        return None
+    stage, old = _beside(base, "partial"), _beside(base, "old")
+    ours = lambda d: d.is_dir() and not d.is_symlink() and (d / RENDER_MARKER).exists()
+    if ours(stage) and render_problem(stage) is None:
+        if act:
+            os.rename(stage, base)
+            if ours(old):
+                shutil.rmtree(old)
+        return (f"The last render stopped while it was moved into place; its finished render "
+                f"{'is now' if act else 'goes'} at {base}.")
+    if ours(old):
+        if act:
+            os.rename(old, base)
+        return (f"The last render stopped while it was moved into place; the previous render "
+                f"{'is back' if act else 'goes back'} at {base}.")
+    return None
+
+
+def start_render_folder(base: Path, label: str, log=None) -> Path:
+    """A clean hidden folder beside base to render into, marked unfinished (after
+    recover_render, so a render stopped while it was moved into place is never lost)."""
+    note = recover_render(base)
+    if note and log:
+        log(note)
     stage = _beside(base, "partial")
     _clear_own(stage)
     _clear_own(_beside(base, "old"))
@@ -356,7 +386,12 @@ def put_render_in_place(stage: Path, base: Path) -> None:
     old = _beside(base, "old")
     if base.exists():
         os.rename(base, old)
-    os.rename(stage, base)
+    try:
+        os.rename(stage, base)
+    except BaseException:                     # a Ctrl-C or error here: the previous one goes back
+        if old.exists() and not base.exists():
+            os.rename(old, base)
+        raise
     if old.exists():
         shutil.rmtree(old)
 
@@ -633,7 +668,7 @@ def render_master_to_device(master_dir, device, out_dir, max_mb=None, log=print,
     _check_out_dir(base, master)
     # written beside base and moved into it only when every file converted, so a render
     # that fails or is stopped leaves the previous one as it was
-    stage = start_render_folder(base, device.device_id)
+    stage = start_render_folder(base, device.device_id, log)
     try:
         summary = _render_into(master, device, base, stage, max_mb, log, lock, release, write_lock,
                                lock_dir)

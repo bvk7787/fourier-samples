@@ -323,7 +323,7 @@ manual. Share the profile in Discussions.
 A render writes only its own folder and never touches other samples on the device. On an SD
 card, `fourier sync` copies into its own folder (`/Samples/Fourier` on the M8), keeps a file the
 device changed since the last sync (`--overwrite-changed` replaces it), and `--delete` removes
-only files it put there that are unchanged. It copies only a render that finished, made for that device; with `--delete`, only a full render (a `--new-only` folder can be synced without it). A render is written beside the previous one and replaces it once it finishes, so it needs room for both. On the Digitakt 2, Transfer adds the folders you drag in beside
+only files it put there that are unchanged. It copies only a render that finished, made for that device; with `--delete`, only a full render (a `--new-only` folder can be synced without it). A render is written beside the previous one and replaces it once it finishes, so it needs room for both. If a render is stopped while it swaps the two, the next render or sync puts the finished one in place (or the previous one back) and says so. On the Digitakt 2, Transfer adds the folders you drag in beside
 what's on the +Drive.
 
 **Two sets from one library**, such as a breaks set and a house set: give each its own config
