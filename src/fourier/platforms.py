@@ -203,7 +203,8 @@ def _files(root: Path, skip) -> dict[str, Path]:
 def sync_tree(src, dst, delete=False, skip_dotfiles=True, dry_run=False,
               use_rsync: bool | None = None) -> tuple[int, list[str]]:
     """Copy src's files into dst the way `rsync -rt [--delete] --exclude=.*` does: a file
-    is copied when it's new or its size or time differ, times are kept, extended
+    is copied when it's new or its size or time differ, into a temporary file renamed over
+    the old one, times are kept, extended
     attributes are not (so macOS writes no "._" twins onto a FAT/exFAT card); with delete,
     files and folders dst has and src doesn't go. Returns (return code, changes)."""
     src, dst = str(src).rstrip("/\\"), str(dst).rstrip("/\\")
@@ -229,9 +230,10 @@ def sync_tree(src, dst, delete=False, skip_dotfiles=True, dry_run=False,
                 continue
         changes.append(f">f {rel}")
         if not dry_run:
-            q.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(p, q)
-            os.utime(q, (st.st_atime, st.st_mtime))
+            # through a temporary file renamed over q, as rsync does: a q that is a hardlink
+            # (a master's files link into the audio cache) is replaced, never written
+            # through, and a copy that stops leaves the old file
+            copy_file_whole(p, q)
     if delete:
         for rel in sorted(set(there) - set(have), reverse=True):
             changes.append(f"*deleting {rel}")
