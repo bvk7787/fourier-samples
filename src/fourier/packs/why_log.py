@@ -262,6 +262,9 @@ def describe(reason: str, detail, doc: dict, name_of=lambda sid: str(sid), place
     if reason == "many_onsets" and detail:
         return (f"not a single note: {detail[0]:g} onsets, over {cat}'s {detail[1]:g} (a phrase, an arp "
                 f"or a loop)")
+    if reason == "chain_gated":
+        return (f"it reads as a chain of separate sounds (a sample chain), and {cat} takes one "
+                f"sound per file")
     if reason == "chord_not_stab":
         return f"a chord, and {cat} takes a chord only as a stab (one hit, at most a few seconds)"
     if reason == "not_one_pitch":

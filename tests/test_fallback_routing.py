@@ -100,6 +100,9 @@ def test_keys_are_left_out_of_the_unrecognized_and_named_in_why():
     doc = {"category": "PIANO"}
     assert "not a single note" in describe("many_onsets", [12.0, 2.0], doc)
     assert "a chord" in describe("chord_not_stab", None, doc)
+    said = describe("chain_gated", None, {"category": "SUB"})
+    assert said == "it reads as a chain of separate sounds (a sample chain), and SUB takes one " \
+                   "sound per file" and "chain_gated" not in said
 
 
 # --- 9: sustained sounds -------------------------------------------------------------------
