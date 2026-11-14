@@ -60,7 +60,7 @@ def test_the_detail_goes_to_the_log_and_the_summary_reads_it(tmp_path, monkeypat
     assert out[1].split() == ["KICKS", "5", "SNARES", "3"]
     assert "plus KITS (1 files), drawn from the categories" in out[2]
     assert "1 category left empty: too few samples the rules recognize for them (WAVES)." in out
-    assert "40 samples no rule recognized: `fourier why --unrecognized` lists them." in out
+    assert "40 samples no rule recognized. `fourier why --unrecognized` lists them." in out
     rated = out.index(next(ln for ln in out if ln.startswith("1 rated file(s) changed")))
     assert out[rated + 1] == "  /l/Acme/Qzv Kick.wav (keep)"
     assert "verify: PASS -- 100 pass, 7 warn, 0 fail" in out
@@ -131,7 +131,7 @@ def test_the_lines_the_summary_reads_are_still_printed():
     import fourier.cli.build as B
     import fourier.packs.verify as V
     src = Path(B.__file__).read_text()
-    for marker in ("New master in place at ", " no rule recognized (top folders: ",
+    for marker in ("New master in place at ", " no rule recognized", " (top folders: ",
                    " left empty: ", "verify: PASS", "verify: FAIL"):
         assert marker in src, marker
     assert 'log(f"{r.level}  {r.check}"' in Path(V.__file__).read_text()   # "WARN  <check>"

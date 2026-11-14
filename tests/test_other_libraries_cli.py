@@ -140,7 +140,7 @@ def test_libraries_unlike_the_reference_one(libs):
     assert "What do you make?" in out and "hiphop-lofi" in out
     out = b.run("build", "--all", "-j", "1", "--no-describe")
     flat = _flat(out)
-    assert "no name rule recognized; the CLAP fallback placed" in flat
+    assert "no category took by their names; the CLAP fallback placed" in flat
     per = _per(b.manifest())
     # names with digits glued on, and a flat dump placed by sound
     assert {f"Types/Samples/kick{i:02d}.wav" for i in range(1, 7)} <= set(per["KICKS"])

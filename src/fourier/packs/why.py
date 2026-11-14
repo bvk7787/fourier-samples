@@ -288,7 +288,7 @@ def explain_row(r, manifest=None, store_path=None, mirrors=frozenset(), act=None
         clap = _clap_homed(r.id, why_docs)
         if clap:
             hit("clap", "placed by sound (CLAP), no name rule matched", clap)
-        else:
+        elif not _named(w):
             w.unrecognized = True
     for cat, cd in ((manifest or {}).get("categories") or {}).items():
         for e in cd.get("entries", []):
@@ -406,6 +406,12 @@ def _plain_reason(why: str) -> str:
     return why
 
 
+def _named(w: Why) -> list[str]:
+    """What the built-in providers read in its name and folders (labels other than one-shot
+    or loop): a sample with one is recognized, even when no category takes it."""
+    return sorted({lab for labs in w.labels.values() for lab in labs if not lab.startswith("class.")})
+
+
 def headline(w: Why) -> str:
     """Where it is and why, or why it isn't there, in one sentence."""
     if w.in_master:
@@ -431,6 +437,10 @@ def headline(w: Why) -> str:
         return f"Not in the master: left out of {cat}, {_plain_reason(why)}."
     if w.unrecognized:
         return "Not in the master: nothing in its name or folders said what it is, and it didn't sound enough like any category."
+    named = _named(w)
+    if named and not any(w.votes.values()):
+        return (f"Not in the master: its name or folders say {', '.join(named)}, but no category "
+                f"takes it as it is.")
     return "Not in the master."
 
 
@@ -506,6 +516,12 @@ def format_why(w: Why) -> list[str]:
     home = w.decided[1] if w.decided else None
     if w.twin and not w.in_master:
         out.append(f"  a byte-identical copy of {w.twin[0]}, which the master holds ({w.twin[1]})")
+    named = _named(w)
+    if named and not any(w.votes.values()) and not w.in_master and not w.twin and not w.left_out:
+        out.append(f"  recognized as {', '.join(named)}, but no category takes it as it is: no "
+                   f"category's rules take that sound in this shape (a bass loop, say), or the "
+                   f"category for it is off. A rename or the `words` knob in fourier.toml can "
+                   f"point it at another category.")
     if w.unrecognized and not w.in_master and not w.twin:
         out.append("  no rule recognized it: no category word in its name or folders (path labels "
                    "above), and the CLAP fallback didn't place it by sound. Add your word with the "
