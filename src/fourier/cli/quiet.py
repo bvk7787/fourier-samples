@@ -84,6 +84,9 @@ class Quiet:
         from ._app import console
         self._width = console._width
         console.width = 1000                 # a log's lines whole (a file is 80 columns to rich)
+        # and plain: the console chose its colours for the terminal (a worker it forks too)
+        self._colors = console._color_system
+        console._color_system = None
         self.started = True
         self.t0 = time.monotonic()
         if real and self.term.isatty():
@@ -106,6 +109,7 @@ class Quiet:
         sys.stdout, sys.stderr = self.saved
         from ._app import console
         console._width = self._width
+        console._color_system = self._colors
         os.dup2(self.fds[0], 1)
         os.dup2(self.fds[1], 2)
         for fd in self.fds:

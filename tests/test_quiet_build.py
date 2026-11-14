@@ -71,6 +71,25 @@ def test_the_detail_goes_to_the_log_and_the_summary_reads_it(tmp_path, monkeypat
     assert "Homes:" not in "\n".join(out)
 
 
+def test_the_log_is_plain_text_when_the_terminal_has_colours(tmp_path, monkeypatch):
+    """The console picked its colours for the terminal; the log is a file a user opens and
+    attaches to an issue: no terminal codes in it, and the terminal's colours come back."""
+    from rich.console import ColorSystem
+
+    from fourier.cli._app import console
+    monkeypatch.setattr(sys, "stdout", io.StringIO())
+    monkeypatch.setattr(console, "_color_system", ColorSystem.TRUECOLOR)
+    q = Q.Quiet(tmp_path / "build.log")
+    q.start(str(tmp_path / "master"), 1)
+    console.print("[dim]providers:[/dim] path, audio", style="bold")
+    console.print("1 category left empty (WAVES).", style="yellow")
+    q.stop()
+    log = (tmp_path / "build.log").read_text()
+    assert "providers: path, audio" in log and "left empty" in log
+    assert "\x1b" not in log, repr(log)
+    assert console._color_system == ColorSystem.TRUECOLOR
+
+
 def test_a_stopped_build_shows_the_logs_last_lines(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "stdout", io.StringIO())
     q = Q.Quiet(tmp_path / "build.log")
