@@ -53,7 +53,7 @@ from .curate_config import taxonomy_view as _tax   # config/taxonomy.yaml + an o
 from ..places import in_library, library_rel
 from ..metadata.rows import CANDIDATE_FIELDS, HOME_FIELDS, fetch, like_any, sample_select
 from ..metadata import resolve as _resolve      # which source each value the build uses came from
-from ..devices.exporter import FOLD_VERSION, canonical_stem, fold_to_stereo
+from ..devices.exporter import FOLD_VERSION, canonical_stem, fold_sides, fold_to_stereo
 from ..settings import for_module as _for_module
 from . import manifests
 from .curate_config import NAMES, STEM_MAX, FAMILY_NAME_MAX  # noqa: F401
@@ -6888,9 +6888,11 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
         out = dest / _choose_outname(stem, taken, prev_name, namer=_namer(bpm), alt=_was)
 
         try:
-            _wide = sf.info(src).channels > 2      # folded to stereo (exporter.fold_to_stereo)
+            _nch = sf.info(src).channels           # more than 2: folded to stereo (exporter.fold_to_stereo)
         except Exception:
-            _wide = False
+            _nch = 0
+        _wide = _nch > 2
+        _sides = fold_sides(src, _nch)              # by the speakers the file states, if any
 
         def _verbatim():
             if _wide:
@@ -6899,7 +6901,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                     sub = sf.info(src).subtype
                 except Exception:
                     sub = None
-                sf.write(str(out), fold_to_stereo(data, channels_first=False), sr,
+                sf.write(str(out), fold_to_stereo(data, channels_first=False, sides=_sides), sr,
                          subtype=sub if sub in ("PCM_16", "PCM_24", "PCM_32") else "PCM_24")
             elif ext.lower() == ".wav" or not transcode:
                 shutil.copy2(src, out)
@@ -6916,7 +6918,8 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
                             retune=retune, pinned=pinned, quiet=QUIET_RMS_DB,
                             ceil=ONESHOT_RMS_CEIL_DB.get(category),
                             dur_cap=cap or (DUR_CAP.get(category) if retune else None),
-                            **({"fold": FOLD_VERSION} if _wide else {}))
+                            **({"fold": FOLD_VERSION} if _wide else {}),
+                            **({"fold_sides": _sides} if _sides else {}))
         got = audiocache.lookup(ck, out)
         if got == "hit":
             _cache_hits[0] += 1
@@ -6925,7 +6928,7 @@ def build_taxonomy(session, category, out_dir, per_family=DEFAULT_PER_FAMILY,
             return None
         try:
             data, sr = sf.read(src, always_2d=False)
-            data = fold_to_stereo(data, channels_first=False)    # more than two channels
+            data = fold_to_stereo(data, channels_first=False, sides=_sides)   # more than two channels
             try:
                 sub = sf.SoundFile(src).subtype
             except Exception:

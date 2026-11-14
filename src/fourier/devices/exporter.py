@@ -183,7 +183,7 @@ def _convert_and_copy(
         src_bits = 0
     from ..audioio import load as load_audio
     audio, sr = load_audio(source, sr=None, mono=False)
-    audio = fold_to_stereo(audio)            # a device takes mono or stereo (more channels fold)
+    audio = fold_to_stereo(audio, sides=fold_sides(source, audio.shape[0] if audio.ndim == 2 else 1))
     src_peak = float(np.max(np.abs(audio), initial=0.0))
     if convert_to_mono:
         audio = _mono_downmix(audio, keep_level=not preserve_length)
@@ -277,34 +277,59 @@ def _convert_and_copy(
 
 
 # More than two channels fold to stereo (devices take mono or stereo; the master holds what a
-# device can play). The channels are read by position in the order WAV and FLAC files use for
-# them: 3 = L R C; 4 = L R (back) L R; 5 = L R C L R; 6 = L R C LFE L R; 7 = L R C LFE
-# (back) C L R; 8 = L R C LFE L R L R; past 8, the channels after the first two alternate
-# left and right. Front left and right go to their side whole; a center or LFE channel goes
-# to both sides at -3 dB, and every other channel to its side at -3 dB. Nothing is left out.
-# The fold is then scaled down where its peak would pass the source's, never up.
-# AIFF and other formats are folded by the same positions. The AIFF-C spec orders 6 channels
-# differently (L, left center, C, R, right center, surround) and nothing in a file says which
-# order it was written in, so such a file keeps all its content with its image shifted.
+# device can play). A file that states its speakers (a WAV channel mask, an AIFF/AIFC or CAF
+# channel layout: audioio.speaker_positions) folds by them: front left and right go to their
+# side whole, every other left or right speaker to its side at -3 dB, and a center, LFE or
+# unassigned channel to both sides at -3 dB. A file that states none is read by position in
+# the order WAV and FLAC files use: 3 = L R C; 4 = L R (back) L R; 5 = L R C L R; 6 = L R C
+# LFE L R; 7 = L R C LFE (back) C L R; 8 = L R C LFE L R L R; past 8, the channels after the
+# first two alternate left and right. Nothing is left out. The fold is then scaled down where
+# its peak would pass the source's, never up. AIFF and other formats without a layout are
+# folded by the same positions (the AIFF-C spec orders 6 channels L, left center, C, R, right
+# center, surround; such a file without a CHAN chunk keeps all its content with its image
+# shifted).
 _FOLD_SIDES = {3: "LRC", 4: "LRLR", 5: "LRCLR", 6: "LRCCLR", 7: "LRCCCLR", 8: "LRCCLRLR"}
 _FOLD_SIDE_GAIN = 0.7071067811865476            # -3 dB
 FOLD_VERSION = 1                                 # bump when fold_to_stereo changes what it writes
 
 
-def _fold_weights(n: int):
-    """(left, right) weight of each of n > 2 channels."""
+_LEFT_SPEAKERS = {"BL", "FLC", "SL", "TFL", "TBL", "RLS", "LW", "LT"}
+_RIGHT_SPEAKERS = {"BR", "FRC", "SR", "TFR", "TBR", "RRS", "RW", "RT"}
+
+
+def _default_sides(n: int) -> str:
+    """The positional fold of n > 2 channels as sides: l/r whole, L/R at -3 dB, C both."""
     sides = _FOLD_SIDES.get(n) or ("LR" + "".join("LR"[i % 2] for i in range(n - 2)))
-    out = []
-    for i, side in enumerate(sides):
-        g = 1.0 if i < 2 else _FOLD_SIDE_GAIN
-        out.append((g if side in "LC" else 0.0, g if side in "RC" else 0.0))
-    return out
+    return "lr" + sides[2:]
 
 
-def fold_to_stereo(audio, channels_first: bool = True):
-    """audio with more than two channels folded to two (the order and weights above), in
-    the same layout ((channels, samples) when channels_first, else (samples, channels));
-    anything with one or two channels is returned as it is."""
+def fold_sides(path, n: int) -> str | None:
+    """The sides n > 2 channels of path fold to by the speakers the file states, or None to
+    fold by position (no layout stated, or one that folds the same way)."""
+    if n <= 2:
+        return None
+    from ..audioio import speaker_positions
+    pos = speaker_positions(path, n)
+    if pos is None:
+        return None
+    sides = "".join("l" if p == "FL" else "r" if p == "FR" else "L" if p in _LEFT_SPEAKERS
+                    else "R" if p in _RIGHT_SPEAKERS else "C" for p in pos)
+    return None if sides == _default_sides(n) else sides
+
+
+def _fold_weights(n: int, sides: str | None = None):
+    """(left, right) weight of each of n > 2 channels, by sides (fold_sides) when given."""
+    g = _FOLD_SIDE_GAIN
+    table = {"l": (1.0, 0.0), "r": (0.0, 1.0), "L": (g, 0.0), "R": (0.0, g), "C": (g, g)}
+    sides = sides if sides is not None and len(sides) == n else _default_sides(n)
+    return [table[s] for s in sides]
+
+
+def fold_to_stereo(audio, channels_first: bool = True, sides: str | None = None):
+    """audio with more than two channels folded to two (the order and weights above; sides
+    from fold_sides when the file states its speakers), in the same layout ((channels,
+    samples) when channels_first, else (samples, channels)); anything with one or two
+    channels is returned as it is."""
     import numpy as np
     if audio.ndim != 2:
         return audio
@@ -312,7 +337,7 @@ def fold_to_stereo(audio, channels_first: bool = True):
     n = x.shape[0]
     if n <= 2:
         return audio
-    w = np.asarray(_fold_weights(n), dtype=np.float64)          # (n, 2)
+    w = np.asarray(_fold_weights(n, sides), dtype=np.float64)   # (n, 2)
     xf = x.astype(np.float64)
     y = w.T @ xf                                                # (2, samples), in float64
     src_peak = float(np.max(np.abs(xf), initial=0.0))
