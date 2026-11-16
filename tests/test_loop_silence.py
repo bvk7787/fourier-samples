@@ -133,6 +133,26 @@ def test_a_swung_or_fill_loop_behind_silence_rotates(tmp_path, monkeypatch):
     assert 20 <= C._rotate_and_slice(q, 120.0, "/l/Acme/Qxvwz Vqx Fill 120.wav")["rotate_ms"] <= 22
 
 
+def test_a_sparse_fill_behind_silence_rotates(tmp_path, monkeypatch):
+    """A one-bar fill of five hits 17 ms late behind digital silence (too few hits for the
+    grid's statistics) still rotates to its downbeat: verify fails a loop that starts late."""
+    from fourier.packs import verify as V
+    p = tmp_path / "sparse.wav"
+    bpm, six = 136.0, 60.0 / 136.0 / 4
+    n = int(round(SR * 16 * six))
+    y = np.zeros(n)
+    for k in (0, 4, 7, 10, 12):
+        i = int(round(SR * (k * six + 0.018)))
+        m = min(n - i, 1500)
+        y[i:i + m] += np.exp(-np.arange(m) / 150.0) * np.sin(np.arange(m) * 0.4)
+    sf.write(str(p), y * 0.5, SR, subtype="PCM_16")
+    assert V._late_start(sf.read(str(p), always_2d=True)[0], SR)              # late before
+    monkeypatch.setattr(C, "_slice_fields", lambda path, bpm: {"bars": 1.0, "bar_err": 0.0, "swing": None})
+    out = C._rotate_and_slice(p, bpm, "/l/Acme/Qxvwz Vqx Fill.wav")
+    assert 15 <= out["rotate_ms"] <= 18 and sf.info(str(p)).frames == n
+    assert not V._late_start(sf.read(str(p), always_2d=True)[0], SR)
+
+
 def test_a_swung_loops_offset_hits_are_still_left_alone(tmp_path, monkeypatch):
     """Only the quiet head counts for a swung loop: hits late with no silence ahead (the first
     one wrapped round to the start) are its feel."""
