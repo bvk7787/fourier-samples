@@ -156,16 +156,25 @@ def validate_master(master_dir, budgets=None, floor=6, ceil=None, vendor_max=Non
         try:
             from sqlalchemy import text
             srcs = [e.get("src") for cd in cats.values() for e in cd.get("entries", []) if e.get("src")]
+            # a file rated Keep in its category stays though it's flagged clipped (curate's
+            # hygiene step): you listened to it there
+            try:
+                from .ratings import keep_pins
+                pins = keep_pins()
+            except Exception:
+                pins = {}
+            kept = {e.get("src") for c, cd in cats.items() for e in cd.get("entries", [])
+                    if e.get("src") and pins.get(e.get("src")) == c}
             bad_clip = bad_dur = 0
             for k in range(0, len(srcs), 500):
                 chunk = srcs[k:k + 500]
                 ph = ",".join(f":p{i}" for i in range(len(chunk)))
                 params = {f"p{i}": chunk[i] for i in range(len(chunk))}
-                for dur, clip in session.execute(text(
-                        f"SELECT s.duration_s, sf.is_clipped FROM samples s "
+                for path, dur, clip in session.execute(text(
+                        f"SELECT s.path, s.duration_s, sf.is_clipped FROM samples s "
                         f"LEFT JOIN sample_features sf ON sf.sample_id = s.id "
                         f"WHERE s.path IN ({ph})").bindparams(**params)).all():
-                    if clip:
+                    if clip and path not in kept:
                         bad_clip += 1
                     if dur and dur > 60:
                         bad_dur += 1

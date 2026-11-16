@@ -134,3 +134,33 @@ def test_validate_vendor_share_only_with_three_vendors_or_more(tmp_path):
         budgets = {"KICKS": len(vendors)}
         ok, res = validate_master(str(tmp_path), budgets=budgets, ceil=60, session=None, log=lambda m: None)
         assert any(c == "vendor" for lvl, c, d in res) == warned, (vendors, res)
+
+
+def test_a_kept_clipped_file_isnt_a_hygiene_fail(tmp_path, monkeypatch):
+    """A file flagged clipped in the output fails validate, unless it's rated Keep in that
+    category (curation keeps it there over the clipping flag)."""
+    from fourier.db import session as S
+    from fourier.db.models import Sample, SampleFeatures
+    from fourier.packs import ratings as R
+    S._engine = S._SessionLocal = None
+    S.init_db(tmp_path / "t.db")
+    try:
+        with S.session_scope() as s:
+            for i, n in enumerate(("k1", "k2"), start=1):
+                s.add(Sample(id=i, path=f"/x/SampleLibrary/Acme/{n}.wav", filename=f"{n}.wav", duration_s=1.0))
+                s.add(SampleFeatures(sample_id=i, is_clipped=1))
+        cats = {"KICKS": {"files": 2, "families": 1, "entries":
+                [{"family": "a", "src": "/x/SampleLibrary/Acme/k1.wav"},
+                 {"family": "a", "src": "/x/SampleLibrary/Acme/k2.wav"}]}}
+        _write(tmp_path / "m", cats)
+        monkeypatch.setattr(R, "keep_pins", lambda *a, **k: {"/x/SampleLibrary/Acme/k1.wav": "KICKS"})
+        with S.session_scope() as s:
+            ok, res = validate_master(str(tmp_path / "m"), session=s, log=lambda m: None)
+        assert ("FAIL", "hygiene", "1 clipped samples in output") in res, res
+        monkeypatch.setattr(R, "keep_pins", lambda *a, **k: {"/x/SampleLibrary/Acme/k1.wav": "KICKS",
+                                                           "/x/SampleLibrary/Acme/k2.wav": "KICKS"})
+        with S.session_scope() as s:
+            ok, res = validate_master(str(tmp_path / "m"), session=s, log=lambda m: None)
+        assert not [r for r in res if r[1] == "hygiene"], res
+    finally:
+        S._engine = S._SessionLocal = None

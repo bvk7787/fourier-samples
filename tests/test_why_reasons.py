@@ -63,6 +63,25 @@ def test_a_clipped_file_is_said_in_its_homes_why_log_on_a_first_build(ratings):
     assert why["hygiene"] == {2: "clipped"}
 
 
+def test_a_keep_wins_over_the_clipping_flag(ratings, monkeypatch):
+    """A file rated Keep in this category stays though the quality step flags it clipped
+    (clipped and then normalized, which the flat-top rule flags, can sound as meant): verify's
+    "every Keep in its category" holds. A clipped file kept elsewhere is still left out here,
+    and one over 60 s is left out whatever its rating."""
+    from fourier.packs import ratings as R
+    rows = [_row(1, "Kick 01.wav", is_clipped=1), _row(2, "Kick 02.wav", is_clipped=1),
+            _row(3, "Kick 03.wav", is_clipped=1, duration_s=75.0)]
+    pins = {rows[0].path: "KICKS", rows[1].path: "SNARES", rows[2].path: "KICKS"}
+    monkeypatch.setattr(R, "keep_pins", lambda *a, **k: pins)
+    homes = {1: "KICKS", 2: "KICKS", 3: "KICKS"}
+    why = {}
+    rec, _fm, st = C._select_records(rows, CATEGORIES["KICKS"], _emb(3), {i + 1: i for i in range(3)},
+                                     homes=homes, category="KICKS", why=why, prev=None)
+    assert [r["id"] for r in rec] == [1]
+    assert why["hygiene"] == {2: "clipped", 3: "clipped"}
+    assert st.get("kept_clipped") == 1
+
+
 def test_ratings_wavetables_and_routing_each_write_their_reason(ratings):
     rows = [_row(1, "Kick 01.wav"),
             _row(2, "Kick 02.wav"),                                       # rated Drop
