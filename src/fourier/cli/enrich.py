@@ -90,6 +90,9 @@ def _results(fn, items, workers: int, processes: bool = False, chunksize: int = 
             yield from pool.map(fn, items, chunksize=chunksize)
         return
     from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    from ..audioio import one_open_at_a_time
+    one_open_at_a_time()            # (libsndfile's MP3 open isn't safe from two threads at once)
     ex = ThreadPoolExecutor(max_workers=workers)
     try:
         for fut in as_completed([ex.submit(fn, item) for item in items]):

@@ -12,6 +12,8 @@ unreadable too.
 """
 from __future__ import annotations
 
+import threading
+
 NOT_FINITE = "holds NaN or infinite sample values: a damaged floating-point file"
 FLOAT_SUBTYPES = ("FLOAT", "DOUBLE")
 
@@ -183,3 +185,29 @@ def _chunk_layout(f, at: int, size_fmt: str, align: int, want: bytes, channels: 
             return None
         return list(fixed)
     return None
+
+
+_OPEN_LOCK = threading.RLock()      # (re-entrant: a wrapped open that calls another wrapped one)
+
+
+def one_open_at_a_time() -> bool:
+    """Every soundfile open in this process goes through one lock (the reads after it still run
+    in parallel). libsndfile's MP3 decoder sets up shared state when a file opens, unguarded:
+    two worker threads opening MP3s at once crashed a whole build (SIGBUS in libsndfile's
+    mpeg_init), though every one of those files opens fine alone. Called before an analysis
+    step starts its worker threads; True once it's in place, False on a soundfile without the
+    method it wraps (opens then go unguarded, as before)."""
+    import soundfile as sf
+    real = getattr(sf.SoundFile, "_open", None)
+    if real is None:
+        return False
+    if getattr(real, "_fourier_one_at_a_time", False):
+        return True
+
+    def _open(self, *args, **kwargs):
+        with _OPEN_LOCK:
+            return real(self, *args, **kwargs)
+
+    _open._fourier_one_at_a_time = True      # type: ignore[attr-defined]
+    sf.SoundFile._open = _open
+    return True
