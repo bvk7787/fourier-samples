@@ -539,8 +539,8 @@ drum candidates; ACOUSTIC and PIANO leave it out (why reason `drum_folder`).
    loop"). A Keep skips these.
 2. Soft layer: source peak under -19 dBFS while a sibling peaks 6+ dB louder (Keeps exempt).
 3. Impulse response, preview or long wavetable; clipped (over 0.1% of its samples, each channel at
-   the file's own rate, in runs of 3 or more at full scale: the quality step's `clip_share`) or
-   over 60 s; rated Drop, or a byte copy
+   the file's own rate, in runs of 3 or more at full scale: the quality step's `clip_share`;
+   a Keep in this category wins over it) or over 60 s; rated Drop, or a byte copy
    or an edition of a Drop (or a byte copy of such an edition under another name), or in a
    set-wide Drop's set or patch (a Keep on the file itself
    wins); a note of a set one of whose notes was dropped here, when the previous build didn't
