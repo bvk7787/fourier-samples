@@ -186,3 +186,40 @@ def test_librosa_leaves_out_a_file_damaged_past_claps_window(lib, tmp_path, monk
 def sqlite3_text(sql):
     from sqlalchemy import text
     return text(sql)
+
+
+def test_worker_threads_open_audio_one_at_a_time(tmp_path, monkeypatch):
+    """An analysis step's worker threads open files one at a time (libsndfile's MP3 open
+    isn't safe from two threads at once: a build crashed in it), and read them in parallel."""
+    import threading
+    import time
+
+    from fourier.cli import enrich as E
+    paths = [_wav(tmp_path / f"Qzv {i:02d}.wav", subtype="PCM_16") for i in range(8)]
+    import soundfile as sf
+    audioio.one_open_at_a_time()           # in place already, as after an earlier step: the
+    inner = sf.SoundFile._open             # patch below sits inside it and gets wrapped again
+    monkeypatch.setattr(sf.SoundFile, "_open", inner)              # restored after the test
+    state = {"now": 0, "most": 0}
+    lock = threading.Lock()
+
+    def slow_open(self, *a, **k):
+        with lock:
+            state["now"] += 1
+            state["most"] = max(state["most"], state["now"])
+        time.sleep(0.02)
+        try:
+            return inner(self, *a, **k)
+        finally:
+            with lock:
+                state["now"] -= 1
+    monkeypatch.setattr(sf.SoundFile, "_open", slow_open)
+    got = []
+    t = threading.Thread(target=lambda: got.extend(E._results(lambda p: sf.info(str(p)).frames, paths, workers=4)),
+                         daemon=True)
+    t.start()
+    t.join(60)
+    assert not t.is_alive(), "the opens deadlocked"
+    assert len(got) == 8 and all(n > 0 for n in got)
+    assert state["most"] == 1, state
+    assert audioio.one_open_at_a_time() is True                      # in place once
