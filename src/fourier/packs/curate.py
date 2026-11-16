@@ -5572,23 +5572,21 @@ def _grid_offset(y, sr, bpm, head_only=False):
         t = snd[0] / sr
         on = np.concatenate(([t], on[on > t + 0.005]))
     six = 60.0 / bpm / 4
-    if len(on) < 6:
+    tol = ROTATE_TOL_MS / 1000
+    if len(on) and on[0] > tol:
+        # silence, then the downbeat: the loop was cut early, so it rotates to the attack
+        # whatever the other hits do (a long silent lead-in is over the 16th cap but
+        # still a cut, not feel), however few hits it has (a sparse fill)
+        a = _attack_start(m, sr, on[0])
+        lead = a - ROTATE_PREROLL_MS / 1000
+        if ROTATE_MIN_MS / 1000 <= lead <= ROTATE_MAX_MS / 1000 and _quiet_head(m, sr, a):
+            return lead
+    if head_only or len(on) < 6:
         return 0.0
     idx = np.round(on / six).astype(int)
     dev = on - idx * six
     ev = dev[idx % 2 == 0]
     if len(ev) < 4:
-        return 0.0
-    tol = ROTATE_TOL_MS / 1000
-    if on[0] > tol:
-        # silence, then the downbeat: the loop was cut early, so it rotates to the attack
-        # whatever the other hits do (a long silent lead-in is over the 16th cap but
-        # still a cut, not feel)
-        a = _attack_start(m, sr, on[0])
-        lead = a - ROTATE_PREROLL_MS / 1000
-        if ROTATE_MIN_MS / 1000 <= lead <= ROTATE_MAX_MS / 1000 and _quiet_head(m, sr, a):
-            return lead
-    if head_only:
         return 0.0
     # a loop that opens on a hit is cut on its downbeat: hits off the grid are its feel
     # (rotating a break played ahead of the beat would move its downbeat too), and so is
